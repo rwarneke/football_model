@@ -23,9 +23,7 @@ results_merged["shootout_winner"] = results_merged["shootout_winner"].apply(lamb
 results_merged["shootout_first_shooter"] = results_merged["shootout_first_shooter"].apply(lambda t: renamer.get(t, t))
 
 team_universe = pd.read_csv("../reference_data/team_universe.csv", header=None)[0]
-results = results_merged.loc[
-    (results_merged.home_team.isin(team_universe))
-    & (results_merged.away_team.isin(team_universe))
-]
+fil = (results_merged.home_team.isin(team_universe)) & (results_merged.away_team.isin(team_universe))
+results = results_merged.loc[fil]
 
 results.to_csv("results_clean.csv", index=False)
