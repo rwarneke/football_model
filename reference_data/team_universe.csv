@@ -1,215 +1,222 @@
-Afghanistan
-Albania
-Algeria
-American Samoa
-Andorra
-Angola
-Anguilla
-Antigua and Barbuda
-Argentina
-Armenia
-Aruba
-Australia
-Austria
-Azerbaijan
-Bahamas
-Bahrain
-Bangladesh
-Barbados
-Belarus
-Belgium
-Belize
-Benin
-Bermuda
-Bhutan
-Bolivia
-Bosnia and Herzegovina
-Botswana
-Brazil
-British Virgin Islands
-Brunei
-Bulgaria
-Burkina Faso
-Burundi
-Cape Verde
-Cambodia
-Cameroon
-Canada
-Cayman Islands
-Central African Republic
-Chad
-Chile
-China
-Taiwan
-Colombia
-Comoros
-Congo
-DR Congo
-Cook Islands
-Costa Rica
-Ivory Coast
-Croatia
-Cuba
-Curacao
-Cyprus
-Czechia
-Denmark
-Djibouti
-Dominica
-Dominican Republic
-Ecuador
-Egypt
-El Salvador
-England
-Equatorial Guinea
-Eritrea
-Estonia
-Eswatini
-Ethiopia
-Faroe Islands
-Fiji
-Finland
-France
-Gabon
-Georgia
-Germany
-Ghana
-Gibraltar
-Greece
-Grenada
-Guam
-Guatemala
-Guinea
-Guinea-Bissau
-Guyana
-Haiti
-Honduras
-Hong Kong
-Hungary
-Iceland
-India
-Indonesia
-Iran
-Iraq
-Israel
-Italy
-Jamaica
-Japan
-Jordan
-Kazakhstan
-Kenya
-North Korea
-South Korea
-Kosovo
-Kuwait
-Kyrgyzstan
-Laos
-Latvia
-Lebanon
-Lesotho
-Liberia
-Libya
-Liechtenstein
-Lithuania
-Luxembourg
-Macau
-Madagascar
-Malawi
-Malaysia
-Maldives
-Mali
-Malta
-Mauritania
-Mauritius
-Mexico
-Moldova
-Mongolia
-Montenegro
-Montserrat
-Morocco
-Mozambique
-Myanmar
-Namibia
-Nepal
-Netherlands
-New Caledonia
-New Zealand
-Nicaragua
-Niger
-Nigeria
-North Macedonia
-Northern Ireland
-Norway
-Oman
-Pakistan
-Palestine
-Panama
-Papua New Guinea
-Paraguay
-Peru
-Philippines
-Poland
-Portugal
-Puerto Rico
-Qatar
-Ireland
-Romania
-Russia
-Rwanda
-Samoa
-San Marino
-Sao Tome and Principe
-Saudi Arabia
-Scotland
-Senegal
-Serbia
-Seychelles
-Sierra Leone
-Singapore
-Slovakia
-Slovenia
-Solomon Islands
-Somalia
-South Africa
-South Sudan
-Spain
-Sri Lanka
-St Kitts and Nevis
-St Lucia
-St Vincent and the Grenadines
-Sudan
-Suriname
-Sweden
-Switzerland
-Syria
-Tahiti
-Tajikistan
-Tanzania
-Thailand
-Gambia
-Timor-Leste
-Togo
-Tonga
-Trinidad and Tobago
-Tunisia
-Turkey
-Turkmenistan
-Turks and Caicos Islands
-Uganda
-Ukraine
-United Arab Emirates
-Uruguay
-US Virgin Islands
-USA
-Uzbekistan
-Vanuatu
-Venezuela
-Vietnam
-Wales
-Yemen
-Zambia
-Zimbabwe
-Czechoslovakia
-East Germany
-Saarland
-Yugoslavia
+team,category
+Afghanistan,fifa_member
+Albania,fifa_member
+Algeria,fifa_member
+American Samoa,fifa_member
+Andorra,fifa_member
+Angola,fifa_member
+Anguilla,fifa_member
+Antigua and Barbuda,fifa_member
+Argentina,fifa_member
+Armenia,fifa_member
+Aruba,fifa_member
+Australia,fifa_member
+Austria,fifa_member
+Azerbaijan,fifa_member
+Bahamas,fifa_member
+Bahrain,fifa_member
+Bangladesh,fifa_member
+Barbados,fifa_member
+Belarus,fifa_member
+Belgium,fifa_member
+Belize,fifa_member
+Benin,fifa_member
+Bermuda,fifa_member
+Bhutan,fifa_member
+Bolivia,fifa_member
+Bosnia and Herzegovina,fifa_member
+Botswana,fifa_member
+Brazil,fifa_member
+British Virgin Islands,fifa_member
+Brunei,fifa_member
+Bulgaria,fifa_member
+Burkina Faso,fifa_member
+Burundi,fifa_member
+Cape Verde,fifa_member
+Cambodia,fifa_member
+Cameroon,fifa_member
+Canada,fifa_member
+Cayman Islands,fifa_member
+Central African Republic,fifa_member
+Chad,fifa_member
+Chile,fifa_member
+China,fifa_member
+Taiwan,fifa_member
+Colombia,fifa_member
+Comoros,fifa_member
+Congo,fifa_member
+DR Congo,fifa_member
+Cook Islands,fifa_member
+Costa Rica,fifa_member
+Ivory Coast,fifa_member
+Croatia,fifa_member
+Cuba,fifa_member
+Curacao,fifa_member
+Cyprus,fifa_member
+Czechia,fifa_member
+Denmark,fifa_member
+Djibouti,fifa_member
+Dominica,fifa_member
+Dominican Republic,fifa_member
+Ecuador,fifa_member
+Egypt,fifa_member
+El Salvador,fifa_member
+England,fifa_member
+Equatorial Guinea,fifa_member
+Eritrea,fifa_member
+Estonia,fifa_member
+Eswatini,fifa_member
+Ethiopia,fifa_member
+Faroe Islands,fifa_member
+Fiji,fifa_member
+Finland,fifa_member
+France,fifa_member
+Gabon,fifa_member
+Georgia,fifa_member
+Germany,fifa_member
+Ghana,fifa_member
+Gibraltar,fifa_member
+Greece,fifa_member
+Grenada,fifa_member
+Guam,fifa_member
+Guatemala,fifa_member
+Guinea,fifa_member
+Guinea-Bissau,fifa_member
+Guyana,fifa_member
+Haiti,fifa_member
+Honduras,fifa_member
+Hong Kong,fifa_member
+Hungary,fifa_member
+Iceland,fifa_member
+India,fifa_member
+Indonesia,fifa_member
+Iran,fifa_member
+Iraq,fifa_member
+Israel,fifa_member
+Italy,fifa_member
+Jamaica,fifa_member
+Japan,fifa_member
+Jordan,fifa_member
+Kazakhstan,fifa_member
+Kenya,fifa_member
+North Korea,fifa_member
+South Korea,fifa_member
+Kosovo,fifa_member
+Kuwait,fifa_member
+Kyrgyzstan,fifa_member
+Laos,fifa_member
+Latvia,fifa_member
+Lebanon,fifa_member
+Lesotho,fifa_member
+Liberia,fifa_member
+Libya,fifa_member
+Liechtenstein,fifa_member
+Lithuania,fifa_member
+Luxembourg,fifa_member
+Macau,fifa_member
+Madagascar,fifa_member
+Malawi,fifa_member
+Malaysia,fifa_member
+Maldives,fifa_member
+Mali,fifa_member
+Malta,fifa_member
+Mauritania,fifa_member
+Mauritius,fifa_member
+Mexico,fifa_member
+Moldova,fifa_member
+Mongolia,fifa_member
+Montenegro,fifa_member
+Montserrat,fifa_member
+Morocco,fifa_member
+Mozambique,fifa_member
+Myanmar,fifa_member
+Namibia,fifa_member
+Nepal,fifa_member
+Netherlands,fifa_member
+New Caledonia,fifa_member
+New Zealand,fifa_member
+Nicaragua,fifa_member
+Niger,fifa_member
+Nigeria,fifa_member
+North Macedonia,fifa_member
+Northern Ireland,fifa_member
+Norway,fifa_member
+Oman,fifa_member
+Pakistan,fifa_member
+Palestine,fifa_member
+Panama,fifa_member
+Papua New Guinea,fifa_member
+Paraguay,fifa_member
+Peru,fifa_member
+Philippines,fifa_member
+Poland,fifa_member
+Portugal,fifa_member
+Puerto Rico,fifa_member
+Qatar,fifa_member
+Ireland,fifa_member
+Romania,fifa_member
+Russia,fifa_member
+Rwanda,fifa_member
+Samoa,fifa_member
+San Marino,fifa_member
+Sao Tome and Principe,fifa_member
+Saudi Arabia,fifa_member
+Scotland,fifa_member
+Senegal,fifa_member
+Serbia,fifa_member
+Seychelles,fifa_member
+Sierra Leone,fifa_member
+Singapore,fifa_member
+Slovakia,fifa_member
+Slovenia,fifa_member
+Solomon Islands,fifa_member
+Somalia,fifa_member
+South Africa,fifa_member
+South Sudan,fifa_member
+Spain,fifa_member
+Sri Lanka,fifa_member
+St Kitts and Nevis,fifa_member
+St Lucia,fifa_member
+St Vincent and the Grenadines,fifa_member
+Sudan,fifa_member
+Suriname,fifa_member
+Sweden,fifa_member
+Switzerland,fifa_member
+Syria,fifa_member
+Tahiti,fifa_member
+Tajikistan,fifa_member
+Tanzania,fifa_member
+Thailand,fifa_member
+Gambia,fifa_member
+Timor-Leste,fifa_member
+Togo,fifa_member
+Tonga,fifa_member
+Trinidad and Tobago,fifa_member
+Tunisia,fifa_member
+Turkey,fifa_member
+Turkmenistan,fifa_member
+Turks and Caicos Islands,fifa_member
+Uganda,fifa_member
+Ukraine,fifa_member
+United Arab Emirates,fifa_member
+Uruguay,fifa_member
+US Virgin Islands,fifa_member
+USA,fifa_member
+Uzbekistan,fifa_member
+Vanuatu,fifa_member
+Venezuela,fifa_member
+Vietnam,fifa_member
+Wales,fifa_member
+Yemen,fifa_member
+Zambia,fifa_member
+Zimbabwe,fifa_member
+Martinique,non_fifa_member
+Guadeloupe,non_fifa_member
+French Guiana,non_fifa_member
+Bonaire,non_fifa_member
+Sint Maarten,non_fifa_member
+Northern Mariana Islands,non_fifa_member
+Czechoslovakia,past_team
+East Germany,past_team
+Saarland,past_team
+Yugoslavia,past_team

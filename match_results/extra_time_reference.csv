@@ -1,0 +1,10 @@
+start_date,end_date,tournament,home_team,away_team,no_extra_time,source,notes
+,,Friendly,,,true,https://en.wikipedia.org/wiki/Friendly_match,Friendlies are treated as no-extra-time matches.
+2015-06-24,2015-07-03,Copa América,,,true,https://en.wikipedia.org/w/index.php?title=2015_Copa_Am%C3%A9rica&action=raw,Quarter-finals/semi-finals/third place use penalties after 90; final has extra time.
+2016-06-16,2016-06-25,Copa América,,,true,https://en.wikipedia.org/w/index.php?title=Copa_Am%C3%A9rica_Centenario&action=raw,Quarter-finals/semi-finals/third place use penalties after 90; final has extra time.
+2019-06-27,2019-06-29,Copa América,,,true,https://en.wikipedia.org/w/index.php?title=2019_Copa_Am%C3%A9rica&action=raw,Quarter-finals only use penalties after 90.
+2021-07-02,2021-07-09,Copa América,,,true,https://en.wikipedia.org/w/index.php?title=2021_Copa_Am%C3%A9rica&action=raw,Quarter-finals/semi-finals/third place use penalties after 90; final has extra time.
+2024-07-04,2024-07-13,Copa América,,,true,https://en.wikipedia.org/w/index.php?title=2024_Copa_Am%C3%A9rica&action=raw,Pre-final knockouts use penalties after 90; final has extra time.
+2021-06-03,2021-06-03,CONCACAF Nations League,Mexico,Costa Rica,true,https://en.wikipedia.org/w/index.php?title=2021_CONCACAF_Nations_League_Finals&action=raw,Semifinals go straight to penalties after 90 (no extra time).
+2021-06-06,2021-06-06,CONCACAF Nations League,Honduras,Costa Rica,true,https://en.wikipedia.org/w/index.php?title=2021_CONCACAF_Nations_League_Finals&action=raw,Third place match goes straight to penalties after 90 (no extra time).
+2022-02-05,2022-02-05,African Cup of Nations,Cameroon,Burkina Faso,true,https://en.wikipedia.org/w/index.php?title=2021_Africa_Cup_of_Nations&action=raw,Third place match uses penalties without extra time.

@@ -1,0 +1,33 @@
+match_id,stage,date,home,away,stadium,city,country
+73,Round of 32,2026-06-28,Runner-up Group A,Runner-up Group B,SoFi Stadium,Inglewood,United States
+74,Round of 32,2026-06-29,Winner Group E,3rd Group A/B/C/D/F,Gillette Stadium,Foxborough,United States
+75,Round of 32,2026-06-29,Winner Group F,Runner-up Group C,Estadio BBVA,Guadalupe,Mexico
+76,Round of 32,2026-06-29,Winner Group C,Runner-up Group F,NRG Stadium,Houston,United States
+77,Round of 32,2026-06-30,Winner Group I,3rd Group C/D/F/G/H,MetLife Stadium,East Rutherford,United States
+78,Round of 32,2026-06-30,Runner-up Group E,Runner-up Group I,AT&T Stadium,Arlington,United States
+79,Round of 32,2026-06-30,Winner Group A,3rd Group C/E/F/H/I,Estadio Azteca,Mexico City,Mexico
+80,Round of 32,2026-07-01,Winner Group L,3rd Group E/H/I/J/K,Mercedes-Benz Stadium,Atlanta,United States
+81,Round of 32,2026-07-01,Winner Group D,3rd Group B/E/F/I/J,Levi's Stadium,Santa Clara,United States
+82,Round of 32,2026-07-01,Winner Group G,3rd Group A/E/H/I/J,Lumen Field,Seattle,United States
+83,Round of 32,2026-07-02,Runner-up Group K,Runner-up Group L,BMO Field,Toronto,Canada
+84,Round of 32,2026-07-02,Winner Group H,Runner-up Group J,SoFi Stadium,Inglewood,United States
+85,Round of 32,2026-07-02,Winner Group B,3rd Group E/F/G/I/J,BC Place,Vancouver,Canada
+86,Round of 32,2026-07-03,Winner Group J,Runner-up Group H,Hard Rock Stadium,Miami Gardens,United States
+87,Round of 32,2026-07-03,Winner Group K,3rd Group D/E/I/J/L,Arrowhead Stadium,Kansas City,United States
+88,Round of 32,2026-07-03,Runner-up Group D,Runner-up Group G,AT&T Stadium,Arlington,United States
+89,Round of 16,2026-07-04,Winner Match 74,Winner Match 77,Lincoln Financial Field,Philadelphia,United States
+90,Round of 16,2026-07-04,Winner Match 73,Winner Match 75,NRG Stadium,Houston,United States
+91,Round of 16,2026-07-05,Winner Match 76,Winner Match 78,MetLife Stadium,East Rutherford,United States
+92,Round of 16,2026-07-05,Winner Match 79,Winner Match 80,Estadio Azteca,Mexico City,Mexico
+93,Round of 16,2026-07-06,Winner Match 83,Winner Match 84,AT&T Stadium,Arlington,United States
+94,Round of 16,2026-07-06,Winner Match 81,Winner Match 82,Lumen Field,Seattle,United States
+95,Round of 16,2026-07-07,Winner Match 86,Winner Match 88,Mercedes-Benz Stadium,Atlanta,United States
+96,Round of 16,2026-07-07,Winner Match 85,Winner Match 87,BC Place,Vancouver,Canada
+97,Quarterfinal,2026-07-09,Winner Match 89,Winner Match 90,Gillette Stadium,Foxborough,United States
+98,Quarterfinal,2026-07-10,Winner Match 93,Winner Match 94,SoFi Stadium,Inglewood,United States
+99,Quarterfinal,2026-07-11,Winner Match 91,Winner Match 92,Hard Rock Stadium,Miami Gardens,United States
+100,Quarterfinal,2026-07-11,Winner Match 95,Winner Match 96,Arrowhead Stadium,Kansas City,United States
+101,Semifinal,2026-07-14,Winner Match 97,Winner Match 98,AT&T Stadium,Arlington,United States
+102,Semifinal,2026-07-15,Winner Match 99,Winner Match 100,Mercedes-Benz Stadium,Atlanta,United States
+103,Third place,2026-07-18,Loser Match 101,Loser Match 102,Hard Rock Stadium,Miami Gardens,United States
+104,Final,2026-07-19,Winner Match 101,Winner Match 102,MetLife Stadium,East Rutherford,United States

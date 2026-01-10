@@ -1,0 +1,73 @@
+match_id,date,home_team,away_team,stadium,city,country,group
+1,2026-06-11,Mexico,South Africa,Estadio Azteca,Mexico City,Mexico,A
+2,2026-06-11,South Korea,UEFA Path D winner,Estadio Akron,Zapopan,Mexico,A
+3,2026-06-12,Canada,UEFA Path A winner,BMO Field,Toronto,Canada,B
+4,2026-06-12,United States,Paraguay,SoFi Stadium,Inglewood,United States,D
+5,2026-06-13,Haiti,Scotland,Gillette Stadium,Foxborough,United States,C
+6,2026-06-13,Australia,UEFA Path C winner,BC Place,Vancouver,Canada,D
+7,2026-06-13,Brazil,Morocco,MetLife Stadium,East Rutherford,United States,C
+8,2026-06-13,Qatar,Switzerland,Levi's Stadium,Santa Clara,United States,B
+9,2026-06-14,Ivory Coast,Ecuador,Lincoln Financial Field,Philadelphia,United States,E
+10,2026-06-14,Germany,Curacao,NRG Stadium,Houston,United States,E
+11,2026-06-14,Netherlands,Japan,AT&T Stadium,Arlington,United States,F
+12,2026-06-14,UEFA Path B winner,Tunisia,Estadio BBVA,Guadalupe,Mexico,F
+13,2026-06-15,Saudi Arabia,Uruguay,Hard Rock Stadium,Miami Gardens,United States,H
+14,2026-06-15,Spain,Cape Verde,Mercedes-Benz Stadium,Atlanta,United States,H
+15,2026-06-15,Iran,New Zealand,SoFi Stadium,Inglewood,United States,G
+16,2026-06-15,Belgium,Egypt,Lumen Field,Seattle,United States,G
+17,2026-06-16,France,Senegal,MetLife Stadium,East Rutherford,United States,I
+18,2026-06-16,IC Path 2 winner,Norway,Gillette Stadium,Foxborough,United States,I
+19,2026-06-16,Argentina,Algeria,Arrowhead Stadium,Kansas City,United States,J
+20,2026-06-16,Austria,Jordan,Levi's Stadium,Santa Clara,United States,J
+21,2026-06-17,Ghana,Panama,BMO Field,Toronto,Canada,L
+22,2026-06-17,England,Croatia,AT&T Stadium,Arlington,United States,L
+23,2026-06-17,Portugal,IC Path 1 winner,NRG Stadium,Houston,United States,K
+24,2026-06-17,Uzbekistan,Colombia,Estadio Azteca,Mexico City,Mexico,K
+25,2026-06-18,UEFA Path D winner,South Africa,Mercedes-Benz Stadium,Atlanta,United States,A
+26,2026-06-18,Switzerland,UEFA Path A winner,SoFi Stadium,Inglewood,United States,B
+27,2026-06-18,Canada,Qatar,BC Place,Vancouver,Canada,B
+28,2026-06-18,Mexico,South Korea,Estadio Akron,Zapopan,Mexico,A
+29,2026-06-19,Brazil,Haiti,Lincoln Financial Field,Philadelphia,United States,C
+30,2026-06-19,Scotland,Morocco,Gillette Stadium,Foxborough,United States,C
+31,2026-06-19,UEFA Path C winner,Paraguay,Levi's Stadium,Santa Clara,United States,D
+32,2026-06-19,United States,Australia,Lumen Field,Seattle,United States,D
+33,2026-06-20,Germany,Ivory Coast,BMO Field,Toronto,Canada,E
+34,2026-06-20,Ecuador,Curacao,Arrowhead Stadium,Kansas City,United States,E
+35,2026-06-20,Netherlands,UEFA Path B winner,NRG Stadium,Houston,United States,F
+36,2026-06-20,Tunisia,Japan,Estadio BBVA,Guadalupe,Mexico,F
+37,2026-06-21,Uruguay,Cape Verde,Hard Rock Stadium,Miami Gardens,United States,H
+38,2026-06-21,Spain,Saudi Arabia,Mercedes-Benz Stadium,Atlanta,United States,H
+39,2026-06-21,Belgium,Iran,SoFi Stadium,Inglewood,United States,G
+40,2026-06-21,New Zealand,Egypt,BC Place,Vancouver,Canada,G
+41,2026-06-22,Norway,Senegal,MetLife Stadium,East Rutherford,United States,I
+42,2026-06-22,France,IC Path 2 winner,Lincoln Financial Field,Philadelphia,United States,I
+43,2026-06-22,Argentina,Austria,AT&T Stadium,Arlington,United States,J
+44,2026-06-22,Jordan,Algeria,Levi's Stadium,Santa Clara,United States,J
+45,2026-06-23,England,Ghana,Gillette Stadium,Foxborough,United States,L
+46,2026-06-23,Panama,Croatia,BMO Field,Toronto,Canada,L
+47,2026-06-23,Portugal,Uzbekistan,NRG Stadium,Houston,United States,K
+48,2026-06-23,Colombia,IC Path 1 winner,Estadio Akron,Zapopan,Mexico,K
+49,2026-06-24,Scotland,Brazil,Hard Rock Stadium,Miami Gardens,United States,C
+50,2026-06-24,Morocco,Haiti,Mercedes-Benz Stadium,Atlanta,United States,C
+51,2026-06-24,Switzerland,Canada,BC Place,Vancouver,Canada,B
+52,2026-06-24,UEFA Path A winner,Qatar,Lumen Field,Seattle,United States,B
+53,2026-06-24,UEFA Path D winner,Mexico,Estadio Azteca,Mexico City,Mexico,A
+54,2026-06-24,South Africa,South Korea,Estadio BBVA,Guadalupe,Mexico,A
+55,2026-06-25,Curacao,Ivory Coast,Lincoln Financial Field,Philadelphia,United States,E
+56,2026-06-25,Ecuador,Germany,MetLife Stadium,East Rutherford,United States,E
+57,2026-06-25,Japan,UEFA Path B winner,AT&T Stadium,Arlington,United States,F
+58,2026-06-25,Tunisia,Netherlands,Arrowhead Stadium,Kansas City,United States,F
+59,2026-06-25,UEFA Path C winner,United States,SoFi Stadium,Inglewood,United States,D
+60,2026-06-25,Paraguay,Australia,Levi's Stadium,Santa Clara,United States,D
+61,2026-06-26,Norway,France,Gillette Stadium,Foxborough,United States,I
+62,2026-06-26,Senegal,IC Path 2 winner,BMO Field,Toronto,Canada,I
+63,2026-06-26,Egypt,Iran,Lumen Field,Seattle,United States,G
+64,2026-06-26,New Zealand,Belgium,BC Place,Vancouver,Canada,G
+65,2026-06-26,Cape Verde,Saudi Arabia,NRG Stadium,Houston,United States,H
+66,2026-06-26,Uruguay,Spain,Estadio Akron,Zapopan,Mexico,H
+67,2026-06-27,Panama,England,MetLife Stadium,East Rutherford,United States,L
+68,2026-06-27,Croatia,Ghana,Lincoln Financial Field,Philadelphia,United States,L
+69,2026-06-27,Algeria,Austria,Arrowhead Stadium,Kansas City,United States,J
+70,2026-06-27,Jordan,Argentina,AT&T Stadium,Arlington,United States,J
+71,2026-06-27,Colombia,Portugal,Hard Rock Stadium,Miami Gardens,United States,K
+72,2026-06-27,IC Path 1 winner,Uzbekistan,Mercedes-Benz Stadium,Atlanta,United States,K

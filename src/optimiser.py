@@ -91,6 +91,7 @@ class Optimiser:
                             cov = _safe_cov_from_curv(H, I)
                             return x, {"converged": False, "reason": "curvature_solve_failed", "iters": it, "f": fx, "grad_norm": gnorm}, cov
                         return x, {"converged": False, "reason": "curvature_solve_failed", "iters": it, "f": fx, "grad_norm": gnorm}
+                    continue
 
                 if float(np.dot(g, p_try)) < 0.0:
                     p = p_try

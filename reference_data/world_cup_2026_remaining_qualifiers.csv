@@ -1,0 +1,17 @@
+date,stage,path,round,home_team,away_team,neutral,home_source,away_source,winner_slot
+2026-03-26,Interconfed Playoff,IC Path 1,semi,New Caledonia,Jamaica,True,,,
+2026-03-26,Interconfed Playoff,IC Path 2,semi,Bolivia,Suriname,True,,,
+2026-03-26,UEFA Playoff,UEFA Path A,semi1,Wales,Bosnia and Herzegovina,False,,,
+2026-03-26,UEFA Playoff,UEFA Path A,semi2,Italy,Northern Ireland,False,,,
+2026-03-26,UEFA Playoff,UEFA Path B,semi1,Ukraine,Sweden,False,,,
+2026-03-26,UEFA Playoff,UEFA Path B,semi2,Poland,Albania,False,,,
+2026-03-26,UEFA Playoff,UEFA Path C,semi1,Slovakia,Kosovo,False,,,
+2026-03-26,UEFA Playoff,UEFA Path C,semi2,Turkey,Romania,False,,,
+2026-03-26,UEFA Playoff,UEFA Path D,semi1,Czech Republic,Republic of Ireland,False,,,
+2026-03-26,UEFA Playoff,UEFA Path D,semi2,Denmark,North Macedonia,False,,,
+2026-03-31,Interconfed Playoff,IC Path 1,final,DR Congo,,True,,semi,IC Path 1 winner
+2026-03-31,Interconfed Playoff,IC Path 2,final,Iraq,,True,,semi,IC Path 2 winner
+2026-03-31,UEFA Playoff,UEFA Path A,final,,,False,semi1,semi2,UEFA Path A winner
+2026-03-31,UEFA Playoff,UEFA Path B,final,,,False,semi1,semi2,UEFA Path B winner
+2026-03-31,UEFA Playoff,UEFA Path C,final,,,False,semi1,semi2,UEFA Path C winner
+2026-03-31,UEFA Playoff,UEFA Path D,final,,,False,semi1,semi2,UEFA Path D winner
