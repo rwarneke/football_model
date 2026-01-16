@@ -4,13 +4,14 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import seaborn as sns
 import math
+from collections import defaultdict
 from scipy.special import logsumexp
 
 from src.optimiser import Optimiser
 
 
 EPSILON = 1e-10
-MAX_GOALS = 10
+MAX_GOALS = 8
 MAX_LOG_EXP = 700.0
 
 
@@ -61,8 +62,8 @@ class Model:
         },
         # Learning rates
         init_var_diag=0.2,
-        cross_var_ratio=0.0,
-        variance_per_year=40e-4,
+        cross_var_ratio=0.8,
+        variance_per_year=45e-4,
         variance_max=None,
         variance_min=None,
         # Extra time handling
@@ -79,7 +80,10 @@ class Model:
         a_hga_override=None,
         d_hga_override=None,
         # Learning weights
-        friendly_weight=1.0,
+        importance_class_weights={0: 0.4, 1: 0.7, 2: 1.0},
+        # Score censoring
+        censor_big_wins=False,
+        censor_big_win_margin=2,
         # Shootout model
         shootout_skilldiff_coef=0.353,
         # Prediction correction
@@ -113,7 +117,9 @@ class Model:
         inactivity_max_years: cap on inactivity penalty in years
         init_var_diag: prior variance for attack/defense
         cross_var_ratio: off-diagonal covariance ratio vs diagonal variance (0 to 1)
-        friendly_weight: match weight multiplier when tournament == "Friendly"
+        importance_class_weights: mapping of importance_class -> weight
+        censor_big_wins: if True, censor winner scores for wins by censor_big_win_margin+
+        censor_big_win_margin: margin threshold for censoring (>= 1)
         shootout_skilldiff_coef: logit coefficient for shootout home_win vs skilldiff
         lognormal_score_correction: apply log-normal correction to expected scores in prediction
         mu_prior_decay: mu decrease per year for first-time teams after the first match year
@@ -141,6 +147,11 @@ class Model:
         self._hga_history = {}
         self.rho = float(rho)
         self.smin_eps_epsilon = float(smin_eps_epsilon)
+
+        self.censor_big_wins = bool(censor_big_wins)
+        self.censor_big_win_margin = int(censor_big_win_margin)
+        if self.censor_big_win_margin < 1:
+            raise ValueError("censor_big_win_margin must be >= 1")
 
         self.cross_var_ratio = float(cross_var_ratio)
         if not (0.0 <= self.cross_var_ratio <= 1.0):
@@ -190,9 +201,9 @@ class Model:
         self.inactivity_grace_days = int(inactivity_grace_days)
         self.inactivity_decay_per_year = float(inactivity_decay_per_year)
         self.inactivity_max_years = float(inactivity_max_years)
-        self.friendly_weight = float(friendly_weight)
-        if self.friendly_weight < 0.0:
-            raise ValueError("friendly_weight must be non-negative")
+        if importance_class_weights is None:
+            importance_class_weights = defaultdict(lambda: 1.0)
+        self.importance_class_weights = importance_class_weights
         self.shootout_skilldiff_coef = float(shootout_skilldiff_coef)
         self.lognormal_score_correction = bool(lognormal_score_correction)
         self._match_index = 0
@@ -224,7 +235,7 @@ class Model:
         missing = needed - set(df.columns)
         if missing:
             raise ValueError(f"results is missing required columns: {sorted(missing)}")
-        has_tournament = "tournament" in df.columns
+        has_importance_class = "importance_class" in df.columns
         has_confed = (
             "home_confederation" in df.columns and "away_confederation" in df.columns
         )
@@ -296,6 +307,40 @@ class Model:
                     )
 
         log_fact = np.array([log_factorial(i) for i in range(MAX_GOALS + 1)], dtype=float)
+
+        def _censored_scores(score_h_val, score_a_val):
+            score_h_int = int(score_h_val)
+            score_a_int = int(score_a_val)
+            score_h_obs = score_h_int
+            score_a_obs = score_a_int
+            score_h_censored = score_h_int > MAX_GOALS
+            score_a_censored = score_a_int > MAX_GOALS
+            if score_h_censored:
+                score_h_obs = MAX_GOALS
+            if score_a_censored:
+                score_a_obs = MAX_GOALS
+            if self.censor_big_wins:
+                if score_h_int >= MAX_GOALS:
+                    score_h_obs = MAX_GOALS
+                    score_h_censored = True
+                if score_a_int >= MAX_GOALS:
+                    score_a_obs = MAX_GOALS
+                    score_a_censored = True
+                margin = score_h_int - score_a_int
+                if margin >= self.censor_big_win_margin and score_h_int < MAX_GOALS:
+                    score_h_obs = min(score_a_int + self.censor_big_win_margin, MAX_GOALS)
+                    score_h_censored = True
+                elif margin <= -self.censor_big_win_margin and score_a_int < MAX_GOALS:
+                    score_a_obs = min(score_h_int + self.censor_big_win_margin, MAX_GOALS)
+                    score_a_censored = True
+            return (
+                score_h_int,
+                score_a_int,
+                score_h_obs,
+                score_a_obs,
+                score_h_censored,
+                score_a_censored,
+            )
         extra_rows = []
 
         if not df.empty:
@@ -320,11 +365,17 @@ class Model:
             home = row.home_team
             away = row.away_team
             is_neutral = row.neutral
-            tournament = row.tournament if has_tournament else None
+            importance_class = row.importance_class if has_importance_class else None
             score_h = row.home_score
             score_a = row.away_score
-            score_h_int = int(score_h)
-            score_a_int = int(score_a)
+            (
+                score_h_int,
+                score_a_int,
+                score_h_obs,
+                score_a_obs,
+                score_h_censored,
+                score_a_censored,
+            ) = _censored_scores(score_h, score_a)
             score_h_cap = min(score_h_int, MAX_GOALS)
             score_a_cap = min(score_a_int, MAX_GOALS)
             had_extra_time = (
@@ -365,19 +416,37 @@ class Model:
             f_away_pre = eta_away_pre
             fprime_away_pre = 1.0
             g_away_pre = 0.0
-            is_friendly = False
-            if tournament is not None and not pd.isna(tournament):
-                if isinstance(tournament, str):
-                    is_friendly = tournament.strip().lower() == "friendly"
-            match_weight = self.friendly_weight if is_friendly else 1.0
+            importance_key = None if pd.isna(importance_class) else importance_class
+            if isinstance(self.importance_class_weights, defaultdict):
+                match_weight = float(self.importance_class_weights[importance_key])
+            else:
+                if importance_key not in self.importance_class_weights:
+                    raise KeyError(
+                        f"importance_class_weights missing key: {importance_key}"
+                    )
+                match_weight = float(self.importance_class_weights[importance_key])
+            if match_weight < 0.0:
+                raise ValueError("importance_class_weights must be non-negative")
 
             p_home, p_draw, p_away, p_score, debug = self._result_probabilities(
                 mu_h_pre,
                 mu_a_pre,
                 is_neutral,
-                score_h_cap,
-                score_a_cap,
+                score_h_obs,
+                score_a_obs,
                 log_fact,
+                score_h_censored=score_h_censored,
+                score_a_censored=score_a_censored,
+            )
+            _p_home_u, _p_draw_u, _p_away_u, p_score_uncensored, _debug_u = (
+                self._result_probabilities(
+                    mu_h_pre,
+                    mu_a_pre,
+                    is_neutral,
+                    score_h_cap,
+                    score_a_cap,
+                    log_fact,
+                )
             )
             m_home_pre = float(debug["mH"])
             m_away_pre = float(debug["mA"])
@@ -389,7 +458,7 @@ class Model:
                 p_result = p_draw
 
             p_result_safe = max(p_result, EPSILON)
-            p_score_safe = max(p_score, EPSILON)
+            p_score_safe = max(p_score_uncensored, EPSILON)
             loss_result = -math.log(p_result_safe) / (-math.log(1.0 / 3.0))
             loss_score = -math.log(p_score_safe)
 
@@ -400,6 +469,14 @@ class Model:
                 score_a_120 = row.away_score_120
                 score_h_et = score_h_120 - score_h_90
                 score_a_et = score_a_120 - score_a_90
+                (
+                    _,
+                    _,
+                    score_h_90_obs,
+                    score_a_90_obs,
+                    score_h_90_censored,
+                    score_a_90_censored,
+                ) = _censored_scores(score_h_90, score_a_90)
                 if score_h_et < 0 or score_a_et < 0:
                     raise ValueError(
                         "extra-time goals are negative "
@@ -408,20 +485,30 @@ class Model:
                         f"score_120={score_h_120}-{score_a_120}"
                     )
                 (
+                    _,
+                    _,
+                    score_h_et_obs,
+                    score_a_et_obs,
+                    score_h_et_censored,
+                    score_a_et_censored,
+                ) = _censored_scores(score_h_et, score_a_et)
+                (
                     mu_h_mid,
                     sigma_h_mid,
                     mu_a_mid,
                     sigma_a_mid,
                     info_90,
                 ) = self._compute_updated_ratings(
-                    score_h_90,
-                    score_a_90,
+                    score_h_90_obs,
+                    score_a_90_obs,
                     is_neutral,
                     st_h.m,
                     st_h.sigma2,
                     st_a.m,
                     st_a.sigma2,
                     match_weight=match_weight,
+                    score_h_censored=score_h_90_censored,
+                    score_a_censored=score_a_90_censored,
                 )
                 sigma_h_mid = self._apply_variance_bounds(sigma_h_mid)
                 sigma_a_mid = self._apply_variance_bounds(sigma_a_mid)
@@ -438,14 +525,16 @@ class Model:
                         sigma_a_post,
                         info_et,
                     ) = self._compute_updated_ratings(
-                        score_h_et,
-                        score_a_et,
+                        score_h_et_obs,
+                        score_a_et_obs,
                         is_neutral,
                         mu_h_mid,
                         sigma_h_mid,
                         mu_a_mid,
                         sigma_a_mid,
                         match_weight=match_weight,
+                        score_h_censored=score_h_et_censored,
+                        score_a_censored=score_a_et_censored,
                     )
                 finally:
                     self.mu = mu_before_et
@@ -463,14 +552,16 @@ class Model:
                     sigma_a_post,
                     update_info,
                 ) = self._compute_updated_ratings(
-                    score_h,
-                    score_a,
+                    score_h_obs,
+                    score_a_obs,
                     is_neutral,
                     st_h.m,
                     st_h.sigma2,
                     st_a.m,
                     st_a.sigma2,
                     match_weight=match_weight,
+                    score_h_censored=score_h_censored,
+                    score_a_censored=score_a_censored,
                 )
                 sigma_h_post = self._apply_variance_bounds(sigma_h_post)
                 sigma_a_post = self._apply_variance_bounds(sigma_a_post)
@@ -503,10 +594,12 @@ class Model:
                     "p_draw": float(p_draw),
                     "p_away": float(p_away),
                     "p_result": float(p_result),
-                    "p_score": float(p_score),
+                    "p_score": float(p_score_uncensored),
                     "loss_result": float(loss_result),
                     "loss_score": float(loss_score),
                     "mu_global_pre": float(mu_global_pre),
+                    "a_hga_pre": float(a_hga),
+                    "d_hga_pre": float(d_hga),
                     "m_home_pre": m_home_pre,
                     "m_away_pre": m_away_pre,
                     "exp_home_score": m_home_pre,
@@ -616,6 +709,8 @@ class Model:
         ]
         metric_cols = [
             "mu_global_pre",
+            "a_hga_pre",
+            "d_hga_pre",
             "mu_global_post",
             "m_home_pre",
             "m_away_pre",
@@ -904,12 +999,20 @@ class Model:
         lm_damping=1e-2,     # default damping ON (helps low-score cases)
         cov_jitter=1e-9,
         match_weight=1.0,
+        score_h_censored=False,
+        score_a_censored=False,
     ):
         x = int(score_h)
         y = int(score_a)
         max_goals = MAX_GOALS
-        x_censored = x > max_goals
-        y_censored = y > max_goals
+        x_censored = bool(score_h_censored)
+        y_censored = bool(score_a_censored)
+        if x > max_goals:
+            x = max_goals
+            x_censored = True
+        if y > max_goals:
+            y = max_goals
+            y_censored = True
         if is_neutral:
             a_hga = 0.0
             d_hga = 0.0
@@ -1077,7 +1180,7 @@ class Model:
                         continue
                     p_y = pmf_y[k_y]
                     dp_y = dpmf_y[k_y]
-                    k = max_goals - u
+                    k = x - u
                     s_x, ds_x = _poisson_survival_and_grad(pmf_x, dpmf_x, k)
                     term = p_u * p_y * s_x
                     p += term
@@ -1093,7 +1196,7 @@ class Model:
                         continue
                     p_x = pmf_x[k_x]
                     dp_x = dpmf_x[k_x]
-                    k = max_goals - u
+                    k = y - u
                     s_y, ds_y = _poisson_survival_and_grad(pmf_y, dpmf_y, k)
                     term = p_u * p_x * s_y
                     p += term
@@ -1109,9 +1212,10 @@ class Model:
                 for u in range(0, max_goals):
                     p_u = pmf_nu[u]
                     dp_u = dpmf_nu[u]
-                    k = max_goals - u
-                    s_x, ds_x = _poisson_survival_and_grad(pmf_x, dpmf_x, k)
-                    s_y, ds_y = _poisson_survival_and_grad(pmf_y, dpmf_y, k)
+                    k_x = x - u
+                    k_y = y - u
+                    s_x, ds_x = _poisson_survival_and_grad(pmf_x, dpmf_x, k_x)
+                    s_y, ds_y = _poisson_survival_and_grad(pmf_y, dpmf_y, k_y)
                     term = p_u * s_x * s_y
                     p += term
                     dp_dlamH += p_u * ds_x * s_y
@@ -1354,6 +1458,10 @@ class Model:
         sigma_a=None,
         lognormal_correction: bool = False,
     ):
+        if log_fact is None or log_fact.size != MAX_GOALS + 1:
+            log_fact = np.array(
+                [log_factorial(i) for i in range(MAX_GOALS + 1)], dtype=float
+            )
         if is_neutral:
             a_hga = 0.0
             d_hga = 0.0
@@ -1478,6 +1586,8 @@ class Model:
         score_h: int,
         score_a: int,
         log_fact: np.ndarray,
+        score_h_censored: bool = False,
+        score_a_censored: bool = False,
     ):
         score_matrix, debug = self._score_matrix(mu_h, mu_a, is_neutral, log_fact)
         total = float(score_matrix.sum())
@@ -1487,11 +1597,18 @@ class Model:
         p_home = float(np.tril(score_matrix, k=-1).sum())
         p_draw = float(np.trace(score_matrix))
         p_away = float(np.triu(score_matrix, k=1).sum())
-        p_score = (
-            float(score_matrix[score_h, score_a])
-            if score_h <= MAX_GOALS and score_a <= MAX_GOALS
-            else 0.0
-        )
+        score_h_int = int(score_h)
+        score_a_int = int(score_a)
+        score_h_censored = bool(score_h_censored or score_h_int > MAX_GOALS)
+        score_a_censored = bool(score_a_censored or score_a_int > MAX_GOALS)
+        h_idx = min(score_h_int, MAX_GOALS)
+        a_idx = min(score_a_int, MAX_GOALS)
+        if score_h_censored or score_a_censored:
+            h_slice = slice(h_idx, MAX_GOALS + 1) if score_h_censored else slice(h_idx, h_idx + 1)
+            a_slice = slice(a_idx, MAX_GOALS + 1) if score_a_censored else slice(a_idx, a_idx + 1)
+            p_score = float(score_matrix[h_slice, a_slice].sum())
+        else:
+            p_score = float(score_matrix[h_idx, a_idx])
 
         inv_total = 1.0 / total
         return (
@@ -1506,7 +1623,7 @@ class Model:
         self,
         home_team: str,
         away_team: str,
-        is_neutral: bool = False,
+        is_neutral: bool = True,
         mode: str = "point",
         n_samples: int = 2000,
         random_state=None,
@@ -1771,6 +1888,20 @@ class Model:
                 "n_samples": 0,
             }
 
+        if valid == 0:
+            return {
+                "p_home": 0.0,
+                "p_draw": 0.0,
+                "p_away": 0.0,
+                "score_matrix": score_matrix_sum,
+                "exp_home_score": 0.0,
+                "exp_away_score": 0.0,
+                "lam_home": 0.0,
+                "lam_away": 0.0,
+                "nu": 0.0,
+                "n_samples": 0,
+            }
+
         inv_valid = 1.0 / valid
         output = {
             "p_home": p_home_sum * inv_valid,
@@ -1801,11 +1932,333 @@ class Model:
             )
         return output
 
+    def predict_match_from_params(
+        self,
+        mu_h: np.ndarray,
+        mu_a: np.ndarray,
+        is_neutral: bool = True,
+        mode: str = "point",
+        n_samples: int = 2000,
+        random_state=None,
+        requires_result: bool = False,
+        lognormal_score_correction=None,
+        sigma_h: np.ndarray = None,
+        sigma_a: np.ndarray = None,
+        mu_global: float = None,
+        a_hga: float = None,
+        d_hga: float = None,
+    ):
+        if not self.is_fit:
+            raise ValueError("model must be fit before predicting")
+        mu_h = np.asarray(mu_h, dtype=float)
+        mu_a = np.asarray(mu_a, dtype=float)
+        if mu_h.shape != (2,) or mu_a.shape != (2,):
+            raise ValueError("mu_h and mu_a must be shape (2,)")
+
+        orig_mu = float(self.mu)
+        orig_a = float(self.a_hga)
+        orig_d = float(self.d_hga)
+        try:
+            if mu_global is not None:
+                self.mu = float(mu_global)
+            if a_hga is not None:
+                self.a_hga = float(a_hga)
+            if d_hga is not None:
+                self.d_hga = float(d_hga)
+
+            mode = str(mode).lower()
+            if mode not in {"point", "mc", "monte_carlo"}:
+                raise ValueError("mode must be 'point' or 'mc'/'monte_carlo'")
+            use_lognormal_correction = (
+                self.lognormal_score_correction
+                if lognormal_score_correction is None
+                else bool(lognormal_score_correction)
+            )
+            if use_lognormal_correction and mode != "point":
+                raise ValueError(
+                    "lognormal_score_correction is only supported in point mode; "
+                    "use mode='mc' to integrate uncertainty."
+                )
+
+            log_fact = np.array([log_factorial(i) for i in range(MAX_GOALS + 1)], dtype=float)
+            if mode == "point":
+                score_matrix, debug = self._score_matrix(
+                    mu_h,
+                    mu_a,
+                    is_neutral,
+                    log_fact,
+                    sigma_h=sigma_h,
+                    sigma_a=sigma_a,
+                    lognormal_correction=use_lognormal_correction,
+                )
+                total = float(score_matrix.sum())
+                if total <= 0.0:
+                    return {
+                        "p_home": 0.0,
+                        "p_draw": 0.0,
+                        "p_away": 0.0,
+                        "score_matrix": score_matrix,
+                        "exp_home_score": float(debug.get("mH", 0.0)),
+                        "exp_away_score": float(debug.get("mA", 0.0)),
+                        "lam_home": float(debug.get("lamH", 0.0)),
+                        "lam_away": float(debug.get("lamA", 0.0)),
+                        "nu": float(debug.get("nu", 0.0)),
+                    }
+
+                inv_total = 1.0 / total
+                score_matrix = score_matrix * inv_total
+                p_home = float(np.tril(score_matrix, k=-1).sum())
+                p_draw = float(np.trace(score_matrix))
+                p_away = float(np.triu(score_matrix, k=1).sum())
+
+                output = {
+                    "p_home": p_home,
+                    "p_draw": p_draw,
+                    "p_away": p_away,
+                    "score_matrix": score_matrix,
+                    "exp_home_score": float(debug.get("mH", 0.0)),
+                    "exp_away_score": float(debug.get("mA", 0.0)),
+                    "lam_home": float(debug.get("lamH", 0.0)),
+                    "lam_away": float(debug.get("lamA", 0.0)),
+                    "nu": float(debug.get("nu", 0.0)),
+                }
+                if requires_result:
+                    if is_neutral:
+                        a_hga_val = 0.0
+                        d_hga_val = 0.0
+                    else:
+                        a_hga_val, d_hga_val = self._current_hga_components()
+                    skilldiff = (
+                        self.mu + (mu_h[0] + a_hga_val) - mu_a[1]
+                        - (self.mu + mu_a[0] - (mu_h[1] + d_hga_val))
+                    )
+                    mu_before = float(self.mu)
+                    self.mu = mu_before + math.log(self.extra_time_exp_score_mult)
+                    try:
+                        score_matrix_et, _debug_et = self._score_matrix(
+                            mu_h,
+                            mu_a,
+                            is_neutral,
+                            log_fact,
+                            sigma_h=sigma_h,
+                            sigma_a=sigma_a,
+                            lognormal_correction=use_lognormal_correction,
+                        )
+                    finally:
+                        self.mu = mu_before
+                    total_et = float(score_matrix_et.sum())
+                    if total_et > 0.0:
+                        score_matrix_et = score_matrix_et / total_et
+                    else:
+                        score_matrix_et = np.zeros_like(score_matrix_et)
+                        score_matrix_et[0, 0] = 1.0
+                    p_home_et = float(np.tril(score_matrix_et, k=-1).sum())
+                    p_draw_et = float(np.trace(score_matrix_et))
+                    p_away_et = float(np.triu(score_matrix_et, k=1).sum())
+                    score_matrix_120 = np.zeros_like(score_matrix)
+                    for i in range(MAX_GOALS + 1):
+                        for j in range(MAX_GOALS + 1):
+                            p90 = score_matrix[i, j]
+                            if p90 == 0.0:
+                                continue
+                            if i != j:
+                                score_matrix_120[i, j] += p90
+                                continue
+                            for k in range(MAX_GOALS + 1):
+                                for l in range(MAX_GOALS + 1):
+                                    pet = score_matrix_et[k, l]
+                                    if pet == 0.0:
+                                        continue
+                                    h = min(i + k, MAX_GOALS)
+                                    a = min(j + l, MAX_GOALS)
+                                    score_matrix_120[h, a] += p90 * pet
+                    p_home_120 = p_home + p_draw * p_home_et
+                    p_draw_120 = p_draw * p_draw_et
+                    p_away_120 = p_away + p_draw * p_away_et
+                    p_home_pen = 1.0 / (1.0 + safe_exp(-self.shootout_skilldiff_coef * skilldiff))
+                    output.update(
+                        {
+                            "p_home_90": p_home,
+                            "p_draw_90": p_draw,
+                            "p_away_90": p_away,
+                            "score_matrix_120": score_matrix_120,
+                            "p_home_120": p_home_120,
+                            "p_draw_120": p_draw_120,
+                            "p_away_120": p_away_120,
+                            "p_home_pens": p_home_120 + p_draw_120 * p_home_pen,
+                            "p_away_pens": p_away_120 + p_draw_120 * (1.0 - p_home_pen),
+                            "p_home_penalty": p_home_pen,
+                        }
+                    )
+                return output
+
+            n_samples = int(n_samples)
+            if n_samples <= 0:
+                raise ValueError("n_samples must be positive")
+            if sigma_h is None or sigma_a is None:
+                raise ValueError("sigma_h and sigma_a are required for mode='mc'")
+
+            def _prepare_cov(cov):
+                cov = np.array(cov, dtype=float)
+                cov = 0.5 * (cov + cov.T)
+                w, v = np.linalg.eigh(cov)
+                w = np.clip(w, 1e-10, None)
+                return (v * w) @ v.T
+
+            rng = np.random.default_rng(random_state)
+            cov_h = _prepare_cov(sigma_h)
+            cov_a = _prepare_cov(sigma_a)
+            draws_h = rng.multivariate_normal(mu_h, cov_h, size=n_samples)
+            draws_a = rng.multivariate_normal(mu_a, cov_a, size=n_samples)
+
+            score_matrix_sum = np.zeros((MAX_GOALS + 1, MAX_GOALS + 1), dtype=float)
+            score_matrix_120_sum = np.zeros_like(score_matrix_sum)
+            p_home_sum = 0.0
+            p_draw_sum = 0.0
+            p_away_sum = 0.0
+            p_home_120_sum = 0.0
+            p_draw_120_sum = 0.0
+            p_away_120_sum = 0.0
+            p_home_pens_sum = 0.0
+            p_away_pens_sum = 0.0
+            p_home_penalty_sum = 0.0
+            exp_home_sum = 0.0
+            exp_away_sum = 0.0
+            lam_home_sum = 0.0
+            lam_away_sum = 0.0
+            nu_sum = 0.0
+            valid = 0
+
+            if is_neutral:
+                a_hga_val = 0.0
+                d_hga_val = 0.0
+            else:
+                a_hga_val, d_hga_val = self._current_hga_components()
+            for mu_h_draw, mu_a_draw in zip(draws_h, draws_a):
+                score_matrix, debug = self._score_matrix(
+                    mu_h_draw, mu_a_draw, is_neutral, log_fact
+                )
+                total = float(score_matrix.sum())
+                if total <= 0.0:
+                    continue
+                score_matrix = score_matrix / total
+                score_matrix_sum += score_matrix
+                p_home = float(np.tril(score_matrix, k=-1).sum())
+                p_draw = float(np.trace(score_matrix))
+                p_away = float(np.triu(score_matrix, k=1).sum())
+                p_home_sum += p_home
+                p_draw_sum += p_draw
+                p_away_sum += p_away
+                exp_home_sum += float(debug.get("mH", 0.0))
+                exp_away_sum += float(debug.get("mA", 0.0))
+                lam_home_sum += float(debug.get("lamH", 0.0))
+                lam_away_sum += float(debug.get("lamA", 0.0))
+                nu_sum += float(debug.get("nu", 0.0))
+                if requires_result:
+                    skilldiff = (
+                        self.mu + (mu_h_draw[0] + a_hga_val) - mu_a_draw[1]
+                        - (self.mu + mu_a_draw[0] - (mu_h_draw[1] + d_hga_val))
+                    )
+                    mu_before = float(self.mu)
+                    self.mu = mu_before + math.log(self.extra_time_exp_score_mult)
+                    try:
+                        score_matrix_et, _debug_et = self._score_matrix(
+                            mu_h_draw, mu_a_draw, is_neutral, log_fact
+                        )
+                    finally:
+                        self.mu = mu_before
+                    total_et = float(score_matrix_et.sum())
+                    if total_et > 0.0:
+                        score_matrix_et = score_matrix_et / total_et
+                    else:
+                        score_matrix_et = np.zeros_like(score_matrix_et)
+                        score_matrix_et[0, 0] = 1.0
+                    p_home_et = float(np.tril(score_matrix_et, k=-1).sum())
+                    p_draw_et = float(np.trace(score_matrix_et))
+                    p_away_et = float(np.triu(score_matrix_et, k=1).sum())
+                    score_matrix_120 = np.zeros_like(score_matrix)
+                    for i in range(MAX_GOALS + 1):
+                        for j in range(MAX_GOALS + 1):
+                            p90 = score_matrix[i, j]
+                            if p90 == 0.0:
+                                continue
+                            if i != j:
+                                score_matrix_120[i, j] += p90
+                                continue
+                            for k in range(MAX_GOALS + 1):
+                                for l in range(MAX_GOALS + 1):
+                                    pet = score_matrix_et[k, l]
+                                    if pet == 0.0:
+                                        continue
+                                    h = min(i + k, MAX_GOALS)
+                                    a = min(j + l, MAX_GOALS)
+                                    score_matrix_120[h, a] += p90 * pet
+                    score_matrix_120_sum += score_matrix_120
+                    p_home_120 = p_home + p_draw * p_home_et
+                    p_draw_120 = p_draw * p_draw_et
+                    p_away_120 = p_away + p_draw * p_away_et
+                    p_home_pen = 1.0 / (1.0 + safe_exp(-self.shootout_skilldiff_coef * skilldiff))
+                    p_home_120_sum += p_home_120
+                    p_draw_120_sum += p_draw_120
+                    p_away_120_sum += p_away_120
+                    p_home_pens_sum += p_home_120 + p_draw_120 * p_home_pen
+                    p_away_pens_sum += p_away_120 + p_draw_120 * (1.0 - p_home_pen)
+                    p_home_penalty_sum += p_home_pen
+                valid += 1
+
+            if valid == 0:
+                return {
+                    "p_home": 0.0,
+                    "p_draw": 0.0,
+                    "p_away": 0.0,
+                    "score_matrix": score_matrix_sum,
+                    "exp_home_score": 0.0,
+                    "exp_away_score": 0.0,
+                    "lam_home": 0.0,
+                    "lam_away": 0.0,
+                    "nu": 0.0,
+                    "n_samples": 0,
+                }
+
+            inv_valid = 1.0 / valid
+            output = {
+                "p_home": p_home_sum * inv_valid,
+                "p_draw": p_draw_sum * inv_valid,
+                "p_away": p_away_sum * inv_valid,
+                "score_matrix": score_matrix_sum * inv_valid,
+                "exp_home_score": exp_home_sum * inv_valid,
+                "exp_away_score": exp_away_sum * inv_valid,
+                "lam_home": lam_home_sum * inv_valid,
+                "lam_away": lam_away_sum * inv_valid,
+                "nu": nu_sum * inv_valid,
+                "n_samples": valid,
+            }
+            if requires_result:
+                output.update(
+                    {
+                        "p_home_90": output["p_home"],
+                        "p_draw_90": output["p_draw"],
+                        "p_away_90": output["p_away"],
+                        "score_matrix_120": score_matrix_120_sum * inv_valid,
+                        "p_home_120": p_home_120_sum * inv_valid,
+                        "p_draw_120": p_draw_120_sum * inv_valid,
+                        "p_away_120": p_away_120_sum * inv_valid,
+                        "p_home_pens": p_home_pens_sum * inv_valid,
+                        "p_away_pens": p_away_pens_sum * inv_valid,
+                        "p_home_penalty": p_home_penalty_sum * inv_valid,
+                    }
+                )
+            return output
+        finally:
+            self.mu = orig_mu
+            self.a_hga = orig_a
+            self.d_hga = orig_d
+
     def predict_match_extra_time(
         self,
         home_team: str,
         away_team: str,
-        is_neutral: bool = False,
+        is_neutral: bool = True,
         mode: str = "point",
         n_samples: int = 2000,
         random_state=None,
@@ -1836,7 +2289,7 @@ class Model:
         self,
         home_team: str,
         away_team: str,
-        is_neutral: bool = False,
+        is_neutral: bool = True,
         mode: str = "point",
         n_samples: int = 2000,
         random_state=None,

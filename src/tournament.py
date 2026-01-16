@@ -12,7 +12,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import requests
 
-from src.model import Model, safe_exp
+from src.model import Model, safe_exp, log_factorial, MAX_GOALS
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 REFERENCE_DATA_DIR = ROOT_DIR / "reference_data"
@@ -123,9 +123,17 @@ class Tournament:
         self.group_tables: Dict[str, pd.DataFrame] = {}
         self.finished = False
         self.champion: Optional[str] = None
+        self.record_params = False
+        self._log_fact: Optional[np.ndarray] = None
 
-    def simulate(self, model: Model, random_state: Optional[int] = None) -> "Tournament":
+    def simulate(
+        self,
+        model: Model,
+        random_state: Optional[int] = None,
+        record_params: bool = False,
+    ) -> "Tournament":
         rng = np.random.default_rng(random_state)
+        self.record_params = bool(record_params)
         self._simulate(model, rng)
         self.finished = True
         return self
@@ -189,11 +197,11 @@ class WorldCup2026(Tournament):
     2026 format (as of today):
       - 48 teams, 12 groups of 4
       - top 2 from each group + 8 best third-place teams advance (32 total)
-      - knockout from round of 32
+      - fixed knockout bracket from round of 32 (no reseeding)
 
-    The round-of-32 bracket is seeded by group performance (winners, then runners-up,
-    then best thirds) and paired 1-v-32, 2-v-31, ... with a best-effort swap to avoid
-    same-group matchups in the first knockout round.
+    The round-of-32 opponents for group winners are determined by the official
+    Annex C third-place mapping, and knockout fixtures/dates are loaded from the
+    schedule CSVs in reference_data.
     """
 
     GROUPS = [chr(ord("A") + i) for i in range(12)]
@@ -211,7 +219,7 @@ class WorldCup2026(Tournament):
         self,
         teams: Optional[List[str]] = None,
         groups: Optional[Dict[str, List[str]]] = None,
-        host_teams: Optional[List[str]] = None,
+        host_teams: Optional[List[str]] = ["USA", "Canada", "Mexico"],
         start_day: int = 0,
         start_date: Optional[str] = None,
         include_qualification: bool = True,
@@ -434,8 +442,8 @@ class WorldCup2026(Tournament):
 
         home_advantage = False
         away_advantage = False
+        neutral = True
         if neutral_override is None:
-            neutral = True
             if country:
                 match_country = str(country).strip()
                 home_country = self.host_team_countries.get(home_team, "")
@@ -464,22 +472,70 @@ class WorldCup2026(Tournament):
                     neutral = False
                     home_advantage = home_is_host
                     away_advantage = away_is_host
-            if away_advantage and not home_advantage:
-                home_team, away_team = away_team, home_team
-                home_advantage, away_advantage = away_advantage, home_advantage
         else:
             neutral = bool(neutral_override)
             if not neutral:
                 home_advantage = True
+        if away_advantage and not home_advantage:
+            home_team, away_team = away_team, home_team
+            home_advantage, away_advantage = away_advantage, home_advantage
 
+        mu_h_pre = states[home_team].m.copy()
+        mu_a_pre = states[away_team].m.copy()
         m_h, m_a, lam_h, lam_a, nu, skilldiff = self._match_params(
             model,
-            states[home_team].m,
-            states[away_team].m,
+            mu_h_pre,
+            mu_a_pre,
             home_advantage,
             away_advantage,
             extra_time_mult=1.0,
         )
+
+        def build_record(score_h: int, score_a: int) -> Dict[str, float]:
+            if not self.record_params:
+                return {}
+            if self._log_fact is None:
+                self._log_fact = np.array(
+                    [log_factorial(i) for i in range(MAX_GOALS + 1)], dtype=float
+                )
+            score_h_cap = min(int(score_h), MAX_GOALS)
+            score_a_cap = min(int(score_a), MAX_GOALS)
+            p_home, p_draw, p_away, p_score, _debug = model._result_probabilities(
+                mu_h_pre, mu_a_pre, neutral, score_h_cap, score_a_cap, self._log_fact
+            )
+            eta_home_pre = math.log(m_h) if m_h > 0.0 else float("-inf")
+            eta_away_pre = math.log(m_a) if m_a > 0.0 else float("-inf")
+            return {
+                "home_mu_attack_pre": float(mu_h_pre[0]),
+                "home_mu_defense_pre": float(mu_h_pre[1]),
+                "away_mu_attack_pre": float(mu_a_pre[0]),
+                "away_mu_defense_pre": float(mu_a_pre[1]),
+                "home_mu_attack_post": float(mu_h_pre[0]),
+                "home_mu_defense_post": float(mu_h_pre[1]),
+                "away_mu_attack_post": float(mu_a_pre[0]),
+                "away_mu_defense_post": float(mu_a_pre[1]),
+                "mu_global_pre": float(model.mu),
+                "eta_home_pre": float(eta_home_pre),
+                "eta_away_pre": float(eta_away_pre),
+                "exp_home_score": float(m_h),
+                "exp_away_score": float(m_a),
+                "lam_home_pre": float(lam_h),
+                "lam_away_pre": float(lam_a),
+                "nu_pre": float(nu),
+                "skilldiff": float(skilldiff),
+                "p_home": float(p_home),
+                "p_draw": float(p_draw),
+                "p_away": float(p_away),
+                "p_score": float(p_score),
+            }
+
+        def attach_record(res: MatchResult) -> MatchResult:
+            if not self.record_params:
+                return res
+            record = build_record(res.home_score, res.away_score)
+            for key, value in record.items():
+                setattr(res, key, value)
+            return res
         home_90, away_90 = self._sample_score(rng, lam_h, lam_a, nu)
 
         if allow_draw or home_90 != away_90:
@@ -488,7 +544,7 @@ class WorldCup2026(Tournament):
                 winner = home_team
             elif away_90 > home_90:
                 winner = away_team
-            return MatchResult(
+            return attach_record(MatchResult(
                 stage=stage,
                 day=day,
                 date=match_date,
@@ -509,7 +565,7 @@ class WorldCup2026(Tournament):
                 went_penalties=False,
                 penalty_winner=None,
                 winner=winner,
-            )
+            ))
 
         m_h_et, m_a_et, lam_h_et, lam_a_et, nu_et, _ = self._match_params(
             model,
@@ -525,7 +581,7 @@ class WorldCup2026(Tournament):
 
         if home_120 != away_120:
             winner = home_team if home_120 > away_120 else away_team
-            return MatchResult(
+            return attach_record(MatchResult(
                 stage=stage,
                 day=day,
                 date=match_date,
@@ -546,11 +602,11 @@ class WorldCup2026(Tournament):
                 went_penalties=False,
                 penalty_winner=None,
                 winner=winner,
-            )
+            ))
 
         p_home_pen = 1.0 / (1.0 + safe_exp(-model.shootout_skilldiff_coef * skilldiff))
         pen_winner = home_team if rng.random() < p_home_pen else away_team
-        return MatchResult(
+        return attach_record(MatchResult(
             stage=stage,
             day=day,
             date=match_date,
@@ -571,7 +627,7 @@ class WorldCup2026(Tournament):
             went_penalties=True,
             penalty_winner=pen_winner,
             winner=pen_winner,
-        )
+        ))
 
     def _team_strength(self, state: TeamSimState) -> float:
         return float(state.m[0] + state.m[1])
@@ -1369,6 +1425,10 @@ class WorldCup2026(Tournament):
             winners: Dict[str, str] = {}
 
             for row in path_df.itertuples(index=False):
+                is_uefa_final = (
+                    str(row.stage).strip().lower() == "uefa playoff"
+                    and str(row.round).strip().lower() == "final"
+                )
                 home_team = row.home_team or ""
                 away_team = row.away_team or ""
                 if not home_team and row.home_source:
@@ -1388,7 +1448,16 @@ class WorldCup2026(Tournament):
                         f"Unresolved matchup for {path} {row.round}: "
                         f"{home_team} vs {away_team}"
                     )
-
+                neutral_override = bool(row.neutral)
+                if (
+                    is_uefa_final
+                    and str(row.path).strip() == "UEFA Path B"
+                    and not neutral_override
+                ):
+                    if home_team == "Ukraine":
+                        neutral_override = True
+                    elif home_team == "Sweden":
+                        neutral_override = False
                 day = int(row.day)
                 res = self._simulate_match(
                     model,
@@ -1401,7 +1470,7 @@ class WorldCup2026(Tournament):
                     stage=f"{row.stage} {row.round}".strip(),
                     group=None,
                     allow_draw=False,
-                    neutral_override=bool(row.neutral),
+                    neutral_override=neutral_override,
                     stadium=None,
                     city=None,
                     country=None,
@@ -1684,61 +1753,92 @@ class WorldCup2026(Tournament):
         overall_table: pd.DataFrame,
         rng: np.random.Generator,
     ) -> List[str]:
-        h2h_table = pd.DataFrame(
-            index=tied, columns=["points", "gf", "ga", "gd"], data=0
-        )
-        for m in matches:
-            if m.home_team not in tied or m.away_team not in tied:
-                continue
-            hs = m.home_score
-            as_ = m.away_score
-            h2h_table.loc[m.home_team, "gf"] += hs
-            h2h_table.loc[m.home_team, "ga"] += as_
-            h2h_table.loc[m.away_team, "gf"] += as_
-            h2h_table.loc[m.away_team, "ga"] += hs
-            if hs > as_:
-                h2h_table.loc[m.home_team, "points"] += 3
-            elif hs < as_:
-                h2h_table.loc[m.away_team, "points"] += 3
-            else:
-                h2h_table.loc[m.home_team, "points"] += 1
-                h2h_table.loc[m.away_team, "points"] += 1
-        h2h_table["gd"] = h2h_table["gf"] - h2h_table["ga"]
-        combined = pd.DataFrame(
-            {
-                "h2h_points": h2h_table["points"],
-                "h2h_gd": h2h_table["gd"],
-                "h2h_gf": h2h_table["gf"],
-                "overall_gd": h2h_table.index.map(
-                    lambda t: float(overall_table.loc[t, "gd"])
-                ),
-                "overall_gf": h2h_table.index.map(
-                    lambda t: float(overall_table.loc[t, "gf"])
-                ),
-            }
-        )
-        sort_cols = ["h2h_points", "h2h_gd", "h2h_gf", "overall_gd", "overall_gf"]
-        ranked = combined.sort_values(by=sort_cols, ascending=[False] * len(sort_cols))
-        ranked_list = ranked.index.tolist()
-
-        # Drawing of lots for any remaining ties (fair play not modeled).
-        final_order: List[str] = []
-        i = 0
-        while i < len(ranked_list):
-            cur = ranked_list[i]
-            tied_block = [cur]
-            i += 1
-            while i < len(ranked_list):
-                nxt = ranked_list[i]
-                if all(ranked.loc[cur, col] == ranked.loc[nxt, col] for col in sort_cols):
-                    tied_block.append(nxt)
-                    i += 1
+        def head_to_head_table(teams: List[str]) -> pd.DataFrame:
+            h2h = pd.DataFrame(
+                index=teams, columns=["points", "gf", "ga", "gd"], data=0
+            )
+            for m in matches:
+                if m.home_team not in teams or m.away_team not in teams:
+                    continue
+                hs = m.home_score
+                as_ = m.away_score
+                h2h.loc[m.home_team, "gf"] += hs
+                h2h.loc[m.home_team, "ga"] += as_
+                h2h.loc[m.away_team, "gf"] += as_
+                h2h.loc[m.away_team, "ga"] += hs
+                if hs > as_:
+                    h2h.loc[m.home_team, "points"] += 3
+                elif hs < as_:
+                    h2h.loc[m.away_team, "points"] += 3
                 else:
-                    break
-            if len(tied_block) > 1:
-                rng.shuffle(tied_block)
-            final_order.extend(tied_block)
-        return final_order
+                    h2h.loc[m.home_team, "points"] += 1
+                    h2h.loc[m.away_team, "points"] += 1
+            h2h["gd"] = h2h["gf"] - h2h["ga"]
+            return h2h
+
+        def rank_overall(teams: List[str]) -> List[str]:
+            overall = overall_table.loc[teams, ["points", "gd", "gf"]].copy()
+            overall = overall.sort_values(
+                by=["points", "gd", "gf"], ascending=[False, False, False]
+            )
+            ordered = []
+            i = 0
+            teams_list = list(overall.index)
+            while i < len(teams_list):
+                cur = teams_list[i]
+                tied_block = [cur]
+                i += 1
+                while i < len(teams_list):
+                    nxt = teams_list[i]
+                    if (
+                        overall.loc[cur, "points"] == overall.loc[nxt, "points"]
+                        and overall.loc[cur, "gd"] == overall.loc[nxt, "gd"]
+                        and overall.loc[cur, "gf"] == overall.loc[nxt, "gf"]
+                    ):
+                        tied_block.append(nxt)
+                        i += 1
+                    else:
+                        break
+                if len(tied_block) > 1:
+                    rng.shuffle(tied_block)
+                ordered.extend(tied_block)
+            return ordered
+
+        def rank_head_to_head(teams: List[str]) -> List[str]:
+            if len(teams) <= 1:
+                return list(teams)
+            h2h = head_to_head_table(teams)
+            h2h_metrics = h2h[["points", "gd", "gf"]]
+            if h2h_metrics.nunique().max() == 1:
+                return rank_overall(teams)
+            h2h_sorted = h2h_metrics.sort_values(
+                by=["points", "gd", "gf"], ascending=[False, False, False]
+            )
+            ordered: List[str] = []
+            i = 0
+            teams_list = list(h2h_sorted.index)
+            while i < len(teams_list):
+                cur = teams_list[i]
+                tied_block = [cur]
+                i += 1
+                while i < len(teams_list):
+                    nxt = teams_list[i]
+                    if (
+                        h2h_sorted.loc[cur, "points"] == h2h_sorted.loc[nxt, "points"]
+                        and h2h_sorted.loc[cur, "gd"] == h2h_sorted.loc[nxt, "gd"]
+                        and h2h_sorted.loc[cur, "gf"] == h2h_sorted.loc[nxt, "gf"]
+                    ):
+                        tied_block.append(nxt)
+                        i += 1
+                    else:
+                        break
+                if len(tied_block) == 1:
+                    ordered.append(tied_block[0])
+                else:
+                    ordered.extend(rank_head_to_head(tied_block))
+            return ordered
+
+        return rank_head_to_head(list(tied))
 
     def _select_qualifiers(
         self, group_rankings: Dict[str, List[str]], rng: np.random.Generator

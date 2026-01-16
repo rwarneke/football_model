@@ -3,7 +3,7 @@ date,stage,path,round,home_team,away_team,neutral,home_source,away_source,winner
 2026-03-26,Interconfed Playoff,IC Path 2,semi,Bolivia,Suriname,True,,,
 2026-03-26,UEFA Playoff,UEFA Path A,semi1,Wales,Bosnia and Herzegovina,False,,,
 2026-03-26,UEFA Playoff,UEFA Path A,semi2,Italy,Northern Ireland,False,,,
-2026-03-26,UEFA Playoff,UEFA Path B,semi1,Ukraine,Sweden,False,,,
+2026-03-26,UEFA Playoff,UEFA Path B,semi1,Ukraine,Sweden,True,,,
 2026-03-26,UEFA Playoff,UEFA Path B,semi2,Poland,Albania,False,,,
 2026-03-26,UEFA Playoff,UEFA Path C,semi1,Slovakia,Kosovo,False,,,
 2026-03-26,UEFA Playoff,UEFA Path C,semi2,Turkey,Romania,False,,,
