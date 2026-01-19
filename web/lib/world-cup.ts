@@ -1,0 +1,182 @@
+import fs from "fs";
+import path from "path";
+
+export type WorldCupProbabilities = {
+  columns: string[];
+  rows: Array<{
+    team: string;
+    flagPath: string;
+    group: string | null;
+    values: Record<string, number>;
+  }>;
+};
+
+const DATA_FILE = path.resolve(
+  process.cwd(),
+  "..",
+  "model_output",
+  "simulation_results.csv"
+);
+
+function toNumber(value: string | undefined) {
+  if (!value) {
+    return Number.NaN;
+  }
+  return Number(value);
+}
+
+function flagFileName(team: string) {
+  return `${team.replace(/ /g, "_")}.png`;
+}
+
+export function loadWorldCupProbabilities(): WorldCupProbabilities {
+  const contents = fs.readFileSync(DATA_FILE, "utf8");
+  const lines = contents.trim().split(/\r?\n/);
+  if (lines.length <= 1) {
+    return { columns: [], rows: [] };
+  }
+  const headers = lines[0]?.split(",") ?? [];
+  const columns = headers.filter((header) => header !== "team");
+
+  const groupFile = path.resolve(
+    process.cwd(),
+    "..",
+    "reference_data",
+    "world_cup_2026_groups.csv"
+  );
+  const qualifiedFile = path.resolve(
+    process.cwd(),
+    "..",
+    "reference_data",
+    "world_cup_2026_qualified.csv"
+  );
+  const groupContents = fs.readFileSync(groupFile, "utf8");
+  const groupLines = groupContents.trim().split(/\r?\n/);
+  const groupHeaders = groupLines[0]?.split(",") ?? [];
+  const groupRows = groupLines.slice(1).map((line) => {
+    const values = line.split(",");
+    return Object.fromEntries(
+      groupHeaders.map((header, index) => [header, values[index]])
+    ) as Record<string, string | undefined>;
+  });
+  const groupMap = new Map(
+    groupRows
+      .filter((row) => row.team && row.group)
+      .map((row) => [row.team as string, row.group as string])
+  );
+
+  const qualifiedContents = fs.readFileSync(qualifiedFile, "utf8");
+  const qualifiedLines = qualifiedContents.trim().split(/\r?\n/);
+  const qualifiedHeaders = qualifiedLines[0]?.split(",") ?? [];
+  const qualifiedRows = qualifiedLines.slice(1).map((line) => {
+    const values = line.split(",");
+    return Object.fromEntries(
+      qualifiedHeaders.map((header, index) => [header, values[index]])
+    ) as Record<string, string | undefined>;
+  });
+  const qualifiedSet = new Set(
+    qualifiedRows
+      .filter((row) => row.team)
+      .map((row) => row.team as string)
+  );
+
+  const remainingFile = path.resolve(
+    process.cwd(),
+    "..",
+    "reference_data",
+    "world_cup_2026_remaining_qualifiers.csv"
+  );
+  const remainingContents = fs.readFileSync(remainingFile, "utf8");
+  const remainingLines = remainingContents.trim().split(/\r?\n/);
+  const remainingHeaders = remainingLines[0]?.split(",") ?? [];
+  const remainingRows = remainingLines.slice(1).map((line) => {
+    const values = line.split(",");
+    return Object.fromEntries(
+      remainingHeaders.map((header, index) => [header, values[index]])
+    ) as Record<string, string | undefined>;
+  });
+
+  const mapFiles = [
+    "reference_data/fifa_member_to_canonical_name_map.csv",
+    "reference_data/kaggle_team_to_canonical_name_map.csv",
+  ];
+  const nameMap = new Map<string, string>();
+  for (const mapFile of mapFiles) {
+    const mapContents = fs.readFileSync(path.resolve(process.cwd(), "..", mapFile), "utf8");
+    const mapLines = mapContents.trim().split(/\r?\n/);
+    const mapHeaders = mapLines[0]?.split(",") ?? [];
+    const mapRows = mapLines.slice(1).map((line) => {
+      const values = line.split(",");
+      return Object.fromEntries(
+        mapHeaders.map((header, index) => [header, values[index]])
+      ) as Record<string, string | undefined>;
+    });
+    for (const row of mapRows) {
+      if (row.original_name && row.replacement_name) {
+        nameMap.set(row.original_name, row.replacement_name);
+      }
+    }
+  }
+
+  const pathGroupMap = new Map<string, string>();
+  for (const row of groupRows) {
+    const team = row.team ?? "";
+    const group = row.group ?? "";
+    if (!team || !group) {
+      continue;
+    }
+    if (team.includes("Path") && team.toLowerCase().includes("winner")) {
+      const path = team.replace(" winner", "");
+      pathGroupMap.set(path, group);
+    }
+  }
+
+  const teamPathMap = new Map<string, string>();
+  for (const row of remainingRows) {
+    const path = row.path ?? "";
+    const home = row.home_team ? nameMap.get(row.home_team) ?? row.home_team : "";
+    const away = row.away_team ? nameMap.get(row.away_team) ?? row.away_team : "";
+    if (!path) {
+      continue;
+    }
+    if (home) {
+      teamPathMap.set(home, path);
+    }
+    if (away) {
+      teamPathMap.set(away, path);
+    }
+  }
+
+  const rows = lines.slice(1).map((line) => {
+    const values = line.split(",");
+    const record = Object.fromEntries(
+      headers.map((header, index) => [header, values[index]])
+    ) as Record<string, string | undefined>;
+    const team = record.team ?? "";
+    const group = groupMap.get(team) ?? null;
+    const isQualified = qualifiedSet.has(team);
+    const path = teamPathMap.get(team) ?? null;
+    const pathGroup = path ? pathGroupMap.get(path) ?? null : null;
+
+    const columnValues: Record<string, number> = {};
+    for (const column of columns) {
+      columnValues[column] = toNumber(record[column]);
+    }
+
+    const resolvedGroup = group ?? pathGroup;
+    const groupLabel = resolvedGroup
+      ? isQualified
+        ? resolvedGroup
+        : `${resolvedGroup}*`
+      : null;
+
+    return {
+      team,
+      flagPath: `/flags/${flagFileName(team)}`,
+      group: groupLabel,
+      values: columnValues,
+    };
+  });
+
+  return { columns, rows };
+}

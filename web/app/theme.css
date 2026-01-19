@@ -1,0 +1,11 @@
+:root {
+  color-scheme: light;
+  --color-primary-dark: #001024;
+  --color-primary-light: #ffffff;
+  --color-accent-dark: #09476f;
+  --color-accent-light: #bd6e6d;
+  --color-bg: var(--color-primary-light);
+  --color-text: var(--color-primary-dark);
+  --color-accent: var(--color-accent-dark);
+  --color-accent-muted: var(--color-accent-light);
+}

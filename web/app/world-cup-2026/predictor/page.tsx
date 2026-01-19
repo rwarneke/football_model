@@ -1,8 +1,8 @@
-import { RatingsPage } from "@/components/ratings-page";
-import { loadRatings } from "@/lib/ratings";
+import { WorldCupPredictorPage } from "@/components/world-cup-predictor-page";
+import { loadWorldCupPredictorData } from "@/lib/world-cup-predictor";
 
-export default function HomePage() {
-  const ratings = loadRatings();
+export default function WorldCupPredictorRoute() {
+  const data = loadWorldCupPredictorData();
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -14,22 +14,21 @@ export default function HomePage() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
         <header className="space-y-4">
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
-            Current Ratings
+            FIFA WORLD CUP 2026
           </p>
           <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
-            International Football Power Table
+            Tournament Predictor
           </h1>
           <p className="text-base text-ink-200">
-            All current teams who have ever participated in FIFA World Cup qualification are included (211 FIFA members plus 6 confederation members).
+            Select match results to watch group standings, qualification slots, and
+            the knockout bracket update in real time.
           </p>
           <div className="flex items-center gap-4 text-sm text-ink-400">
             <span>Updated {lastUpdated}</span>
-            <span className="h-1 w-1 rounded-lg bg-ink-600" />
-            <span>{ratings.length} teams</span>
           </div>
         </header>
 
-        <RatingsPage data={ratings} />
+        <WorldCupPredictorPage data={data} />
       </div>
     </main>
   );

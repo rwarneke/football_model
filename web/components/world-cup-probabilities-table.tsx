@@ -1,0 +1,456 @@
+"use client";
+
+import * as React from "react";
+import Image from "next/image";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  SortingState,
+} from "@tanstack/react-table";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+type TableRowData = {
+  team: string;
+  flagPath: string;
+  group?: string | null;
+  ratingOverall?: number;
+  ratingAttack?: number;
+  ratingDefense?: number;
+  values: Record<string, number>;
+};
+
+type WorldCupProbabilitiesTableProps = {
+  columns: string[];
+  rows: TableRowData[];
+};
+
+const percentFormatter = new Intl.NumberFormat("en", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+const ratingFormatter = new Intl.NumberFormat("en", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+const ACCENT_DARK_RGB = "9, 71, 111";
+
+const SKIP_INITIALS = new Set(["and", "of", "the"]);
+
+function teamInitials(team: string) {
+  const letters = team
+    .split(/\s+/)
+    .filter((word) => word && !SKIP_INITIALS.has(word.toLowerCase()))
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 3)
+    .toUpperCase();
+  return letters || team.slice(0, 2).toUpperCase();
+}
+
+function formatProbability(value: number) {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+  if (value >= 0.9995) {
+    return "✓";
+  }
+  if (value < 0.001) {
+    return "<0.1%";
+  }
+  return `${percentFormatter.format(value * 100)}%`;
+}
+
+function probabilityBackground(value: number) {
+  if (!Number.isFinite(value)) {
+    return undefined;
+  }
+  const clamped = Math.max(0, Math.min(value, 1));
+  let alpha = 0;
+  if (clamped <= 0.1) {
+    alpha = (clamped / 0.1) * 0.2;
+  } else if (clamped <= 0.9) {
+    alpha = 0.2 + ((clamped - 0.1) / 0.8) * 0.4;
+  } else {
+    alpha = 0.6 + ((clamped - 0.9) / 0.1) * 0.2;
+  }
+  return { backgroundColor: `rgba(${ACCENT_LIGHT_RGB}, ${alpha})` };
+}
+
+const ACCENT_LIGHT_RGB = "189, 110, 109";
+
+function ratingBackground(value: number) {
+  if (!Number.isFinite(value)) {
+    return undefined;
+  }
+  const clamped = Math.max(0, Math.min(value, 100));
+  let alpha = 0;
+  if (clamped <= 50) {
+    alpha = (clamped / 50) * 0.1;
+  } else if (clamped <= 90) {
+    alpha = 0.1 + ((clamped - 50) / 40) * 0.2;
+  } else {
+    alpha = 0.3 + ((clamped - 90) / 10) * 0.3;
+  }
+  return { backgroundColor: `rgba(${ACCENT_DARK_RGB}, ${alpha})` };
+}
+
+export function WorldCupProbabilitiesTable({
+  columns,
+  rows,
+}: WorldCupProbabilitiesTableProps) {
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "Champion", desc: true },
+  ]);
+
+  const tiebreakOrder = React.useMemo(() => {
+    const priority = [
+      "Champion",
+      "Runner up",
+      "Third place",
+      "Fourth place",
+      "Win round of 16",
+      "Win round of 32",
+      "Progress through group",
+      "Qualify",
+    ];
+    const remaining = columns.filter((column) => !priority.includes(column));
+    return [...priority.filter((col) => columns.includes(col)), ...remaining];
+  }, [columns]);
+
+  const handleSortToggle = React.useCallback(
+    (columnId: string) => {
+      const primary = sorting[0];
+      if (!primary || primary.id !== columnId) {
+        const tiebreaks = tiebreakOrder
+          .filter((id) => id !== columnId)
+          .map((id) => ({ id, desc: true }));
+        setSorting([{ id: columnId, desc: true }, ...tiebreaks]);
+        return;
+      }
+
+      if (primary.desc) {
+        const tiebreaks = tiebreakOrder
+          .filter((id) => id !== columnId)
+          .map((id) => ({ id, desc: true }));
+        setSorting([{ id: columnId, desc: false }, ...tiebreaks]);
+        return;
+      }
+
+      setSorting([]);
+    },
+    [sorting, tiebreakOrder]
+  );
+
+  const tableColumns = React.useMemo<ColumnDef<TableRowData>[]>(
+    () => [
+      {
+        id: "group",
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">Gr.</span>
+            <span className="hidden md:inline">Group</span>
+          </span>
+        ),
+        accessorFn: (row) => row.group ?? "",
+        meta: { isGroup: true },
+        sortingFn: (a, b, id) => {
+          const valueA = String(a.getValue(id) ?? "");
+          const valueB = String(b.getValue(id) ?? "");
+          const normalize = (value: string) => ({
+            base: value.replace("*", ""),
+            starred: value.includes("*"),
+          });
+          const normA = normalize(valueA);
+          const normB = normalize(valueB);
+          const baseCompare = normB.base.localeCompare(normA.base);
+          if (baseCompare !== 0) {
+            return baseCompare;
+          }
+          if (normA.starred === normB.starred) {
+            return 0;
+          }
+          return normA.starred ? -1 : 1;
+        },
+        cell: ({ row }) => {
+          const group = row.original.group ?? "";
+          if (!group.includes("*")) {
+            return <span className="font-mono text-ink-200">{group}</span>;
+          }
+          const [base, ...rest] = group.split("*");
+          return (
+            <span className="font-mono text-ink-200">
+              {base}
+              <sup className="ml-[1px] text-[10px]">*</sup>
+              {rest.join("*")}
+            </span>
+          );
+        },
+      },
+      {
+        id: "flag",
+        header: "",
+        accessorFn: (row) => row.flagPath ?? "",
+        meta: { minWidthCh: 4, isFlag: true },
+        cell: ({ row }) => (
+          <div className="relative h-5 w-7 shrink-0 overflow-hidden rounded-[1px] border border-ink-700 bg-ink-800">
+            {row.original.flagPath ? (
+              <Image
+                src={row.original.flagPath}
+                alt={`${row.original.team} flag`}
+                fill
+                className="object-cover"
+                sizes="28px"
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-ink-300">
+                {teamInitials(row.original.team)}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "team",
+        header: "Team",
+        accessorFn: (row) => row.team,
+        cell: ({ row }) => (
+          <span className="text-ebony break-words whitespace-normal">
+            {row.original.team}
+          </span>
+        ),
+      },
+      ...columns.map((column) => ({
+        id: column,
+        header:
+          column === "Champion" ? (
+            <span className="whitespace-nowrap">
+              <span className="md:hidden">Champ.</span>
+              <span className="hidden md:inline">Champion</span>
+            </span>
+          ) : (
+            column
+          ),
+        accessorFn: (row: TableRowData) => row.values[column],
+        meta: {
+          isProbability: true,
+        },
+        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        cell: ({ row }) => {
+          const value = row.original.values[column];
+          const formatted = formatProbability(value);
+          if (formatted === "✓") {
+            return <span className="font-mono text-ink-200">✓</span>;
+          }
+          return (
+            <span className="font-mono text-ink-200">{formatted}</span>
+          );
+        },
+      })),
+      {
+        id: "overall",
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">Ovl.</span>
+            <span className="hidden md:inline">Overall</span>
+          </span>
+        ),
+        accessorFn: (row) => row.ratingOverall ?? Number.NaN,
+        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        meta: { isRating: true },
+        cell: ({ row }) => (
+          <span className="font-mono text-ink-200">
+            {Number.isFinite(row.original.ratingOverall)
+              ? ratingFormatter.format(row.original.ratingOverall ?? 0)
+              : ""}
+          </span>
+        ),
+      },
+      {
+        id: "attack",
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">Att.</span>
+            <span className="hidden md:inline">Attack</span>
+          </span>
+        ),
+        accessorFn: (row) => row.ratingAttack ?? Number.NaN,
+        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        meta: { isRating: true },
+        cell: ({ row }) => (
+          <span className="font-mono text-ink-200">
+            {Number.isFinite(row.original.ratingAttack)
+              ? ratingFormatter.format(row.original.ratingAttack ?? 0)
+              : ""}
+          </span>
+        ),
+      },
+      {
+        id: "defense",
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">Def.</span>
+            <span className="hidden md:inline">Defense</span>
+          </span>
+        ),
+        accessorFn: (row) => row.ratingDefense ?? Number.NaN,
+        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        meta: { isRating: true },
+        cell: ({ row }) => (
+          <span className="font-mono text-ink-200">
+            {Number.isFinite(row.original.ratingDefense)
+              ? ratingFormatter.format(row.original.ratingDefense ?? 0)
+              : ""}
+          </span>
+        ),
+      },
+    ],
+    [columns]
+  );
+
+  const table = useReactTable({
+    data: rows,
+    columns: tableColumns,
+    state: { sorting },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    enableMultiSort: true,
+  });
+
+  const isGroupedByGroup = sorting[0]?.id === "group";
+  const groupBase = (value: string | null | undefined) =>
+    String(value ?? "").replace(/\*/g, "");
+  const lastProbabilityId = columns[columns.length - 1];
+
+  return (
+    <div className="rounded-md border border-ink-900 bg-white/80 shadow-soft overflow-hidden">
+      <div className="table-scroll overflow-x-auto">
+        <Table className="w-full border-separate border-spacing-0 text-xs lg:text-sm [--group-col-width:4ch] sm:[--group-col-width:6ch] [--prob-col-width:clamp(4ch,6vw,8ch)] sm:[--prob-col-width:clamp(6ch,6vw,9ch)]">
+          <TableHeader className="border-b-0">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={`relative cursor-pointer select-none hover:text-ebony ${
+                      header.id === "flag"
+                        ? "text-center min-w-[4ch]"
+                        : header.id === "team"
+                        ? "text-left w-[8ch] md:w-[10ch] lg:w-[14ch] xl:w-[18ch]"
+                        : header.column.columnDef.meta?.isGroup
+                        ? "text-center whitespace-nowrap min-w-[4ch] sm:min-w-[6ch]"
+                        : header.id === "overall" ||
+                          header.id === "attack" ||
+                          header.id === "defense"
+                        ? "text-right whitespace-nowrap"
+                        : "text-right"
+                    } px-1 py-1 border-b-2 border-ink-900 ${
+                      header.id === "group"
+                        ? "sticky left-0 z-40 bg-white"
+                        : header.id === "flag"
+                        ? "sticky left-[var(--group-col-width)] z-40 bg-white"
+                        : ""
+                    } ${
+                      header.id === lastProbabilityId
+                        ? "border-r border-ink-900"
+                        : ""
+                    }`}
+                    onClick={() => handleSortToggle(header.id)}
+                    style={
+                      header.column.columnDef.meta?.minWidthCh
+                        ? {
+                            minWidth: `${header.column.columnDef.meta.minWidthCh}ch`,
+                          }
+                        : header.column.columnDef.meta?.isProbability ||
+                          header.column.columnDef.meta?.isRating
+                        ? {
+                            minWidth: "var(--prob-col-width)",
+                          }
+                        : undefined
+                    }
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </span>
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row, index, allRows) => {
+              const isGroupEnd =
+                isGroupedByGroup &&
+                index < allRows.length - 1 &&
+                groupBase(row.original.group) !==
+                  groupBase(allRows[index + 1]?.original.group);
+              return (
+                <TableRow key={row.id} className="h-9 border-b-0">
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className={`px-1 py-1 ${
+                      isGroupEnd ? "border-b-2" : "border-b"
+                    } border-ink-900 ${
+                      cell.column.id === "flag"
+                        ? "text-center min-w-[4ch]"
+                        : cell.column.id === "team"
+                        ? "text-left w-[8ch] md:w-[10ch] lg:w-[14ch] xl:w-[18ch] min-w-0"
+                        : cell.column.columnDef.meta?.isGroup
+                        ? "text-center min-w-[4ch] sm:min-w-[6ch]"
+                        : "text-right"
+                    } ${
+                      cell.column.id === "group"
+                        ? "sticky left-0 z-30 bg-white"
+                        : cell.column.id === "flag"
+                        ? "sticky left-[var(--group-col-width)] z-30 bg-white"
+                        : ""
+                    } ${
+                      cell.column.id === lastProbabilityId
+                        ? "border-r border-ink-900"
+                        : ""
+                    }`}
+                    style={{
+                      ...(cell.column.columnDef.meta?.isProbability
+                        ? probabilityBackground(cell.getValue<number>())
+                        : {}),
+                      ...(cell.column.columnDef.meta?.isRating
+                        ? ratingBackground(cell.getValue<number>())
+                        : {}),
+                      ...(cell.column.columnDef.meta?.minWidthCh
+                        ? {
+                            minWidth: `${cell.column.columnDef.meta.minWidthCh}ch`,
+                          }
+                        : cell.column.columnDef.meta?.isProbability ||
+                          cell.column.columnDef.meta?.isRating
+                        ? {
+                            minWidth: "var(--prob-col-width)",
+                          }
+                        : {}),
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}

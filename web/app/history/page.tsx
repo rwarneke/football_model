@@ -1,8 +1,8 @@
-import { RatingsPage } from "@/components/ratings-page";
-import { loadRatings } from "@/lib/ratings";
+import { RatingsHistoryChart } from "@/components/ratings-history-chart";
+import { loadRatingsHistory } from "@/lib/ratings";
 
-export default function HomePage() {
-  const ratings = loadRatings();
+export default function HistoryPage() {
+  const { data, teams } = loadRatingsHistory();
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -14,22 +14,23 @@ export default function HomePage() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
         <header className="space-y-4">
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
-            Current Ratings
+            Historical Ratings
           </p>
           <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
-            International Football Power Table
+            Historical International Football Power Ratings
           </h1>
           <p className="text-base text-ink-200">
-            All current teams who have ever participated in FIFA World Cup qualification are included (211 FIFA members plus 6 confederation members).
+            Explore how each team has evolved since its first recorded match.
+            Zoom across time and filter to isolate specific teams.
           </p>
           <div className="flex items-center gap-4 text-sm text-ink-400">
             <span>Updated {lastUpdated}</span>
             <span className="h-1 w-1 rounded-lg bg-ink-600" />
-            <span>{ratings.length} teams</span>
+            <span>{teams.length} teams</span>
           </div>
         </header>
 
-        <RatingsPage data={ratings} />
+        <RatingsHistoryChart data={data} teams={teams} />
       </div>
     </main>
   );

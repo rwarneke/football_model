@@ -1,15 +1,24 @@
 ## Modelling
 
-* Init variance higher, or need to make predictions with variance into account - cannot say northern mariana islands were almost zero chance to lose by so much
-* Should not be able to expect more than some number of goals
-* Let's use cross variance
-    * Looks good! Optimise it some more...
-    * Actually! Important!! It looks like higher cross var is very similar to higher var, which we know improves things a bit at the cost of some diagnostics... work out what you really want here.
+* Argentina really the best early on?
+* WHat the fuck happened with Aruba?
 
 ## Design
 
-* Need some more flags for the current non FIFA members we added...
-* Need bigger flags, probably
+* Hlines between groups
+* Team alignment
+* Predictor page
+    * Probabilities!!
+    * Autotips
+        * Simulate should only simulate unselected
+        * Reset simulated results
+        * Reset all (a la squiggle)
+    * Champion list
+    * Fix disgusting behaviour on zoom in
+        * Text goes small too early
+    * Qualifier lines are doing their bullshit again
+    * Colours on the draws are bad if they don't have a probability
+    * Design is just not quite right
 
 ## Misc
 
