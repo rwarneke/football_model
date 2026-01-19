@@ -50,6 +50,7 @@ export type WinProbabilityEntry = {
   p_away?: number;
   p_home_pens?: number;
   p_away_pens?: number;
+  score_matrix?: number[][];
 };
 
 export type WinProbabilities = Record<

@@ -8,7 +8,6 @@
 * Hlines between groups
 * Team alignment
 * Predictor page
-    * Probabilities!!
     * Autotips
         * Simulate should only simulate unselected
         * Reset simulated results
@@ -19,6 +18,10 @@
     * Qualifier lines are doing their bullshit again
     * Colours on the draws are bad if they don't have a probability
     * Design is just not quite right
+        * Too much whitespace overall
+        * Colours muted
+            * Can't tell the diff between third and first
+        * Box outlines are very contrasty
 
 ## Misc
 

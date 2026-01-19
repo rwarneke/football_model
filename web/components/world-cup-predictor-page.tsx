@@ -141,8 +141,13 @@ function formatProbability(value: number | null | undefined) {
     return undefined;
   }
   const percent = value * 100;
-  if (percent < 1) {
+  if (percent < 0.95) {
     return `${percent.toFixed(1)}%`;
+  }
+  if (percent >= 99.05) {
+    const rounded = Number(percent.toFixed(1));
+    const capped = Math.min(rounded, 99.9);
+    return `${capped.toFixed(1)}%`;
   }
   return `${Math.round(percent)}%`;
 }
@@ -191,6 +196,40 @@ function resolveMatchNeutrality({
     }
   }
   return { neutral, advantage };
+}
+
+function resolveProbabilityEntry({
+  probabilities,
+  homeTeam,
+  awayTeam,
+  country,
+  neutralOverride,
+}: {
+  probabilities: WinProbabilities;
+  homeTeam: string;
+  awayTeam: string;
+  country?: string | null;
+  neutralOverride?: boolean | null;
+}) {
+  const { neutral, advantage } = resolveMatchNeutrality({
+    homeTeam,
+    awayTeam,
+    country,
+    neutralOverride,
+  });
+  if (neutral) {
+    const entry = probabilities[homeTeam]?.[awayTeam]?.neutral;
+    return entry ? { entry, flipped: false } : null;
+  }
+  if (advantage === "home") {
+    const entry = probabilities[homeTeam]?.[awayTeam]?.home;
+    return entry ? { entry, flipped: false } : null;
+  }
+  if (advantage === "away") {
+    const entry = probabilities[awayTeam]?.[homeTeam]?.home;
+    return entry ? { entry, flipped: true } : null;
+  }
+  return null;
 }
 
 function selectProbabilityValues(
@@ -242,33 +281,118 @@ function resolveMatchProbabilities({
   ) {
     return null;
   }
-  const { neutral, advantage } = resolveMatchNeutrality({
+  const resolved = resolveProbabilityEntry({
+    probabilities,
     homeTeam,
     awayTeam,
     country,
     neutralOverride,
   });
-  if (neutral) {
-    const entry = probabilities[homeTeam]?.[awayTeam]?.neutral;
-    return selectProbabilityValues(entry, allowDraw);
+  if (!resolved) {
+    return null;
   }
-  if (advantage === "home") {
-    const entry = probabilities[homeTeam]?.[awayTeam]?.home;
-    return selectProbabilityValues(entry, allowDraw);
+  const values = selectProbabilityValues(resolved.entry, allowDraw);
+  if (!values) {
+    return null;
   }
-  if (advantage === "away") {
-    const entry = probabilities[awayTeam]?.[homeTeam]?.home;
-    const values = selectProbabilityValues(entry, allowDraw);
-    if (!values) {
-      return null;
+  if (!resolved.flipped) {
+    return values;
+  }
+  return {
+    home: values.away,
+    draw: values.draw,
+    away: values.home,
+  };
+}
+
+function transposeScoreMatrix(matrix: number[][]) {
+  const rows = matrix.length;
+  const cols = matrix.reduce((max, row) => Math.max(max, row.length), 0);
+  const transposed = Array.from({ length: cols }, () => Array(rows).fill(0));
+  for (let i = 0; i < rows; i += 1) {
+    for (let j = 0; j < matrix[i].length; j += 1) {
+      const value = matrix[i][j];
+      transposed[j][i] = Number.isFinite(value) ? value : 0;
     }
-    return {
-      home: values.away,
-      draw: values.draw,
-      away: values.home,
-    };
   }
-  return null;
+  return transposed;
+}
+
+function resolveMatchScoreMatrix({
+  probabilities,
+  homeTeam,
+  awayTeam,
+  country,
+  neutralOverride,
+}: {
+  probabilities: WinProbabilities;
+  homeTeam: string;
+  awayTeam: string;
+  country?: string | null;
+  neutralOverride?: boolean | null;
+}): number[][] | null {
+  if (
+    !probabilities ||
+    isPlaceholderLabel(homeTeam) ||
+    isPlaceholderLabel(awayTeam)
+  ) {
+    return null;
+  }
+  const resolved = resolveProbabilityEntry({
+    probabilities,
+    homeTeam,
+    awayTeam,
+    country,
+    neutralOverride,
+  });
+  if (!resolved?.entry?.score_matrix) {
+    return null;
+  }
+  return resolved.flipped
+    ? transposeScoreMatrix(resolved.entry.score_matrix)
+    : resolved.entry.score_matrix;
+}
+
+function sampleScoreMatrix(scoreMatrix: number[][]) {
+  let total = 0;
+  for (const row of scoreMatrix) {
+    for (const value of row) {
+      if (Number.isFinite(value) && value > 0) {
+        total += value;
+      }
+    }
+  }
+  if (total <= 0) {
+    return null;
+  }
+  const target = Math.random() * total;
+  let cumulative = 0;
+  for (let i = 0; i < scoreMatrix.length; i += 1) {
+    const row = scoreMatrix[i];
+    for (let j = 0; j < row.length; j += 1) {
+      const value = row[j];
+      if (!Number.isFinite(value) || value <= 0) {
+        continue;
+      }
+      cumulative += value;
+      if (cumulative >= target) {
+        return { home: i, away: j };
+      }
+    }
+  }
+  return { home: 0, away: 0 };
+}
+
+function sampleWinner(values: MatchProbabilityValues | null): WinnerSelection {
+  if (!values || values.home === null || values.away === null) {
+    return null;
+  }
+  const total = values.home + values.away;
+  if (!Number.isFinite(total) || total <= 0) {
+    return null;
+  }
+  const roll = Math.random() * total;
+  return roll < values.home ? "home" : "away";
 }
 
 function clearDependentScores(
@@ -307,43 +431,64 @@ function resolveQualifierState(
   qualifierWinners: Record<string, WinnerSelection>
 ) {
   const sorted = sortQualifiers(qualifiers);
-  const winnersByPathRound = new Map<string, string>();
-  const slotWinners = new Map<string, string>();
-  const resolvedMatches: ResolvedQualifierMatch[] = [];
+  let winnersByPathRound = new Map<string, string>();
+  let slotWinners = new Map<string, string>();
+  let resolvedMatches: ResolvedQualifierMatch[] = [];
+  let changed = true;
+  let iterations = 0;
 
-  for (const match of sorted) {
-    const homeResolved =
-      match.homeTeam ||
-      (match.homeSource
-        ? winnersByPathRound.get(`${match.path}:${match.homeSource}`) ??
-          `Winner ${formatQualifierSource(match.homeSource)}`
-        : "");
-    const awayResolved =
-      match.awayTeam ||
-      (match.awaySource
-        ? winnersByPathRound.get(`${match.path}:${match.awaySource}`) ??
-          `Winner ${formatQualifierSource(match.awaySource)}`
-        : "");
-    const winner = resolveWinner(
-      match.id,
-      homeResolved,
-      awayResolved,
-      {},
-      false,
-      qualifierWinners
-    );
-    if (winner) {
-      winnersByPathRound.set(`${match.path}:${match.round}`, winner);
-      if (match.winnerSlot) {
-        slotWinners.set(match.winnerSlot, winner);
+  while (changed && iterations < 4) {
+    iterations += 1;
+    changed = false;
+    const nextWinners = new Map<string, string>();
+    const nextSlots = new Map<string, string>();
+    const nextResolved: ResolvedQualifierMatch[] = [];
+
+    for (const match of sorted) {
+      const homeResolved =
+        match.homeTeam ||
+        (match.homeSource
+          ? winnersByPathRound.get(`${match.path}:${match.homeSource}`) ??
+            `Winner ${formatQualifierSource(match.homeSource)}`
+          : "");
+      const awayResolved =
+        match.awayTeam ||
+        (match.awaySource
+          ? winnersByPathRound.get(`${match.path}:${match.awaySource}`) ??
+            `Winner ${formatQualifierSource(match.awaySource)}`
+          : "");
+      const winner = resolveWinner(
+        match.id,
+        homeResolved,
+        awayResolved,
+        {},
+        false,
+        qualifierWinners
+      );
+      if (winner) {
+        const key = `${match.path}:${match.round}`;
+        if (winnersByPathRound.get(key) !== winner) {
+          changed = true;
+        }
+        nextWinners.set(key, winner);
+        if (match.winnerSlot) {
+          if (slotWinners.get(match.winnerSlot) !== winner) {
+            changed = true;
+          }
+          nextSlots.set(match.winnerSlot, winner);
+        }
       }
+      nextResolved.push({
+        ...match,
+        homeResolved,
+        awayResolved,
+        winner,
+      });
     }
-    resolvedMatches.push({
-      ...match,
-      homeResolved,
-      awayResolved,
-      winner,
-    });
+
+    winnersByPathRound = nextWinners;
+    slotWinners = nextSlots;
+    resolvedMatches = nextResolved;
   }
 
   return { matches: resolvedMatches, slotWinners };
@@ -1341,11 +1486,10 @@ function QualifierPathBracket({
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const bracketRef = React.useRef<HTMLDivElement | null>(null);
   const matchRefs = React.useRef(new Map<string | number, HTMLDivElement>());
+  const matchHomeRefs = React.useRef(new Map<string | number, HTMLDivElement>());
+  const matchAwayRefs = React.useRef(new Map<string | number, HTMLDivElement>());
   const [paths, setPaths] = React.useState<string[]>([]);
   const [semisOffset, setSemisOffset] = React.useState(0);
-  const finalAwayBoxRef = React.useRef<HTMLDivElement | null>(null);
-  const semiHomeBoxRef = React.useRef<HTMLDivElement | null>(null);
-  const semiAwayBoxRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useLayoutEffect(() => {
     const container = containerRef.current;
@@ -1370,20 +1514,27 @@ function QualifierPathBracket({
         const connectorStrokeWidth = 2;
         const finalTarget = path.startsWith("IC Path") ? 0.75 : 0.5;
         const endX = finalRect.left - rect.left + connectorInset;
+        const finalHomeBox = matchHomeRefs.current.get(final.id);
+        const finalAwayBox = matchAwayRefs.current.get(final.id);
         let endY = finalRect.top - rect.top + finalRect.height * finalTarget;
-        if (path.startsWith("IC Path") && finalAwayBoxRef.current) {
-          const awayRect = finalAwayBoxRef.current.getBoundingClientRect();
+        if (path.startsWith("IC Path") && finalAwayBox) {
+          const awayRect = finalAwayBox.getBoundingClientRect();
           endY = awayRect.top - rect.top + awayRect.height / 2;
+        } else if (finalHomeBox && finalAwayBox) {
+          const homeRect = finalHomeBox.getBoundingClientRect();
+          const awayRect = finalAwayBox.getBoundingClientRect();
+          endY = (homeRect.bottom + awayRect.top) / 2 - rect.top;
         }
         if (path.startsWith("IC Path") && semis.length === 1) {
           const semiEl = matchRefs.current.get(semis[0].id);
           if (semiEl) {
             const semiRect = semiEl.getBoundingClientRect();
-            let startY =
-              semiRect.top - rect.top + semiRect.height / 2;
-            if (semiHomeBoxRef.current && semiAwayBoxRef.current) {
-              const homeRect = semiHomeBoxRef.current.getBoundingClientRect();
-              const awayRect = semiAwayBoxRef.current.getBoundingClientRect();
+            let startY = semiRect.top - rect.top + semiRect.height / 2;
+            const semiHomeBox = matchHomeRefs.current.get(semis[0].id);
+            const semiAwayBox = matchAwayRefs.current.get(semis[0].id);
+            if (semiHomeBox && semiAwayBox) {
+              const homeRect = semiHomeBox.getBoundingClientRect();
+              const awayRect = semiAwayBox.getBoundingClientRect();
               const dividerY = (homeRect.bottom + awayRect.top) / 2;
               startY = dividerY - rect.top;
             }
@@ -1404,8 +1555,14 @@ function QualifierPathBracket({
           }
           const semiRect = semiEl.getBoundingClientRect();
           const startX = semiRect.right - rect.left - connectorInset;
-          const startY =
-            semiRect.top - rect.top + semiRect.height / 2;
+          let startY = semiRect.top - rect.top + semiRect.height / 2;
+          const semiHomeBox = matchHomeRefs.current.get(match.id);
+          const semiAwayBox = matchAwayRefs.current.get(match.id);
+          if (semiHomeBox && semiAwayBox) {
+            const homeRect = semiHomeBox.getBoundingClientRect();
+            const awayRect = semiAwayBox.getBoundingClientRect();
+            startY = (homeRect.bottom + awayRect.top) / 2 - rect.top;
+          }
           const midX = startX + (endX - startX) * 0.5;
           nextPaths.push(
             `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`
@@ -1488,16 +1645,20 @@ function QualifierPathBracket({
                     homeWinProb={probabilities.homeWinProb}
                     awayWinProb={probabilities.awayWinProb}
                     drawProb={probabilities.drawProb}
-                    homeBoxRef={
-                      path.startsWith("IC Path") && semis.length === 1
-                        ? semiHomeBoxRef
-                        : undefined
-                    }
-                    awayBoxRef={
-                      path.startsWith("IC Path") && semis.length === 1
-                        ? semiAwayBoxRef
-                        : undefined
-                    }
+                    homeBoxRef={(el) => {
+                      if (el) {
+                        matchHomeRefs.current.set(match.id, el);
+                      } else {
+                        matchHomeRefs.current.delete(match.id);
+                      }
+                    }}
+                    awayBoxRef={(el) => {
+                      if (el) {
+                        matchAwayRefs.current.set(match.id, el);
+                      } else {
+                        matchAwayRefs.current.delete(match.id);
+                      }
+                    }}
                     flags={flags}
                   />
                 </div>
@@ -1527,7 +1688,20 @@ function QualifierPathBracket({
                 homeWinProb={finalProbabilities?.homeWinProb}
                 awayWinProb={finalProbabilities?.awayWinProb}
                 drawProb={finalProbabilities?.drawProb ?? null}
-                awayBoxRef={finalAwayBoxRef}
+                homeBoxRef={(el) => {
+                  if (el) {
+                    matchHomeRefs.current.set(final.id, el);
+                  } else {
+                    matchHomeRefs.current.delete(final.id);
+                  }
+                }}
+                awayBoxRef={(el) => {
+                  if (el) {
+                    matchAwayRefs.current.set(final.id, el);
+                  } else {
+                    matchAwayRefs.current.delete(final.id);
+                  }
+                }}
                 flags={flags}
               />
             </div>
@@ -1674,11 +1848,20 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const [groupScores, setGroupScores] = React.useState<
     Record<string, MatchScore>
   >({});
+  const [autoGroupScores, setAutoGroupScores] = React.useState<
+    Record<string, boolean>
+  >({});
   const [qualifierWinners, setQualifierWinners] = React.useState<
     Record<string, WinnerSelection>
   >({});
+  const [autoQualifierWinners, setAutoQualifierWinners] = React.useState<
+    Record<string, boolean>
+  >({});
   const [knockoutWinners, setKnockoutWinners] = React.useState<
     Record<string, WinnerSelection>
+  >({});
+  const [autoKnockoutWinners, setAutoKnockoutWinners] = React.useState<
+    Record<string, boolean>
   >({});
   const isNarrow = false;
   const knockoutContainerRef = React.useRef<HTMLDivElement | null>(null);
@@ -1867,8 +2050,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const updateQualifierWinner = React.useCallback(
     (id: string | number, selection: WinnerSelection) => {
       let changed = false;
+      const key = String(id);
       setQualifierWinners((prev) => {
-        const key = String(id);
         if ((prev[key] ?? null) === selection) {
           return prev;
         }
@@ -1877,6 +2060,14 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         return clearDependentSelections(next, key, qualifierDependents);
       });
       if (changed) {
+        setAutoQualifierWinners((prev) => {
+          if (!prev[key]) {
+            return prev;
+          }
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
         const affectedSlots =
           qualifierSlotsByMatch.get(String(id)) ?? new Set<string>();
         const affectedGroups = new Set<string>();
@@ -1892,6 +2083,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             if (!Object.keys(prev).length) {
               return prev;
             }
+            const next = { ...prev };
+            affectedSlots.forEach((slot) => {
+              const matchIds = groupMatchIdsByTeam.get(slot);
+              if (!matchIds) {
+                return;
+              }
+              matchIds.forEach((matchId) => {
+                delete next[matchId];
+              });
+            });
+            return next;
+          });
+          setAutoGroupScores((prev) => {
             const next = { ...prev };
             affectedSlots.forEach((slot) => {
               const matchIds = groupMatchIdsByTeam.get(slot);
@@ -1923,6 +2127,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 });
               }
             });
+            const clearedIds = Object.keys(prev).filter(
+              (matchId) => prev[matchId] && next[matchId] === null
+            );
+            if (clearedIds.length > 0) {
+              setAutoKnockoutWinners((currentAuto) => {
+                const nextAuto = { ...currentAuto };
+                clearedIds.forEach((matchId) => {
+                  delete nextAuto[matchId];
+                });
+                return nextAuto;
+              });
+            }
             return next;
           });
         }
@@ -1940,8 +2156,16 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
 
   const updateKnockoutWinner = React.useCallback(
     (id: string | number, selection: WinnerSelection) => {
+      const key = String(id);
+      setAutoKnockoutWinners((prev) => {
+        if (!prev[key]) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
       setKnockoutWinners((prev) => {
-        const key = String(id);
         if ((prev[key] ?? null) === selection) {
           return prev;
         }
@@ -1960,15 +2184,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const slotWinners = qualifierState.slotWinners;
 
   const computeKnockoutContext = React.useCallback(
-    (scores: Record<string, MatchScore>) => {
+    (
+      scores: Record<string, MatchScore>,
+      slotWinnersOverride?: Map<string, string>
+    ) => {
+      const resolvedSlots = slotWinnersOverride ?? slotWinners;
       const resolvedMatches = data.groupMatches.map((match) => ({
         ...match,
-        homeTeam: slotWinners.get(match.homeTeam) ?? match.homeTeam,
-        awayTeam: slotWinners.get(match.awayTeam) ?? match.awayTeam,
+        homeTeam: resolvedSlots.get(match.homeTeam) ?? match.homeTeam,
+        awayTeam: resolvedSlots.get(match.awayTeam) ?? match.awayTeam,
       }));
       const resolvedGroupsLocal = data.groups.map((group) => ({
         ...group,
-        teams: group.teams.map((team) => slotWinners.get(team) ?? team),
+        teams: group.teams.map((team) => resolvedSlots.get(team) ?? team),
       }));
       const groupTablesLocal = resolvedGroupsLocal.map((group) => {
         const matches = groupMatchesFor(group.id, resolvedMatches);
@@ -2047,47 +2275,92 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         bestThirdGroups: bestThirdGroups.map((entry) => entry.group),
         qualifiedThirdGroups: Array.from(qualifiedThirdGroupsLocal),
         thirdPlaceAssignments,
-        thirdPlaceByGroup: thirdPlaceByGroupLocal,
-        groupRankings: groupRankingsLocal,
-        groupCompletion: groupCompletionLocal,
-      };
+      thirdPlaceByGroup: thirdPlaceByGroupLocal,
+      groupRankings: groupRankingsLocal,
+      groupCompletion: groupCompletionLocal,
+    };
+  },
+  [
+    data.groupMatches,
+    data.groups,
+    data.knockoutMatches,
+    data.roundOf32Combos,
+    matchStageById,
+    slotWinners,
+  ]
+);
+
+  const clearKnockoutSelectionsByMatchIds = React.useCallback(
+    (
+      current: Record<string, WinnerSelection>,
+      matchIds: Iterable<string>
+    ) => {
+      let next = { ...current };
+      for (const matchId of matchIds) {
+        next[matchId] = null;
+        next = clearDependentSelections(next, matchId, knockoutDependents);
+      }
+      const clearedIds = Object.keys(current).filter(
+        (id) => current[id] && next[id] === null
+      );
+      return { next, clearedIds };
     },
-    [
-      data.groupMatches,
-      data.groups,
-      data.knockoutMatches,
-      data.roundOf32Combos,
-      matchStageById,
-      slotWinners,
-    ]
+    [knockoutDependents]
   );
 
-  const clearKnockoutOnGroupChange = React.useCallback(
-    (nextScores: Record<string, MatchScore>) => {
-      setKnockoutWinners((prev) => {
-        if (!Object.keys(prev).length) {
-          return prev;
+  const computeClearedKnockoutSelections = React.useCallback(
+    (
+      current: Record<string, WinnerSelection>,
+      previousScores: Record<string, MatchScore>,
+      nextScores: Record<string, MatchScore>,
+      options?: {
+        logChanges?: boolean;
+        previousSlotWinners?: Map<string, string>;
+        nextSlotWinners?: Map<string, string>;
+      }
+    ) => {
+      if (!Object.keys(current).length) {
+        return { nextWinners: current, clearedIds: [] as string[] };
+      }
+      const previousContext = computeKnockoutContext(
+        previousScores,
+        options?.previousSlotWinners
+      );
+      const nextContext = computeKnockoutContext(
+        nextScores,
+        options?.nextSlotWinners
+      );
+      const previousLabels = previousContext.labels;
+      const nextLabels = nextContext.labels;
+      const changedMatches = new Set<string>();
+      data.knockoutMatches.forEach((match) => {
+        const key = String(match.id);
+        const before = previousLabels.get(key);
+        const after = nextLabels.get(key);
+        if (!before || !after) {
+          return;
         }
-        const previousContext = computeKnockoutContext(groupScores);
-        const nextContext = computeKnockoutContext(nextScores);
-        const previousLabels = previousContext.labels;
-        const nextLabels = nextContext.labels;
-        const changedMatches = new Set<string>();
-        data.knockoutMatches.forEach((match) => {
-          const key = String(match.id);
-          const before = previousLabels.get(key);
-          const after = nextLabels.get(key);
-          if (!before || !after) {
-            return;
-          }
-          if (before.home !== after.home || before.away !== after.away) {
-            changedMatches.add(key);
-          }
-        });
-        if (changedMatches.size === 0) {
-          return prev;
+        if (before.home !== after.home || before.away !== after.away) {
+          changedMatches.add(key);
         }
-        const changedMatchDetails = Array.from(changedMatches).map((matchId) => {
+      });
+      if (changedMatches.size === 0) {
+        return { nextWinners: current, clearedIds: [] as string[] };
+      }
+      let changedMatchDetails: Array<{
+        matchId: string;
+        stage: string;
+        rawLabels: { homeLabel: string; awayLabel: string } | null;
+        winnerGroupKey: string | null;
+        assignedGroup: string | null;
+        nextAssignedGroup: string | null;
+        previousThirdTeam: string | null;
+        nextThirdTeam: string | null;
+        before: { home: string; away: string } | undefined;
+        after: { home: string; away: string } | undefined;
+      }> = [];
+      if (options?.logChanges) {
+        changedMatchDetails = Array.from(changedMatches).map((matchId) => {
           const before = previousLabels.get(matchId);
           const after = nextLabels.get(matchId);
           const match = data.knockoutMatches.find(
@@ -2131,6 +2404,12 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             after,
           };
         });
+      }
+      const { next, clearedIds } = clearKnockoutSelectionsByMatchIds(
+        current,
+        changedMatches
+      );
+      if (options?.logChanges) {
         const describeSideChange = (
           label: string | undefined,
           beforeTeam: string | undefined,
@@ -2184,32 +2463,42 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           }
           console.log(`[predictor] ${reason}`);
         });
-        let cleared = { ...prev };
-        changedMatches.forEach((matchId) => {
-          cleared[matchId] = null;
-          cleared = clearDependentSelections(
-            cleared,
-            matchId,
-            knockoutDependents
-          );
-        });
-        return cleared;
+      }
+      return { nextWinners: next, clearedIds };
+    },
+    [clearKnockoutSelectionsByMatchIds, computeKnockoutContext, data.knockoutMatches, matchStageById]
+  );
+
+  const clearKnockoutOnGroupChange = React.useCallback(
+    (nextScores: Record<string, MatchScore>) => {
+      setKnockoutWinners((prev) => {
+        const { nextWinners, clearedIds } = computeClearedKnockoutSelections(
+          prev,
+          groupScores,
+          nextScores,
+          { logChanges: true }
+        );
+        if (clearedIds.length > 0) {
+          setAutoKnockoutWinners((currentAuto) => {
+            const nextAuto = { ...currentAuto };
+            clearedIds.forEach((matchId) => {
+              delete nextAuto[matchId];
+            });
+            return nextAuto;
+          });
+        }
+        return nextWinners;
       });
     },
-    [
-      computeKnockoutContext,
-      data.knockoutMatches,
-      groupScores,
-      knockoutDependents,
-    ]
+    [computeClearedKnockoutSelections, groupScores]
   );
 
   const updateGroupScore = React.useCallback(
     (id: string | number, side: "home" | "away", value: number | null) => {
       let changed = false;
       let nextScores: Record<string, MatchScore> | null = null;
+      const key = String(id);
       setGroupScores((prev) => {
-        const key = String(id);
         const prevScore = prev[key] ?? { home: null, away: null };
         const nextScore = { ...prevScore, [side]: value };
         if (
@@ -2223,6 +2512,14 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         return nextScores;
       });
       if (changed) {
+        setAutoGroupScores((prev) => {
+          if (!prev[key]) {
+            return prev;
+          }
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
         if (nextScores) {
           clearKnockoutOnGroupChange(nextScores);
         }
@@ -2235,8 +2532,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     (id: string | number, home: number | null, away: number | null) => {
       let changed = false;
       let nextScores: Record<string, MatchScore> | null = null;
+      const key = String(id);
       setGroupScores((prev) => {
-        const key = String(id);
         const prevScore = prev[key] ?? { home: null, away: null };
         const nextScore = { home, away };
         if (
@@ -2250,6 +2547,14 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         return nextScores;
       });
       if (changed && nextScores) {
+        setAutoGroupScores((prev) => {
+          if (!prev[key]) {
+            return prev;
+          }
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
         clearKnockoutOnGroupChange(nextScores);
       }
     },
@@ -2811,325 +3116,478 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     };
   }, [knockoutMatchesByStage, knockoutCenters]);
 
-  const handleRandomQualifiers = React.useCallback(() => {
-    const next: Record<string, WinnerSelection> = {};
-    data.qualifiers.forEach((match) => {
-      if (match.path === "IC Path 1") {
-        next[String(match.id)] = match.round === "final" ? "away" : "home";
-        return;
+  const handleAutopredict = React.useCallback(() => {
+    let nextQualifierWinners = { ...qualifierWinners };
+    let nextAutoQualifierWinners = { ...autoQualifierWinners };
+    let nextGroupScores = { ...groupScores };
+    let nextAutoGroupScores = { ...autoGroupScores };
+    let nextKnockoutWinners = { ...knockoutWinners };
+    let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+
+    const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
+      const prevSelection = nextQualifierWinners[matchId] ?? null;
+      if (prevSelection === selection) {
+        return { changed: false, clearedIds: [] as string[] };
       }
-      next[String(match.id)] = "home";
-    });
-    setQualifierWinners(next);
-    setGroupScores({});
-    setKnockoutWinners({});
-  }, [data.qualifiers]);
-
-  const handleResetQualifiers = React.useCallback(() => {
-    setQualifierWinners({});
-    setGroupScores({});
-    setKnockoutWinners({});
-  }, []);
-
-  const handleRandomGroups = React.useCallback(() => {
-    const next: Record<string, MatchScore> = {};
-    resolvedGroupMatches.forEach((match) => {
-      const variant = match.id % 3;
-      if (variant === 0) {
-        next[String(match.id)] = { home: 1, away: 1 };
-        return;
+      const updated = { ...nextQualifierWinners, [matchId]: selection };
+      const cleared = clearDependentSelections(updated, matchId, qualifierDependents);
+      const clearedIds = Object.keys(updated).filter(
+        (id) => updated[id] && cleared[id] === null
+      );
+      nextQualifierWinners = cleared;
+      if (selection) {
+        nextAutoQualifierWinners[matchId] = true;
       }
-      if (variant === 1) {
-        next[String(match.id)] = { home: 2, away: 0 };
-        return;
-      }
-      next[String(match.id)] = { home: 0, away: 2 };
-    });
-    setGroupScores(next);
-    setKnockoutWinners({});
-  }, [resolvedGroupMatches]);
-
-  const handleResetGroups = React.useCallback(() => {
-    setGroupScores({});
-    setKnockoutWinners({});
-  }, []);
-
-  const handleRandomKnockouts = React.useCallback(() => {
-    const winners = new Map<number, string>();
-    const losers = new Map<number, string>();
-    const next: Record<string, WinnerSelection> = {};
-    const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
-
-    for (const match of sorted) {
-      const homeResolved = resolveKnockoutLabel({
-        label: match.homeLabel,
-        opponentLabel: match.awayLabel,
-        groupRankings,
-        thirdPlaceByGroup,
-        thirdPlaceAssignments,
-        knockoutWinners: winners,
-        knockoutLosers: losers,
-        groupCompletion,
-        allowThirdPlaceResolve: allGroupMatchesComplete,
-        qualifiedThirdGroups,
-        matchStageById,
+      clearedIds.forEach((id) => {
+        delete nextAutoQualifierWinners[id];
       });
-      const awayResolved = resolveKnockoutLabel({
-        label: match.awayLabel,
-        opponentLabel: match.homeLabel,
-        groupRankings,
-        thirdPlaceByGroup,
-        thirdPlaceAssignments,
-        knockoutWinners: winners,
-        knockoutLosers: losers,
-        groupCompletion,
-        allowThirdPlaceResolve: allGroupMatchesComplete,
-        qualifiedThirdGroups,
-        matchStageById,
-      });
-      if (isPlaceholderLabel(homeResolved) || isPlaceholderLabel(awayResolved)) {
-        continue;
-      }
-      const pickHome = match.id % 2 === 0;
-      next[String(match.id)] = pickHome ? "home" : "away";
-      const winner = pickHome ? homeResolved : awayResolved;
-      const loser = pickHome ? awayResolved : homeResolved;
-      winners.set(match.id, winner);
-      losers.set(match.id, loser);
-    }
-
-    setKnockoutWinners(next);
-  }, [
-    allGroupMatchesComplete,
-    data.knockoutMatches,
-    groupCompletion,
-    groupRankings,
-    matchStageById,
-    thirdPlaceAssignments,
-    thirdPlaceByGroup,
-    qualifiedThirdGroups,
-  ]);
-
-  const handleResetKnockouts = React.useCallback(() => {
-    setKnockoutWinners({});
-  }, []);
-
-  const handleRandomAll = React.useCallback(() => {
-    const nextQualifiers: Record<string, WinnerSelection> = {};
-    data.qualifiers.forEach((match) => {
-      if (match.path === "IC Path 1") {
-        nextQualifiers[String(match.id)] =
-          match.round === "final" ? "away" : "home";
-        return;
-      }
-      nextQualifiers[String(match.id)] = "home";
-    });
-    const qualifierResult = resolveQualifierState(data.qualifiers, nextQualifiers);
-    const nextSlotWinners = qualifierResult.slotWinners;
-    const nextResolvedGroupMatches = data.groupMatches.map((match) => ({
-      ...match,
-      homeTeam: nextSlotWinners.get(match.homeTeam) ?? match.homeTeam,
-      awayTeam: nextSlotWinners.get(match.awayTeam) ?? match.awayTeam,
-    }));
-    const nextGroupScores: Record<string, MatchScore> = {};
-    const resolvedGroups = data.groups.map((group) => ({
-      ...group,
-      teams: group.teams.map((team) => nextSlotWinners.get(team) ?? team),
-    }));
-    const setMatchScore = (
-      match: GroupMatch,
-      home: number,
-      away: number
-    ) => {
-      nextGroupScores[String(match.id)] = { home, away };
+      return { changed: true, clearedIds };
     };
-    const assignTopThreePattern = (
-      teams: string[],
-      matches: GroupMatch[]
-    ) => {
-      const bottomTeam = teams[teams.length - 1];
-      matches.forEach((match) => {
-        const homeIsBottom = match.homeTeam === bottomTeam;
-        const awayIsBottom = match.awayTeam === bottomTeam;
-        if (homeIsBottom || awayIsBottom) {
-          if (homeIsBottom && awayIsBottom) {
-            setMatchScore(match, 0, 0);
-            return;
-          }
-          if (homeIsBottom) {
-            setMatchScore(match, 0, 2);
-            return;
-          }
-          setMatchScore(match, 2, 0);
-          return;
-        }
-        setMatchScore(match, 1, 1);
+
+    const applyKnockoutSelection = (matchId: string, selection: WinnerSelection) => {
+      const prevSelection = nextKnockoutWinners[matchId] ?? null;
+      if (prevSelection === selection) {
+        return { changed: false, clearedIds: [] as string[] };
+      }
+      const updated = { ...nextKnockoutWinners, [matchId]: selection };
+      const cleared = clearDependentSelections(updated, matchId, knockoutDependents);
+      const clearedIds = Object.keys(updated).filter(
+        (id) => updated[id] && cleared[id] === null
+      );
+      nextKnockoutWinners = cleared;
+      if (selection) {
+        nextAutoKnockoutWinners[matchId] = true;
+      }
+      clearedIds.forEach((id) => {
+        delete nextAutoKnockoutWinners[id];
       });
+      return { changed: true, clearedIds };
     };
-    resolvedGroups.forEach((group) => {
-      const matches = groupMatchesFor(group.id, nextResolvedGroupMatches);
-      if (group.id === "L") {
-        const panamaTeam = group.teams.find((team) => team === "Panama") ?? null;
-        const croatiaTeam =
-          group.teams.find((team) => team === "Croatia") ?? null;
-        if (!panamaTeam || !croatiaTeam) {
-          assignTopThreePattern(group.teams, matches);
-          return;
-        }
-        matches.forEach((match) => {
-          const isHomePanama = match.homeTeam === panamaTeam;
-          const isAwayPanama = match.awayTeam === panamaTeam;
-          const isHomeCroatia = match.homeTeam === croatiaTeam;
-          const isAwayCroatia = match.awayTeam === croatiaTeam;
-          if ((isHomePanama && isAwayCroatia) || (isHomeCroatia && isAwayPanama)) {
-            if (isHomeCroatia) {
-              setMatchScore(match, 2, 0);
-              return;
-            }
-            setMatchScore(match, 0, 2);
+
+    const maxIterations = 10;
+    let iteration = 0;
+    let changed = true;
+
+    while (changed && iteration < maxIterations) {
+      iteration += 1;
+      changed = false;
+
+      const previousSlotWinners = resolveQualifierState(
+        data.qualifiers,
+        nextQualifierWinners
+      ).slotWinners;
+      const previousGroupScores = { ...nextGroupScores };
+
+      let qualifierState = resolveQualifierState(
+        data.qualifiers,
+        nextQualifierWinners
+      );
+      const changedQualifiers = new Set<string>();
+      let qualifierProgress = true;
+      let qualifierIterations = 0;
+
+      while (qualifierProgress && qualifierIterations < maxIterations) {
+        qualifierProgress = false;
+        qualifierIterations += 1;
+        qualifierState = resolveQualifierState(
+          data.qualifiers,
+          nextQualifierWinners
+        );
+        qualifierState.matches.forEach((match) => {
+          const key = String(match.id);
+          const isManual =
+            nextQualifierWinners[key] && !nextAutoQualifierWinners[key];
+          const existingSelection = nextQualifierWinners[key] ?? null;
+          if (isManual || existingSelection) {
             return;
           }
-          if (isHomePanama || isAwayPanama) {
-            if (isHomePanama) {
-              setMatchScore(match, 0, 2);
-              return;
-            }
-            setMatchScore(match, 2, 0);
+          if (
+            isPlaceholderLabel(match.homeResolved) ||
+            isPlaceholderLabel(match.awayResolved)
+          ) {
             return;
           }
-          if (isHomeCroatia || isAwayCroatia) {
-            if (isHomeCroatia) {
-              setMatchScore(match, 0, 2);
-              return;
-            }
-            setMatchScore(match, 2, 0);
+          const values = resolveMatchProbabilities({
+            probabilities: data.winProbabilities,
+            homeTeam: match.homeResolved,
+            awayTeam: match.awayResolved,
+            allowDraw: false,
+            neutralOverride: match.neutral,
+          });
+          const selection = sampleWinner(values);
+          if (!selection) {
             return;
+          }
+          const result = applyQualifierSelection(key, selection);
+          if (result.changed) {
+            changed = true;
+            qualifierProgress = true;
+            changedQualifiers.add(key);
           }
         });
-        matches.forEach((match) => {
-          if (!nextGroupScores[String(match.id)]) {
-            setMatchScore(match, 1, 1);
+      }
+
+      if (changedQualifiers.size > 0) {
+        const affectedSlots = new Set<string>();
+        changedQualifiers.forEach((matchId) => {
+          const slots = qualifierSlotsByMatch.get(matchId);
+          if (!slots) {
+            return;
+          }
+          slots.forEach((slot) => affectedSlots.add(slot));
+        });
+        const affectedGroups = new Set<string>();
+        affectedSlots.forEach((slot) => {
+          const groups = groupIdsBySlot.get(slot);
+          if (groups) {
+            groups.forEach((groupId) => affectedGroups.add(groupId));
           }
         });
-        return;
-      }
-      assignTopThreePattern(group.teams, matches);
-    });
 
-    const nextGroupTables = data.groups.map((group) => {
-      const matches = groupMatchesFor(group.id, nextResolvedGroupMatches);
-      const { table, ranking } = buildGroupTable(group, matches, nextGroupScores);
-      const rows = ranking.map((team) => table[team]).filter(Boolean);
-      return { group, ranking, table, rows };
-    });
-    const nextGroupRankings: Record<string, string[]> = {};
-    const nextGroupCompletion: Record<string, boolean> = {};
-    nextGroupTables.forEach((entry) => {
-      nextGroupRankings[entry.group.id] = entry.ranking;
-      const matches = groupMatchesFor(entry.group.id, nextResolvedGroupMatches);
-      nextGroupCompletion[entry.group.id] = matches.every((match) => {
-        const score = nextGroupScores[String(match.id)];
-        return score && score.home !== null && score.away !== null;
-      });
-    });
-    const nextThirdPlaceEntries = bestThirdPlace(nextGroupTables);
-    const nextBestThirdGroups = nextThirdPlaceEntries.slice(0, 8);
-    const nextQualifiedThirdGroups = new Set(
-      nextBestThirdGroups.map((entry) => entry.group)
-    );
-    const nextThirdPlaceByGroup: Record<string, string> = {};
-    nextThirdPlaceEntries.forEach((entry) => {
-      if (!nextThirdPlaceByGroup[entry.group]) {
-        nextThirdPlaceByGroup[entry.group] = entry.team;
-      }
-    });
-    const nextGroups = nextBestThirdGroups.map((entry) => entry.group).sort();
-    const nextComboKey = nextGroups.join("");
-    const nextThirdPlaceAssignments =
-      nextComboKey && data.roundOf32Combos[nextComboKey]
-        ? data.roundOf32Combos[nextComboKey]
-        : null;
-    const nextAllGroupMatchesComplete = nextResolvedGroupMatches.every((match) => {
-      const score = nextGroupScores[String(match.id)];
-      return score && score.home !== null && score.away !== null;
-    });
+        affectedSlots.forEach((slot) => {
+          const matchIds = groupMatchIdsByTeam.get(slot);
+          if (!matchIds) {
+            return;
+          }
+          matchIds.forEach((matchId) => {
+            delete nextGroupScores[matchId];
+            delete nextAutoGroupScores[matchId];
+          });
+        });
 
-    const nextKnockoutWinners: Record<string, WinnerSelection> = {};
-    const winners = new Map<number, string>();
-    const losers = new Map<number, string>();
-    const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
-    for (const match of sorted) {
-      const homeResolved = resolveKnockoutLabel({
-        label: match.homeLabel,
-        opponentLabel: match.awayLabel,
-        groupRankings: nextGroupRankings,
-        thirdPlaceByGroup: nextThirdPlaceByGroup,
-        thirdPlaceAssignments: nextThirdPlaceAssignments,
-        knockoutWinners: winners,
-        knockoutLosers: losers,
-        groupCompletion: nextGroupCompletion,
-        allowThirdPlaceResolve: nextAllGroupMatchesComplete,
-        qualifiedThirdGroups: nextQualifiedThirdGroups,
-        matchStageById,
-      });
-      const awayResolved = resolveKnockoutLabel({
-        label: match.awayLabel,
-        opponentLabel: match.homeLabel,
-        groupRankings: nextGroupRankings,
-        thirdPlaceByGroup: nextThirdPlaceByGroup,
-        thirdPlaceAssignments: nextThirdPlaceAssignments,
-        knockoutWinners: winners,
-        knockoutLosers: losers,
-        groupCompletion: nextGroupCompletion,
-        allowThirdPlaceResolve: nextAllGroupMatchesComplete,
-        qualifiedThirdGroups: nextQualifiedThirdGroups,
-        matchStageById,
-      });
-      if (isPlaceholderLabel(homeResolved) || isPlaceholderLabel(awayResolved)) {
-        continue;
+        if (affectedGroups.size > 0) {
+          const rootsToClear = new Set<string>();
+          affectedGroups.forEach((groupId) => {
+            const rootMatches = knockoutRootsByGroup.get(groupId);
+            if (rootMatches) {
+              rootMatches.forEach((matchId) => rootsToClear.add(matchId));
+            }
+          });
+          if (rootsToClear.size > 0) {
+            const cleared = clearKnockoutSelectionsByMatchIds(
+              nextKnockoutWinners,
+              rootsToClear
+            );
+            nextKnockoutWinners = cleared.next;
+            cleared.clearedIds.forEach((matchId) => {
+              delete nextAutoKnockoutWinners[matchId];
+            });
+            if (cleared.clearedIds.length > 0) {
+              changed = true;
+            }
+          }
+        }
+
+        qualifierState = resolveQualifierState(data.qualifiers, nextQualifierWinners);
       }
-      const pickHome = match.id % 2 === 0;
-      nextKnockoutWinners[String(match.id)] = pickHome ? "home" : "away";
-      const winner = pickHome ? homeResolved : awayResolved;
-      const loser = pickHome ? awayResolved : homeResolved;
-      winners.set(match.id, winner);
-      losers.set(match.id, loser);
+
+      const nextSlotWinners = qualifierState.slotWinners;
+      const resolvedGroupMatches = data.groupMatches.map((match) => ({
+        ...match,
+        homeTeam: nextSlotWinners.get(match.homeTeam) ?? match.homeTeam,
+        awayTeam: nextSlotWinners.get(match.awayTeam) ?? match.awayTeam,
+      }));
+
+      let groupScoresChanged = false;
+      resolvedGroupMatches.forEach((match) => {
+        const key = String(match.id);
+        const existing = nextGroupScores[key];
+        const hasScore =
+          existing && existing.home !== null && existing.away !== null;
+        const isManual = hasScore && !nextAutoGroupScores[key];
+        if (isManual || hasScore) {
+          return;
+        }
+        const matrix = resolveMatchScoreMatrix({
+          probabilities: data.winProbabilities,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          country: match.country,
+        });
+        if (!matrix) {
+          return;
+        }
+        const sample = sampleScoreMatrix(matrix);
+        if (!sample) {
+          return;
+        }
+        nextGroupScores[key] = { home: sample.home, away: sample.away };
+        nextAutoGroupScores[key] = true;
+        groupScoresChanged = true;
+      });
+
+      if (groupScoresChanged || changedQualifiers.size > 0) {
+        const clearedForGroups = computeClearedKnockoutSelections(
+          nextKnockoutWinners,
+          previousGroupScores,
+          nextGroupScores,
+          {
+            previousSlotWinners,
+            nextSlotWinners,
+          }
+        );
+        nextKnockoutWinners = clearedForGroups.nextWinners;
+        clearedForGroups.clearedIds.forEach((matchId) => {
+          delete nextAutoKnockoutWinners[matchId];
+        });
+        if (clearedForGroups.clearedIds.length > 0) {
+          changed = true;
+        }
+      }
+
+      const nextContext = computeKnockoutContext(
+        nextGroupScores,
+        nextSlotWinners
+      );
+      const winners = new Map<number, string>();
+      const losers = new Map<number, string>();
+      const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
+
+      for (const match of sorted) {
+        const key = String(match.id);
+        const homeResolved = resolveKnockoutLabel({
+          label: match.homeLabel,
+          opponentLabel: match.awayLabel,
+          groupRankings: nextContext.groupRankings,
+          thirdPlaceByGroup: nextContext.thirdPlaceByGroup,
+          thirdPlaceAssignments: nextContext.thirdPlaceAssignments,
+          knockoutWinners: winners,
+          knockoutLosers: losers,
+          groupCompletion: nextContext.groupCompletion,
+          allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
+          qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
+          matchStageById,
+        });
+        const awayResolved = resolveKnockoutLabel({
+          label: match.awayLabel,
+          opponentLabel: match.homeLabel,
+          groupRankings: nextContext.groupRankings,
+          thirdPlaceByGroup: nextContext.thirdPlaceByGroup,
+          thirdPlaceAssignments: nextContext.thirdPlaceAssignments,
+          knockoutWinners: winners,
+          knockoutLosers: losers,
+          groupCompletion: nextContext.groupCompletion,
+          allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
+          qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
+          matchStageById,
+        });
+        const existingSelection = nextKnockoutWinners[key] ?? null;
+        const isManual = existingSelection && !nextAutoKnockoutWinners[key];
+        if (!isManual && !existingSelection) {
+          if (
+            !isPlaceholderLabel(homeResolved) &&
+            !isPlaceholderLabel(awayResolved)
+          ) {
+            const values = resolveMatchProbabilities({
+              probabilities: data.winProbabilities,
+              homeTeam: homeResolved,
+              awayTeam: awayResolved,
+              allowDraw: false,
+              country: match.country,
+            });
+            const selection = sampleWinner(values);
+            if (selection) {
+              const result = applyKnockoutSelection(key, selection);
+              if (result.changed) {
+                changed = true;
+              }
+            }
+          }
+        }
+
+        const winner = resolveWinner(
+          match.id,
+          homeResolved,
+          awayResolved,
+          {},
+          false,
+          nextKnockoutWinners
+        );
+        if (winner) {
+          winners.set(match.id, winner);
+          const loser = winner === homeResolved ? awayResolved : homeResolved;
+          losers.set(match.id, loser);
+        }
+      }
     }
 
-    setQualifierWinners(nextQualifiers);
+    setQualifierWinners(nextQualifierWinners);
+    setAutoQualifierWinners(nextAutoQualifierWinners);
     setGroupScores(nextGroupScores);
+    setAutoGroupScores(nextAutoGroupScores);
     setKnockoutWinners(nextKnockoutWinners);
+    setAutoKnockoutWinners(nextAutoKnockoutWinners);
   }, [
+    autoGroupScores,
+    autoKnockoutWinners,
+    autoQualifierWinners,
+    clearKnockoutSelectionsByMatchIds,
+    computeClearedKnockoutSelections,
+    computeKnockoutContext,
     data.groupMatches,
-    data.groups,
     data.knockoutMatches,
     data.qualifiers,
-    data.roundOf32Combos,
+    data.winProbabilities,
+    groupIdsBySlot,
+    groupMatchIdsByTeam,
+    groupScores,
+    knockoutDependents,
+    knockoutRootsByGroup,
+    knockoutWinners,
     matchStageById,
+    qualifierDependents,
+    qualifierSlotsByMatch,
+    qualifierWinners,
   ]);
 
   const handleResetAll = React.useCallback(() => {
     setQualifierWinners({});
     setGroupScores({});
     setKnockoutWinners({});
+    setAutoQualifierWinners({});
+    setAutoGroupScores({});
+    setAutoKnockoutWinners({});
   }, []);
+
+  const handleResetAutopredictions = React.useCallback(() => {
+    const autoQualifierIds = Object.keys(autoQualifierWinners);
+    let nextQualifierWinners = { ...qualifierWinners };
+    autoQualifierIds.forEach((matchId) => {
+      const updated = { ...nextQualifierWinners, [matchId]: null };
+      nextQualifierWinners = clearDependentSelections(
+        updated,
+        matchId,
+        qualifierDependents
+      );
+    });
+
+    const affectedSlots = new Set<string>();
+    autoQualifierIds.forEach((matchId) => {
+      const slots = qualifierSlotsByMatch.get(matchId);
+      if (!slots) {
+        return;
+      }
+      slots.forEach((slot) => affectedSlots.add(slot));
+    });
+    const affectedGroups = new Set<string>();
+    affectedSlots.forEach((slot) => {
+      const groups = groupIdsBySlot.get(slot);
+      if (groups) {
+        groups.forEach((groupId) => affectedGroups.add(groupId));
+      }
+    });
+
+    const nextGroupScores = { ...groupScores };
+    Object.keys(autoGroupScores).forEach((matchId) => {
+      delete nextGroupScores[matchId];
+    });
+    affectedSlots.forEach((slot) => {
+      const matchIds = groupMatchIdsByTeam.get(slot);
+      if (!matchIds) {
+        return;
+      }
+      matchIds.forEach((matchId) => {
+        delete nextGroupScores[matchId];
+      });
+    });
+
+    let nextKnockoutWinners = { ...knockoutWinners };
+    let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+    const autoKnockoutIds = Object.keys(autoKnockoutWinners);
+    if (autoKnockoutIds.length > 0) {
+      const cleared = clearKnockoutSelectionsByMatchIds(
+        nextKnockoutWinners,
+        autoKnockoutIds
+      );
+      nextKnockoutWinners = cleared.next;
+      nextAutoKnockoutWinners = {};
+    }
+
+    if (affectedGroups.size > 0) {
+      const rootsToClear = new Set<string>();
+      affectedGroups.forEach((groupId) => {
+        const rootMatches = knockoutRootsByGroup.get(groupId);
+        if (rootMatches) {
+          rootMatches.forEach((matchId) => rootsToClear.add(matchId));
+        }
+      });
+      if (rootsToClear.size > 0) {
+        const cleared = clearKnockoutSelectionsByMatchIds(
+          nextKnockoutWinners,
+          rootsToClear
+        );
+        nextKnockoutWinners = cleared.next;
+        cleared.clearedIds.forEach((matchId) => {
+          delete nextAutoKnockoutWinners[matchId];
+        });
+      }
+    }
+
+    const nextSlotWinners = resolveQualifierState(
+      data.qualifiers,
+      nextQualifierWinners
+    ).slotWinners;
+    const clearedForGroups = computeClearedKnockoutSelections(
+      nextKnockoutWinners,
+      groupScores,
+      nextGroupScores,
+      {
+        previousSlotWinners: slotWinners,
+        nextSlotWinners,
+      }
+    );
+    nextKnockoutWinners = clearedForGroups.nextWinners;
+    clearedForGroups.clearedIds.forEach((matchId) => {
+      delete nextAutoKnockoutWinners[matchId];
+    });
+
+    setQualifierWinners(nextQualifierWinners);
+    setAutoQualifierWinners({});
+    setGroupScores(nextGroupScores);
+    setAutoGroupScores({});
+    setKnockoutWinners(nextKnockoutWinners);
+    setAutoKnockoutWinners(nextAutoKnockoutWinners);
+  }, [
+    autoGroupScores,
+    autoKnockoutWinners,
+    autoQualifierWinners,
+    clearKnockoutSelectionsByMatchIds,
+    computeClearedKnockoutSelections,
+    data.qualifiers,
+    groupIdsBySlot,
+    groupMatchIdsByTeam,
+    groupScores,
+    knockoutRootsByGroup,
+    knockoutWinners,
+    qualifierDependents,
+    qualifierSlotsByMatch,
+    qualifierWinners,
+    slotWinners,
+  ]);
 
   return (
     <div className="flex flex-col gap-12">
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button
           type="button"
-          onClick={handleRandomAll}
+          onClick={handleAutopredict}
           className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
         >
-          Predict random
+          Autopredict
+        </button>
+        <button
+          type="button"
+          onClick={handleResetAutopredictions}
+          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
+        >
+          Reset autopredictions
         </button>
         <button
           type="button"
           onClick={handleResetAll}
           className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
         >
-          Reset predictions
+          Reset all
         </button>
       </div>
       <section className="space-y-6">
@@ -3138,22 +3596,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             <h2 className="text-2xl font-semibold text-ebony">
               Qualifier playoffs
             </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRandomQualifiers}
-                className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
-              >
-                Predict random
-              </button>
-              <button
-                type="button"
-                onClick={handleResetQualifiers}
-                className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
-              >
-                Reset predictions
-              </button>
-            </div>
           </div>
           <p className="text-sm text-ink-400">
             Resolve UEFA and intercontinental playoff paths to fill the final
@@ -3206,22 +3648,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-semibold text-ebony">Group stage</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRandomGroups}
-                className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
-              >
-                Predict random
-              </button>
-              <button
-                type="button"
-                onClick={handleResetGroups}
-                className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
-              >
-                Reset predictions
-              </button>
-            </div>
           </div>
           <p className="text-sm text-ink-400">
             Select group match outcomes and see standings update instantly.
@@ -3307,22 +3733,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-semibold text-ebony">Knockout stage</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRandomKnockouts}
-                className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
-              >
-                Predict random
-              </button>
-              <button
-                type="button"
-                onClick={handleResetKnockouts}
-                className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
-              >
-                Reset predictions
-              </button>
-            </div>
           </div>
           <p className="text-sm text-ink-400">
             Winners advance automatically through the bracket.
@@ -3536,6 +3946,30 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           </div>
         </div>
       </section>
+
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={handleAutopredict}
+          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
+        >
+          Autopredict
+        </button>
+        <button
+          type="button"
+          onClick={handleResetAutopredictions}
+          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
+        >
+          Reset autopredictions
+        </button>
+        <button
+          type="button"
+          onClick={handleResetAll}
+          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
+        >
+          Reset all
+        </button>
+      </div>
 
       <div className="text-xs text-ink-400">
         Tie-breakers follow the tournament model (points, goal difference, goals
