@@ -205,6 +205,41 @@ function formatProbability(value: number | null | undefined) {
   return `${Math.round(percent)}%`;
 }
 
+function parseProbabilityLabel(label?: string | null) {
+  if (!label) {
+    return null;
+  }
+  const match = label.match(/(\d+(?:\.\d+)?)%/);
+  if (!match) {
+    return null;
+  }
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return Math.max(0, Math.min(100, value));
+}
+
+function normalizeProbabilitySegments(values: {
+  home: number | null;
+  draw: number | null;
+  away: number | null;
+}) {
+  const { home, draw, away } = values;
+  if (home === null || draw === null || away === null) {
+    return null;
+  }
+  const raw = [home, draw, away];
+  const rounded = raw.map((value) => Math.round(value));
+  const total = rounded.reduce((sum, value) => sum + value, 0);
+  const remainder = 100 - total;
+  if (remainder !== 0) {
+    const targetIndex = 1;
+    rounded[targetIndex] = Math.max(0, rounded[targetIndex] + remainder);
+  }
+  return { home: rounded[0], draw: rounded[1], away: rounded[2] };
+}
+
 function normalizeCountry(value: string | null | undefined) {
   return value ? value.trim().toLowerCase() : "";
 }
@@ -1101,9 +1136,11 @@ function resolveKnockoutLabel({
 function TeamFlag({
   team,
   flags,
+  className,
 }: {
   team: string;
   flags: Record<string, string | null>;
+  className?: string;
 }) {
   const isPlaceholder = isPlaceholderLabel(team);
   const flagPath = flags[team];
@@ -1112,6 +1149,7 @@ function TeamFlag({
       <div
         className={cn(
           "relative h-5 w-7 shrink-0 overflow-hidden rounded-[1px] border border-ink-900",
+          className,
           isPlaceholder ? "bg-[#d9d9d9]" : "bg-ink-800"
         )}
       >
@@ -1129,6 +1167,7 @@ function TeamFlag({
     <div
       className={cn(
         "flex h-5 w-7 shrink-0 items-center justify-center rounded-[1px] border border-ink-900 text-[9px] font-semibold uppercase",
+        className,
         isPlaceholder ? "bg-[#d9d9d9] text-transparent" : "bg-ink-800 text-ink-200"
       )}
     >
@@ -1280,6 +1319,7 @@ function MatchCard({
   homeWinProb,
   awayWinProb,
   drawProb,
+  showDivider,
 }: {
   id: string | number;
   homeTeam: string;
@@ -1309,7 +1349,10 @@ function MatchCard({
   homeWinProb?: string;
   awayWinProb?: string;
   drawProb?: string | null;
+  showDivider?: boolean;
 }) {
+  const homeInputRef = React.useRef<HTMLInputElement>(null);
+  const awayInputRef = React.useRef<HTMLInputElement>(null);
   const score = showScore
     ? scores?.[String(id)] ?? { home: null, away: null }
     : { home: null, away: null };
@@ -1354,6 +1397,276 @@ function MatchCard({
     onWinnerSelect(selection === side ? null : side);
   };
 
+  if (orientation === "horizontal" && showScore) {
+    const isEdited = score.home !== null || score.away !== null;
+    const segments = normalizeProbabilitySegments({
+      home: parseProbabilityLabel(homeProb),
+      draw: allowDraw ? parseProbabilityLabel(drawProb ?? undefined) : null,
+      away: parseProbabilityLabel(awayProb),
+    });
+    const maxValue = segments
+      ? Math.max(segments.home, segments.draw, segments.away)
+      : null;
+    const formattedHome = formatDisplayLabel(homeTeam);
+    const formattedAway = formatDisplayLabel(awayTeam);
+    const displayHome =
+      formattedHome === "Bosnia and Herzegovina" ? "Bosnia and Herz." : formattedHome;
+    const displayAway =
+      formattedAway === "Bosnia and Herzegovina" ? "Bosnia and Herz." : formattedAway;
+
+    const updateSideScore = (side: "home" | "away", value: number | null) => {
+      if (side === "home") {
+        setScores(value, score.away);
+      } else {
+        setScores(score.home, value);
+      }
+    };
+
+    const adjustScore = (side: "home" | "away", delta: number) => {
+      if (isDisabled) {
+        return;
+      }
+      const current = side === "home" ? score.home : score.away;
+      const base = current ?? 0;
+      const next = parseScore(String(base + delta));
+      updateSideScore(side, next);
+    };
+
+    const handleScoreKeyDown = (
+      event: React.KeyboardEvent<HTMLInputElement>,
+      side: "home" | "away"
+    ) => {
+      if (event.key === "ArrowUp" || event.key === "ArrowRight") {
+        event.preventDefault();
+        adjustScore(side, event.shiftKey ? 5 : 1);
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
+        event.preventDefault();
+        adjustScore(side, event.shiftKey ? -5 : -1);
+      }
+    };
+
+    const handleTeamSelect = (side: "home" | "away") => {
+      if (isDisabled) {
+        return;
+      }
+      if (side === "home") {
+        if (score.home === 2 && score.away === 1) {
+          setScores(null, null);
+          return;
+        }
+        setScores(2, 1);
+        return;
+      }
+      if (score.home === 1 && score.away === 2) {
+        setScores(null, null);
+        return;
+      }
+      setScores(1, 2);
+    };
+
+    const handleDrawSelect = () => {
+      if (isDisabled || !allowDraw) {
+        return;
+      }
+      if (score.home === 1 && score.away === 1) {
+        setScores(null, null);
+        return;
+      }
+      setScores(1, 1);
+    };
+
+    const renderScorePill = (
+      side: "home" | "away",
+      inputRef: React.RefObject<HTMLInputElement>
+    ) => {
+      const value = side === "home" ? score.home : score.away;
+      return (
+        <div
+          className={cn(
+            "group relative h-9 w-11 select-none rounded-full bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 transition hover:shadow hover:ring-slate-300 focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-1 focus-within:ring-offset-white cursor-pointer",
+            isEdited && "bg-amber-50 ring-amber-200",
+            isDisabled && "cursor-not-allowed opacity-60"
+          )}
+          onClick={() => {
+            if (!isDisabled) {
+              inputRef.current?.focus();
+            }
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={31}
+            value={value ?? ""}
+            onChange={(event) =>
+              updateSideScore(side, parseScore(event.target.value))
+            }
+            onKeyDown={(event) => handleScoreKeyDown(event, side)}
+            disabled={isDisabled}
+            onClick={(event) => event.stopPropagation()}
+            className="relative z-10 h-full w-full select-text bg-transparent text-center text-base font-semibold leading-none tabular-nums text-slate-900 focus:outline-none appearance-none [-moz-appearance:textfield]"
+          />
+          <div className="absolute inset-0 z-20 flex items-center justify-between px-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                adjustScore(side, -1);
+              }}
+              disabled={isDisabled}
+              className="h-6 w-6 rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+              aria-label={`Decrease ${side} score`}
+            >
+              -
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                adjustScore(side, 1);
+              }}
+              disabled={isDisabled}
+              className="h-6 w-6 rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+              aria-label={`Increase ${side} score`}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div
+        className={cn(
+          "grid items-center gap-x-3 py-1.5 transition-colors hover:bg-slate-50 grid-cols-[1fr_44px_120px_44px_1fr]",
+          showDivider && "border-b border-slate-100"
+        )}
+      >
+        <div
+          className={cn(
+            "flex min-w-0 items-center justify-end gap-2",
+            isDisabled && "opacity-60"
+          )}
+          onClick={() => handleTeamSelect("home")}
+          role="button"
+          tabIndex={isDisabled ? -1 : 0}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleTeamSelect("home");
+            }
+          }}
+        >
+          <TeamFlag
+            team={homeTeam}
+            flags={flags}
+            className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+          />
+          <span className="min-w-0 truncate text-sm font-medium text-slate-900 text-right">
+            {displayHome || "TBD"}
+          </span>
+        </div>
+        {renderScorePill("home", homeInputRef)}
+        <div
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5",
+            isEdited && "opacity-55"
+          )}
+        >
+          <div
+            className={cn(
+              "flex h-1.5 w-[120px] overflow-hidden rounded-full bg-slate-200/70",
+              isEdited && "bg-slate-200/50"
+            )}
+          >
+            <div
+              className="h-full bg-emerald-500/50"
+              style={{ width: `${segments?.home ?? 0}%` }}
+            />
+            <div
+              className="h-full bg-slate-500/40"
+              style={{ width: `${segments?.draw ?? 0}%` }}
+            />
+            <div
+              className="h-full bg-rose-500/45"
+              style={{ width: `${segments?.away ?? 0}%` }}
+            />
+          </div>
+          <div
+            className={cn(
+              "flex w-[120px] justify-between text-[11px] leading-none tabular-nums text-slate-600",
+              isEdited && "text-slate-500"
+            )}
+          >
+            <span
+              className={cn(
+                maxValue !== null && segments?.home === maxValue
+                  ? "text-slate-800 font-medium"
+                  : undefined
+              )}
+            >
+              {segments ? segments.home : "--"}
+            </span>
+            <button
+              type="button"
+              onClick={handleDrawSelect}
+              disabled={isDisabled || !allowDraw}
+              className={cn(
+                "bg-transparent p-0 leading-none focus:outline-none disabled:cursor-not-allowed",
+                maxValue !== null && segments?.draw === maxValue
+                  ? "text-slate-800 font-medium"
+                  : undefined
+              )}
+              aria-label={drawLabel ? `Set draw (${drawLabel})` : "Set draw"}
+            >
+              {segments ? segments.draw : "--"}
+            </button>
+            <span
+              className={cn(
+                maxValue !== null && segments?.away === maxValue
+                  ? "text-slate-800 font-medium"
+                  : undefined
+              )}
+            >
+              {segments ? segments.away : "--"}
+            </span>
+          </div>
+        </div>
+        {renderScorePill("away", awayInputRef)}
+        <div
+          className={cn(
+            "flex min-w-0 items-center justify-start gap-2",
+            isDisabled && "opacity-60"
+          )}
+          onClick={() => handleTeamSelect("away")}
+          role="button"
+          tabIndex={isDisabled ? -1 : 0}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleTeamSelect("away");
+            }
+          }}
+        >
+          <TeamFlag
+            team={awayTeam}
+            flags={flags}
+            className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+          />
+          <span className="min-w-0 truncate text-sm font-medium text-slate-900">
+            {displayAway || "TBD"}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   const drawButton =
     showScore && allowDraw ? (
     <button
@@ -1367,10 +1680,10 @@ function MatchCard({
       }}
       disabled={isDisabled}
       className={cn(
-        "border border-ink-900 w-[40px] px-2 py-1 text-[10px] font-semibold uppercase lg:text-xs font-mono",
+        "border border-ink-900 w-[40px] bg-white px-2 py-1 text-[10px] font-semibold uppercase lg:text-xs font-mono",
         orientation === "horizontal" ? "rounded-none -mx-px" : "rounded-[3px]",
         isDraw ? "bg-[#f2e2e2] text-ebony" : "text-ink-400",
-        isDisabled && "opacity-50"
+        isDisabled && "disabled:cursor-not-allowed"
       )}
     >
       {drawLabel}
@@ -1706,7 +2019,7 @@ function QualifierPathBracket({
   return (
     <div
       ref={containerRef}
-      className="relative flex flex-col gap-4 overflow-hidden rounded-md border border-ink-900 bg-white/80 p-4 shadow-soft"
+      className="relative flex flex-col gap-4 overflow-hidden rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4 shadow-soft"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-ebony">{path}</h3>
@@ -3795,7 +4108,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             return (
               <div
                 key={group.id}
-                className="rounded-md border border-ink-900 bg-white/80 p-4 shadow-soft"
+                className="rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4 shadow-soft"
               >
                 <div className="mb-3 flex items-center justify-between text-sm font-semibold text-ebony">
                   <span>Group {group.id}</span>
@@ -3803,7 +4116,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 </div>
                 <div className="flex flex-wrap items-start gap-6">
                   <div className="flex min-w-[520px] flex-1 flex-col gap-3">
-                    {matches.map((match) => {
+                    {matches.map((match, index) => {
                       const probabilities = getMatchProbabilityLabels({
                         homeTeam: match.homeTeam,
                         awayTeam: match.awayTeam,
@@ -3825,6 +4138,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                           homeWinProb={probabilities.homeWinProb}
                           awayWinProb={probabilities.awayWinProb}
                           drawProb={probabilities.drawProb}
+                          showDivider={index !== matches.length - 1}
                         />
                       );
                     })}
@@ -3844,7 +4158,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             );
           })}
           {thirdPlaceRankingRows.length > 0 && (
-            <div className="rounded-md border border-ink-900 bg-white/80 p-4 shadow-soft">
+            <div className="rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4 shadow-soft">
               <div className="mb-3 flex items-center justify-between text-sm font-semibold text-ebony">
                 <span>Ranking of 3rd place teams</span>
                 <span className="text-xs text-ink-400">Group stage</span>
