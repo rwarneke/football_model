@@ -1977,6 +1977,7 @@ function KnockoutMatchCard({
         : null
     : null;
   const hasSelection = isPickableMatch && winnerSelection !== null;
+  const needsPick = isPickableMatch && winner === null;
   const showDraw = Boolean(drawProb);
   const homeValue = parseProbabilityLabel(homeWinProb);
   const awayValue = parseProbabilityLabel(awayWinProb);
@@ -2073,7 +2074,12 @@ function KnockoutMatchCard({
   return (
     <div
       ref={containerRef}
-      className="w-[192px] overflow-visible rounded-xl bg-white ring-1 ring-slate-200 shadow-sm transition-shadow hover:shadow"
+      className={cn(
+        "w-[192px] overflow-visible rounded-xl shadow-sm transition-shadow hover:shadow",
+        needsPick
+          ? "bg-amber-50/30 ring-2 ring-amber-200"
+          : "bg-white ring-1 ring-slate-200"
+      )}
     >
       {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
       <div
