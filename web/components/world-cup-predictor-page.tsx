@@ -1484,8 +1484,8 @@ function MatchCard({
       return (
         <div
           className={cn(
-            "group relative h-9 w-11 select-none rounded-full bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 transition hover:shadow hover:ring-slate-300 focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-1 focus-within:ring-offset-white cursor-pointer",
-            isEdited && "bg-amber-50 ring-amber-200",
+            "group relative flex h-9 w-11 select-none items-center justify-center rounded-full bg-white text-slate-900 shadow-sm ring-1 ring-slate-300 transition hover:shadow hover:ring-slate-400 focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-1 cursor-pointer",
+            isEdited && "bg-amber-50 ring-amber-300",
             isDisabled && "cursor-not-allowed opacity-60"
           )}
           onClick={() => {
@@ -1505,38 +1505,43 @@ function MatchCard({
               updateSideScore(side, parseScore(event.target.value))
             }
             onKeyDown={(event) => handleScoreKeyDown(event, side)}
+            onWheel={(event) => {
+              if (document.activeElement !== inputRef.current) {
+                return;
+              }
+              event.preventDefault();
+              adjustScore(side, event.deltaY > 0 ? -1 : 1);
+            }}
             disabled={isDisabled}
             onClick={(event) => event.stopPropagation()}
-            className="relative z-10 h-full w-full select-text bg-transparent text-center text-base font-semibold leading-none tabular-nums text-slate-900 focus:outline-none appearance-none [-moz-appearance:textfield]"
+            className="relative z-10 h-full w-full select-text bg-transparent text-center text-base font-semibold leading-none tabular-nums text-slate-900 focus:outline-none appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-between px-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                adjustScore(side, -1);
-              }}
-              disabled={isDisabled}
-              className="pointer-events-auto h-6 w-6 rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-              aria-label={`Decrease ${side} score`}
-            >
-              -
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                adjustScore(side, 1);
-              }}
-              disabled={isDisabled}
-              className="pointer-events-auto h-6 w-6 rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-              aria-label={`Increase ${side} score`}
-            >
-              +
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              adjustScore(side, -1);
+            }}
+            disabled={isDisabled}
+            className="pointer-events-none absolute left-[-14px] top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-transparent text-[11px] font-semibold text-slate-400 opacity-0 ring-1 ring-transparent transition-opacity duration-150 hover:bg-slate-100 hover:text-slate-700 hover:ring-slate-300 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+            aria-label={`Decrease ${side} score`}
+          >
+            -
+          </button>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              adjustScore(side, 1);
+            }}
+            disabled={isDisabled}
+            className="pointer-events-none absolute right-[-14px] top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-transparent text-[11px] font-semibold text-slate-400 opacity-0 ring-1 ring-transparent transition-opacity duration-150 hover:bg-slate-100 hover:text-slate-700 hover:ring-slate-300 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+            aria-label={`Increase ${side} score`}
+          >
+            +
+          </button>
         </div>
       );
     };
