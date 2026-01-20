@@ -28,6 +28,7 @@ type GroupTableRow = {
   gd: number;
   points: number;
   position: number;
+  randomTiebreak?: boolean;
 };
 
 type ResolvedQualifierMatch = QualifierMatch & {
@@ -50,6 +51,8 @@ const HOST_TEAM_COUNTRIES: Record<string, string> = {
   Mexico: "Mexico",
 };
 const HOST_TEAMS = new Set(["USA", "Canada", "Mexico"]);
+const TIEBREAK_TOOLTIP =
+  "Table order has been chosen randomly but would be determined by Fair Play Points in reality.";
 
 type MatchProbabilityValues = {
   home: number | null;
@@ -117,6 +120,56 @@ function formatQualifierSource(source: string | undefined) {
     return "Semifinal";
   }
   return source;
+}
+
+function hashString(value: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createRng(seed: number) {
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6d2b79f5;
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), 1 | x);
+    x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleInPlace<T>(items: T[], rng: () => number) {
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+}
+
+function seedFromGroupState(
+  group: GroupDefinition,
+  matches: GroupMatch[],
+  scores: Record<string, MatchScore>
+) {
+  const parts = [group.id];
+  const orderedMatches = [...matches].sort((a, b) => a.id - b.id);
+  for (const match of orderedMatches) {
+    const score = scores[String(match.id)];
+    const home = score?.home ?? "x";
+    const away = score?.away ?? "x";
+    parts.push(`${match.id}:${home}-${away}`);
+  }
+  return hashString(parts.join("|"));
+}
+
+function seedFromThirdPlace(entries: Array<{ team: string; group: string; points: number; gd: number; gf: number }>) {
+  const parts = entries.map(
+    (entry) => `${entry.group}:${entry.team}:${entry.points}:${entry.gd}:${entry.gf}`
+  );
+  return hashString(parts.join("|"));
 }
 
 function extractGroupId(label: string) {
@@ -563,9 +616,11 @@ function resolveWinner(
 
 function rankOverall(
   teams: string[],
-  table: Record<string, GroupTableRow>
+  table: Record<string, GroupTableRow>,
+  rng: () => number,
+  randomTiebreakTeams: Set<string>
 ) {
-  return [...teams].sort((a, b) => {
+  const sorted = [...teams].sort((a, b) => {
     const rowA = table[a];
     const rowB = table[b];
     if (rowB.points !== rowA.points) {
@@ -577,8 +632,37 @@ function rankOverall(
     if (rowB.gf !== rowA.gf) {
       return rowB.gf - rowA.gf;
     }
-    return a.localeCompare(b);
+    return 0;
   });
+
+  const ordered: string[] = [];
+  let i = 0;
+  while (i < sorted.length) {
+    const current = sorted[i];
+    const tied = [current];
+    i += 1;
+    while (i < sorted.length) {
+      const next = sorted[i];
+      const rowA = table[current];
+      const rowB = table[next];
+      if (
+        rowA.points === rowB.points &&
+        rowA.gd === rowB.gd &&
+        rowA.gf === rowB.gf
+      ) {
+        tied.push(next);
+        i += 1;
+      } else {
+        break;
+      }
+    }
+    if (tied.length > 1) {
+      shuffleInPlace(tied, rng);
+      tied.forEach((team) => randomTiebreakTeams.add(team));
+    }
+    ordered.push(...tied);
+  }
+  return ordered;
 }
 
 function headToHeadTable(
@@ -619,7 +703,9 @@ function headToHeadTable(
 function rankHeadToHead(
   teams: string[],
   matches: Array<{ homeTeam: string; awayTeam: string; homeScore: number; awayScore: number }>,
-  table: Record<string, GroupTableRow>
+  table: Record<string, GroupTableRow>,
+  rng: () => number,
+  randomTiebreakTeams: Set<string>
 ): string[] {
   if (teams.length <= 1) {
     return teams;
@@ -631,7 +717,7 @@ function rankHeadToHead(
     metrics.every((m) => m.gd === metrics[0].gd) &&
     metrics.every((m) => m.gf === metrics[0].gf);
   if (allEqual) {
-    return rankOverall(teams, table);
+    return rankOverall(teams, table, rng, randomTiebreakTeams);
   }
   const sorted = [...teams].sort((a, b) => {
     const rowA = h2h[a];
@@ -645,7 +731,7 @@ function rankHeadToHead(
     if (rowB.gf !== rowA.gf) {
       return rowB.gf - rowA.gf;
     }
-    return a.localeCompare(b);
+    return 0;
   });
   const ordered: string[] = [];
   let i = 0;
@@ -671,7 +757,7 @@ function rankHeadToHead(
     if (tied.length === 1) {
       ordered.push(tied[0]);
     } else {
-      ordered.push(...rankHeadToHead(tied, matches, table));
+      ordered.push(...rankHeadToHead(tied, matches, table, rng, randomTiebreakTeams));
     }
   }
   return ordered;
@@ -680,7 +766,9 @@ function rankHeadToHead(
 function rankGroup(
   teams: string[],
   matches: Array<{ homeTeam: string; awayTeam: string; homeScore: number; awayScore: number }>,
-  table: Record<string, GroupTableRow>
+  table: Record<string, GroupTableRow>,
+  rng: () => number,
+  randomTiebreakTeams: Set<string>
 ) {
   const base = [...teams].sort((a, b) => {
     const rowA = table[a];
@@ -688,7 +776,7 @@ function rankGroup(
     if (rowB.points !== rowA.points) {
       return rowB.points - rowA.points;
     }
-    return a.localeCompare(b);
+    return 0;
   });
 
   const ranked: string[] = [];
@@ -709,7 +797,7 @@ function rankGroup(
     if (tied.length === 1) {
       ranked.push(tied[0]);
     } else {
-      ranked.push(...rankHeadToHead(tied, matches, table));
+      ranked.push(...rankHeadToHead(tied, matches, table, rng, randomTiebreakTeams));
     }
   }
   return ranked;
@@ -787,14 +875,17 @@ function buildGroupTable(
     table[team].gd = table[team].gf - table[team].ga;
   }
 
-  const ranking = rankGroup(group.teams, playedMatches, table);
+  const randomTiebreakTeams = new Set<string>();
+  const rng = createRng(seedFromGroupState(group, matches, scores));
+  const ranking = rankGroup(group.teams, playedMatches, table, rng, randomTiebreakTeams);
   ranking.forEach((team, index) => {
     if (table[team]) {
       table[team].position = index + 1;
+      table[team].randomTiebreak = randomTiebreakTeams.has(team);
     }
   });
 
-  return { table, ranking };
+  return { table, ranking, randomTiebreakTeams };
 }
 
 function bestThirdPlace(
@@ -821,6 +912,8 @@ function bestThirdPlace(
       gf: row.gf,
     });
   }
+  const rng = createRng(seedFromThirdPlace(entries));
+  const randomTiebreakTeams = new Set<string>();
   entries.sort((a, b) => {
     if (b.points !== a.points) {
       return b.points - a.points;
@@ -831,9 +924,34 @@ function bestThirdPlace(
     if (b.gf !== a.gf) {
       return b.gf - a.gf;
     }
-    return a.team.localeCompare(b.team);
+    return 0;
   });
-  return entries;
+  const ordered: typeof entries = [];
+  let i = 0;
+  while (i < entries.length) {
+    const current = entries[i];
+    const tied = [current];
+    i += 1;
+    while (i < entries.length) {
+      const next = entries[i];
+      if (
+        current.points === next.points &&
+        current.gd === next.gd &&
+        current.gf === next.gf
+      ) {
+        tied.push(next);
+        i += 1;
+      } else {
+        break;
+      }
+    }
+    if (tied.length > 1) {
+      shuffleInPlace(tied, rng);
+      tied.forEach((entry) => randomTiebreakTeams.add(entry.team));
+    }
+    ordered.push(...tied);
+  }
+  return { entries: ordered, randomTiebreakTeams };
 }
 
 function resolveGroupPlaceholder(
@@ -1719,6 +1837,7 @@ function GroupTable({
   highlightWeakThird,
   highlightTop = 2,
   flags,
+  showTieInfo,
 }: {
   group: GroupDefinition;
   rows: GroupTableRow[];
@@ -1726,6 +1845,7 @@ function GroupTable({
   highlightWeakThird: boolean;
   highlightTop?: number;
   flags: Record<string, string | null>;
+  showTieInfo: boolean;
 }) {
   return (
     <div className="min-w-0 w-[520px] box-border overflow-hidden rounded border border-ink-900 bg-white/80 p-0 text-xs shadow-soft lg:text-sm">
@@ -1782,6 +1902,15 @@ function GroupTable({
                   <div className="flex min-w-0 items-center gap-2 px-1">
                     <TeamFlag team={row.team} flags={flags} />
                     <span className="truncate">{formatDisplayLabel(row.team)}</span>
+                    {showTieInfo && row.randomTiebreak && (
+                      <span
+                        className="inline-flex h-4 w-4 flex-none items-center justify-center rounded-full border border-ink-400 text-[10px] font-semibold text-ink-400"
+                        title={TIEBREAK_TOOLTIP}
+                        aria-label={TIEBREAK_TOOLTIP}
+                      >
+                        i
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="px-1 py-1 text-right font-mono">{row.played}</td>
@@ -2214,7 +2343,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           return score && score.home !== null && score.away !== null;
         });
       });
-      const thirdPlaceEntries = bestThirdPlace(groupTablesLocal);
+      const thirdPlaceEntries = bestThirdPlace(groupTablesLocal).entries;
       const thirdPlaceByGroupLocal: Record<string, string> = {};
       thirdPlaceEntries.forEach((entry) => {
         if (!thirdPlaceByGroupLocal[entry.group]) {
@@ -2605,10 +2734,12 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     return rankings;
   }, [groupTables]);
 
-  const thirdPlaceEntries = React.useMemo(
+  const thirdPlaceResults = React.useMemo(
     () => bestThirdPlace(groupTables),
     [groupTables]
   );
+  const thirdPlaceEntries = thirdPlaceResults.entries;
+  const thirdPlaceRandomTiebreaks = thirdPlaceResults.randomTiebreakTeams;
   const thirdPlaceRankingRows = React.useMemo(() => {
     const rowByTeam = new Map<string, GroupTableRow>();
     groupTables.forEach((entry) => {
@@ -2622,10 +2753,15 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         if (!row) {
           return null;
         }
-        return { ...row, position: index + 1 };
+        return {
+          ...row,
+          position: index + 1,
+          randomTiebreak:
+            row.randomTiebreak || thirdPlaceRandomTiebreaks.has(entry.team),
+        };
       })
       .filter((row): row is GroupTableRow => Boolean(row));
-  }, [groupTables, thirdPlaceEntries]);
+  }, [groupTables, thirdPlaceEntries, thirdPlaceRandomTiebreaks]);
   const bestThirdGroups = thirdPlaceEntries.slice(0, 8);
   const qualifiedThirdGroups = React.useMemo(
     () => new Set(bestThirdGroups.map((entry) => entry.group)),
@@ -3699,6 +3835,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       rows={rows}
                       highlightThird={allGroupMatchesComplete && qualifiedThirdGroups.has(group.id)}
                       highlightWeakThird={!allGroupMatchesComplete}
+                      showTieInfo={groupCompletion[group.id]}
                       flags={data.flags}
                     />
                   </div>
@@ -3720,6 +3857,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     highlightThird={false}
                     highlightWeakThird={false}
                     highlightTop={8}
+                    showTieInfo={allGroupMatchesComplete}
                     flags={data.flags}
                   />
                 </div>
@@ -3973,7 +4111,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
 
       <div className="text-xs text-ink-400">
         Tie-breakers follow the tournament model (points, goal difference, goals
-        for, head-to-head). Exact ties are broken alphabetically for now.
+        for, head-to-head). Exact ties are randomized here; FIFA would use Fair
+        Play Points.
       </div>
     </div>
   );
