@@ -1509,7 +1509,7 @@ function MatchCard({
             onClick={(event) => event.stopPropagation()}
             className="relative z-10 h-full w-full select-text bg-transparent text-center text-base font-semibold leading-none tabular-nums text-slate-900 focus:outline-none appearance-none [-moz-appearance:textfield]"
           />
-          <div className="absolute inset-0 z-20 flex items-center justify-between px-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-between px-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <button
               type="button"
               onClick={(event) => {
@@ -1518,7 +1518,7 @@ function MatchCard({
                 adjustScore(side, -1);
               }}
               disabled={isDisabled}
-              className="h-6 w-6 rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+              className="pointer-events-auto h-6 w-6 rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
               aria-label={`Decrease ${side} score`}
             >
               -
@@ -1531,7 +1531,7 @@ function MatchCard({
                 adjustScore(side, 1);
               }}
               disabled={isDisabled}
-              className="h-6 w-6 rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+              className="pointer-events-auto h-6 w-6 rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
               aria-label={`Increase ${side} score`}
             >
               +
@@ -1544,13 +1544,13 @@ function MatchCard({
     return (
       <div
         className={cn(
-          "grid items-center gap-x-3 py-1.5 transition-colors hover:bg-slate-50 grid-cols-[1fr_44px_120px_44px_1fr]",
+          "grid items-stretch gap-x-3 py-1.5 transition-colors hover:bg-slate-50 grid-cols-[1fr_44px_120px_44px_1fr]",
           showDivider && "border-b border-slate-100"
         )}
       >
         <div
           className={cn(
-            "flex min-w-0 items-center justify-end gap-2",
+            "flex h-full w-full min-w-0 items-center justify-end gap-2",
             isDisabled && "opacity-60"
           )}
           onClick={() => handleTeamSelect("home")}
@@ -1573,16 +1573,24 @@ function MatchCard({
           </span>
         </div>
         {renderScorePill("home", homeInputRef)}
-        <div
+        <button
+          type="button"
+          onClick={handleDrawSelect}
+          disabled={!allowDraw || isDisabled}
           className={cn(
-            "flex flex-col items-center justify-center gap-0.5",
-            isEdited && "opacity-55"
+            "flex h-full w-full flex-col items-center justify-center gap-0.5",
+            allowDraw && !isDisabled && "cursor-pointer"
           )}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleDrawSelect();
+            }
+          }}
         >
           <div
             className={cn(
-              "flex h-1.5 w-[120px] overflow-hidden rounded-full bg-slate-200/70",
-              isEdited && "bg-slate-200/50"
+              "flex h-1.5 w-[120px] overflow-hidden rounded-full bg-slate-200/70"
             )}
           >
             <div
@@ -1600,8 +1608,7 @@ function MatchCard({
           </div>
           <div
             className={cn(
-              "flex w-[120px] justify-between text-[11px] leading-none tabular-nums text-slate-600",
-              isEdited && "text-slate-500"
+              "flex w-[120px] justify-between text-[11px] leading-none tabular-nums text-slate-600"
             )}
           >
             <span
@@ -1637,11 +1644,11 @@ function MatchCard({
               {segments ? segments.away : "--"}
             </span>
           </div>
-        </div>
+        </button>
         {renderScorePill("away", awayInputRef)}
         <div
           className={cn(
-            "flex min-w-0 items-center justify-start gap-2",
+            "flex h-full w-full min-w-0 items-center justify-start gap-2",
             isDisabled && "opacity-60"
           )}
           onClick={() => handleTeamSelect("away")}
