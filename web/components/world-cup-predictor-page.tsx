@@ -1965,6 +1965,10 @@ function KnockoutMatchCard({
   const placeholderHome = !isConcreteTeam(homeTeam);
   const placeholderAway = !isConcreteTeam(awayTeam);
   const isPickableMatch = !placeholderHome && !placeholderAway;
+  const isPendingMatch =
+    (placeholderHome && !placeholderAway) ||
+    (!placeholderHome && placeholderAway);
+  const isLockedMatch = placeholderHome && placeholderAway;
   const winner = isPickableMatch
     ? winnerSelection === "home"
       ? homeTeam
@@ -1996,7 +2000,7 @@ function KnockoutMatchCard({
   ) => {
     if (isPlaceholder) {
       return (
-      <span className="inline-flex h-5 max-w-full items-center truncate rounded-md bg-slate-50 px-2 text-left text-xs text-slate-600 ring-1 ring-slate-200">
+      <span className="inline-flex max-w-full items-center truncate rounded-md bg-slate-50 px-2 py-0.5 text-left text-xs text-slate-500 ring-1 ring-slate-200">
         {formatDisplayLabel(team)}
       </span>
     );
@@ -2072,7 +2076,13 @@ function KnockoutMatchCard({
       className="w-[192px] overflow-visible rounded-xl bg-white ring-1 ring-slate-200 shadow-sm transition-shadow hover:shadow"
     >
       {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
-      <div className={cn("px-3", hasSelection && "opacity-55")}>
+      <div
+        className={cn(
+          "px-3",
+          hasSelection && "opacity-55",
+          (isPendingMatch || isLockedMatch) && "opacity-0"
+        )}
+      >
         <div className="flex items-center gap-1">
           <span className="w-6 text-xs tabular-nums text-slate-600">
             {segments ? segments.home : "--"}
