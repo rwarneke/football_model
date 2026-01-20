@@ -87,6 +87,7 @@ function isPlaceholderLabel(name: string) {
     name.includes("Winner Group") ||
     name.includes("Runner-up Group") ||
     name.includes("3rd Group") ||
+    /^TBD$/i.test(name) ||
     /^UEFA Path /i.test(name) ||
     /^IC Path /i.test(name) ||
     /^([123](st|nd|rd)) Group /i.test(name) ||
@@ -238,6 +239,20 @@ function normalizeProbabilitySegments(values: {
     rounded[targetIndex] = Math.max(0, rounded[targetIndex] + remainder);
   }
   return { home: rounded[0], draw: rounded[1], away: rounded[2] };
+}
+
+function normalizeTwoSegments(values: { home: number | null; away: number | null }) {
+  const { home, away } = values;
+  if (home === null || away === null) {
+    return null;
+  }
+  const roundedHome = Math.round(home);
+  const roundedAway = Math.round(away);
+  const remainder = 100 - (roundedHome + roundedAway);
+  return {
+    home: Math.max(0, roundedHome + remainder),
+    away: roundedAway,
+  };
 }
 
 function normalizeCountry(value: string | null | undefined) {
@@ -1382,6 +1397,7 @@ function MatchCard({
         : drawProb ?? "Draw"
       : null;
   const isDisabled = disabled || placeholderHome || placeholderAway;
+  const isPickableMatch = !isDisabled;
   const setScores = (home: number | null, away: number | null) => {
     if (onScoreChangePair) {
       onScoreChangePair(id, home, away);
@@ -1398,7 +1414,7 @@ function MatchCard({
   };
 
   if (orientation === "horizontal" && showScore) {
-    const isEdited = score.home !== null || score.away !== null;
+    const isScoreSet = score.home !== null && score.away !== null;
     const segments = normalizeProbabilitySegments({
       home: parseProbabilityLabel(homeProb),
       draw: allowDraw ? parseProbabilityLabel(drawProb ?? undefined) : null,
@@ -1423,7 +1439,7 @@ function MatchCard({
     };
 
     const adjustScore = (side: "home" | "away", delta: number) => {
-      if (isDisabled) {
+      if (!isPickableMatch) {
         return;
       }
       const current = side === "home" ? score.home : score.away;
@@ -1447,29 +1463,25 @@ function MatchCard({
     };
 
     const handleTeamSelect = (side: "home" | "away") => {
-      if (isDisabled) {
+      if (!isPickableMatch) {
+        return;
+      }
+      if (hasScore && winner === (side === "home" ? homeTeam : awayTeam)) {
+        setScores(null, null);
         return;
       }
       if (side === "home") {
-        if (score.home === 2 && score.away === 1) {
-          setScores(null, null);
-          return;
-        }
         setScores(2, 1);
-        return;
-      }
-      if (score.home === 1 && score.away === 2) {
-        setScores(null, null);
         return;
       }
       setScores(1, 2);
     };
 
     const handleDrawSelect = () => {
-      if (isDisabled || !allowDraw) {
+      if (!isPickableMatch || !allowDraw) {
         return;
       }
-      if (score.home === 1 && score.away === 1) {
+      if (hasScore && isDraw) {
         setScores(null, null);
         return;
       }
@@ -1481,15 +1493,26 @@ function MatchCard({
       inputRef: React.RefObject<HTMLInputElement>
     ) => {
       const value = side === "home" ? score.home : score.away;
+      const isUnset = !isScoreSet;
+      const isWin =
+        isScoreSet &&
+        !isDraw &&
+        ((side === "home" && score.home > score.away) ||
+          (side === "away" && score.away > score.home));
+      const isLoss = isScoreSet && !isDraw && !isWin;
       return (
         <div
           className={cn(
-            "group relative flex h-9 w-11 select-none items-center justify-center rounded-full bg-white text-slate-900 shadow-sm ring-1 ring-slate-300 transition hover:shadow hover:ring-slate-400 focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-1 cursor-pointer",
-            isEdited && "bg-amber-50 ring-amber-300",
-            isDisabled && "cursor-not-allowed opacity-60"
+            "group relative flex h-9 w-11 select-none items-center justify-center rounded-full bg-white shadow-sm transition hover:shadow focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-1 cursor-pointer",
+            isUnset && "ring-1 ring-slate-200",
+            isWin && "ring-2 ring-emerald-300",
+            isDraw && isScoreSet && "ring-2 ring-slate-300",
+            isLoss && "ring-1 ring-slate-200",
+            !isPickableMatch && "cursor-default opacity-60",
+            !isPickableMatch && "hover:shadow-none"
           )}
           onClick={() => {
-            if (!isDisabled) {
+            if (isPickableMatch) {
               inputRef.current?.focus();
             }
           }}
@@ -1501,6 +1524,7 @@ function MatchCard({
             min={0}
             max={31}
             value={value ?? ""}
+            placeholder={isUnset ? "-" : undefined}
             onChange={(event) =>
               updateSideScore(side, parseScore(event.target.value))
             }
@@ -1512,36 +1536,41 @@ function MatchCard({
               event.preventDefault();
               adjustScore(side, event.deltaY > 0 ? -1 : 1);
             }}
-            disabled={isDisabled}
+            disabled={!isPickableMatch}
             onClick={(event) => event.stopPropagation()}
-            className="relative z-10 h-full w-full select-text bg-transparent text-center text-base font-semibold leading-none tabular-nums text-slate-900 focus:outline-none appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className={cn(
+              "relative z-10 h-full w-full select-text bg-transparent text-center text-base font-semibold leading-none tabular-nums focus:outline-none appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+              isUnset ? "text-slate-400" : "text-slate-900"
+            )}
           />
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              adjustScore(side, -1);
-            }}
-            disabled={isDisabled}
-            className="pointer-events-none absolute left-[-14px] top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-transparent text-[11px] font-semibold text-slate-400 opacity-0 ring-1 ring-transparent transition-opacity duration-150 hover:bg-slate-100 hover:text-slate-700 hover:ring-slate-300 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
-            aria-label={`Decrease ${side} score`}
-          >
-            -
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              adjustScore(side, 1);
-            }}
-            disabled={isDisabled}
-            className="pointer-events-none absolute right-[-14px] top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-transparent text-[11px] font-semibold text-slate-400 opacity-0 ring-1 ring-transparent transition-opacity duration-150 hover:bg-slate-100 hover:text-slate-700 hover:ring-slate-300 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
-            aria-label={`Increase ${side} score`}
-          >
-            +
-          </button>
+          {isPickableMatch && (
+            <>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  adjustScore(side, -1);
+                }}
+                className="pointer-events-none absolute left-[-14px] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-slate-50/40 text-[11px] font-semibold text-slate-500 opacity-0 ring-1 ring-transparent transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:cursor-pointer group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-focus-within:cursor-pointer group-hover:ring-slate-200 group-focus-within:ring-slate-200 hover:bg-slate-100/70 hover:text-slate-600 hover:ring-slate-300"
+                aria-label={`Decrease ${side} score`}
+              >
+                -
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  adjustScore(side, 1);
+                }}
+                className="pointer-events-none absolute right-[-14px] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-slate-50/40 text-[11px] font-semibold text-slate-500 opacity-0 ring-1 ring-transparent transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:cursor-pointer group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-focus-within:cursor-pointer group-hover:ring-slate-200 group-focus-within:ring-slate-200 hover:bg-slate-100/70 hover:text-slate-600 hover:ring-slate-300"
+                aria-label={`Increase ${side} score`}
+              >
+                +
+              </button>
+            </>
+          )}
         </div>
       );
     };
@@ -1549,24 +1578,29 @@ function MatchCard({
     return (
       <div
         className={cn(
-          "grid items-stretch gap-x-3 py-1.5 transition-colors hover:bg-slate-50 grid-cols-[1fr_44px_120px_44px_1fr]",
+          "grid items-stretch gap-x-3 py-1.5 transition-colors grid-cols-[1fr_44px_120px_44px_1fr]",
+          isPickableMatch && "hover:bg-slate-50",
           showDivider && "border-b border-slate-100"
         )}
       >
         <div
           className={cn(
             "flex h-full w-full min-w-0 items-center justify-end gap-2",
-            isDisabled && "opacity-60"
+            !isPickableMatch && "opacity-60"
           )}
-          onClick={() => handleTeamSelect("home")}
-          role="button"
-          tabIndex={isDisabled ? -1 : 0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleTeamSelect("home");
-            }
-          }}
+          onClick={isPickableMatch ? () => handleTeamSelect("home") : undefined}
+          role={isPickableMatch ? "button" : undefined}
+          tabIndex={isPickableMatch ? 0 : -1}
+          onKeyDown={
+            isPickableMatch
+              ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleTeamSelect("home");
+                  }
+                }
+              : undefined
+          }
         >
           <TeamFlag
             team={homeTeam}
@@ -1581,10 +1615,11 @@ function MatchCard({
         <button
           type="button"
           onClick={handleDrawSelect}
-          disabled={!allowDraw || isDisabled}
+          disabled={!allowDraw || !isPickableMatch}
           className={cn(
             "flex h-full w-full flex-col items-center justify-center gap-0.5",
-            allowDraw && !isDisabled && "cursor-pointer"
+            allowDraw && isPickableMatch && "cursor-pointer",
+            !isPickableMatch && "cursor-default opacity-50"
           )}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -1625,20 +1660,15 @@ function MatchCard({
             >
               {segments ? segments.home : "--"}
             </span>
-            <button
-              type="button"
-              onClick={handleDrawSelect}
-              disabled={isDisabled || !allowDraw}
+            <span
               className={cn(
-                "bg-transparent p-0 leading-none focus:outline-none disabled:cursor-not-allowed",
                 maxValue !== null && segments?.draw === maxValue
                   ? "text-slate-800 font-medium"
                   : undefined
               )}
-              aria-label={drawLabel ? `Set draw (${drawLabel})` : "Set draw"}
             >
               {segments ? segments.draw : "--"}
-            </button>
+            </span>
             <span
               className={cn(
                 maxValue !== null && segments?.away === maxValue
@@ -1654,17 +1684,21 @@ function MatchCard({
         <div
           className={cn(
             "flex h-full w-full min-w-0 items-center justify-start gap-2",
-            isDisabled && "opacity-60"
+            !isPickableMatch && "opacity-60"
           )}
-          onClick={() => handleTeamSelect("away")}
-          role="button"
-          tabIndex={isDisabled ? -1 : 0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleTeamSelect("away");
-            }
-          }}
+          onClick={isPickableMatch ? () => handleTeamSelect("away") : undefined}
+          role={isPickableMatch ? "button" : undefined}
+          tabIndex={isPickableMatch ? 0 : -1}
+          onKeyDown={
+            isPickableMatch
+              ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleTeamSelect("away");
+                  }
+                }
+              : undefined
+          }
         >
           <TeamFlag
             team={awayTeam}
@@ -1890,6 +1924,175 @@ function MatchCard({
   );
 }
 
+function KnockoutMatchCard({
+  homeTeam,
+  awayTeam,
+  winnerSelection,
+  onWinnerSelect,
+  flags,
+  homeWinProb,
+  awayWinProb,
+  drawProb,
+  compact,
+  containerRef,
+  homeRowRef,
+  awayRowRef,
+}: {
+  homeTeam: string;
+  awayTeam: string;
+  winnerSelection: WinnerSelection;
+  onWinnerSelect: (selection: WinnerSelection) => void;
+  flags: Record<string, string | null>;
+  homeWinProb?: string;
+  awayWinProb?: string;
+  drawProb?: string | null;
+  compact?: boolean;
+  containerRef?: React.Ref<HTMLDivElement>;
+  homeRowRef?: React.Ref<HTMLButtonElement>;
+  awayRowRef?: React.Ref<HTMLButtonElement>;
+}) {
+  const placeholderHome = isPlaceholderLabel(homeTeam);
+  const placeholderAway = isPlaceholderLabel(awayTeam);
+  const isPickableMatch = !placeholderHome && !placeholderAway;
+  const winner =
+    winnerSelection === "home"
+      ? homeTeam
+      : winnerSelection === "away"
+        ? awayTeam
+        : null;
+  const hasSelection = winnerSelection !== null;
+  const showDraw = Boolean(drawProb);
+  const homeValue = parseProbabilityLabel(homeWinProb);
+  const awayValue = parseProbabilityLabel(awayWinProb);
+  const drawValue = showDraw ? parseProbabilityLabel(drawProb ?? undefined) : null;
+  const segments = showDraw
+    ? normalizeProbabilitySegments({
+        home: homeValue,
+        draw: drawValue,
+        away: awayValue,
+      })
+    : normalizeTwoSegments({ home: homeValue, away: awayValue });
+  const paddedRow = compact ? "py-1.5" : "py-2";
+  const scoreSlot = <div className="flex w-0 flex-none" />;
+
+  const renderTeamLabel = (
+    team: string,
+    isPlaceholder: boolean,
+    isWinner: boolean,
+    isLoser: boolean,
+    isResolved: boolean
+  ) => {
+    if (isPlaceholder) {
+      return (
+      <span className="inline-block max-w-full truncate rounded-md bg-slate-50 px-2 py-0.5 text-left text-xs text-slate-600 ring-1 ring-slate-200">
+        {formatDisplayLabel(team)}
+      </span>
+    );
+  }
+  return (
+      <span
+        className={cn(
+          "block min-w-0 truncate text-left text-sm",
+          !isResolved && "font-medium text-slate-900",
+          isResolved && isWinner && "font-semibold text-slate-900",
+          isResolved && isLoser && "font-medium text-slate-700"
+        )}
+      >
+        {formatDisplayLabel(team)}
+      </span>
+    );
+  };
+
+  const renderRow = (
+    team: string,
+    side: "home" | "away",
+    isPlaceholder: boolean,
+    rowRef?: React.Ref<HTMLButtonElement>
+  ) => {
+    const isWinner = winner === team;
+    const isResolved = winner !== null;
+    const isLoser = isResolved && !isWinner;
+    return (
+      <button
+        ref={rowRef}
+        type="button"
+        onClick={() => {
+          if (!isPickableMatch) {
+            return;
+          }
+          onWinnerSelect(winnerSelection === side ? null : side);
+        }}
+        disabled={!isPickableMatch}
+        className={cn(
+          "flex w-full items-center gap-2 px-3",
+          paddedRow,
+          isResolved && isWinner && "bg-emerald-50/40",
+          isPickableMatch
+            ? "cursor-pointer transition-colors hover:bg-slate-50/30"
+            : "cursor-default opacity-70"
+        )}
+      >
+        <TeamFlag
+          team={team}
+          flags={flags}
+          className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+        />
+        <div className="relative flex min-w-0 flex-1 items-center">
+          <span
+            className={cn(
+              "absolute left-0 top-0 h-full w-1 rounded-full",
+              isResolved && isWinner ? "bg-emerald-300/80" : "bg-transparent"
+            )}
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1 pl-2">
+            {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
+          </div>
+        </div>
+        {scoreSlot}
+      </button>
+    );
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-[192px] overflow-visible rounded-xl bg-white ring-1 ring-slate-200 shadow-sm transition-shadow hover:shadow"
+    >
+      {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
+      <div className={cn("px-3", hasSelection && "opacity-55")}>
+        <div className="flex items-center gap-1">
+          <span className="w-6 text-xs tabular-nums text-slate-600">
+            {segments ? segments.home : "--"}
+          </span>
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200/70">
+            <div className="flex h-full">
+              <div
+                className="h-full bg-emerald-300/70"
+                style={{ width: `${segments?.home ?? 0}%` }}
+              />
+              {showDraw && (
+                <div
+                  className="h-full bg-slate-300/70"
+                  style={{ width: `${segments?.draw ?? 0}%` }}
+                />
+              )}
+              <div
+                className="h-full bg-rose-300/70"
+                style={{ width: `${segments?.away ?? 0}%` }}
+              />
+            </div>
+          </div>
+          <span className="w-6 text-right text-xs tabular-nums text-slate-600">
+            {segments ? segments.away : "--"}
+          </span>
+        </div>
+      </div>
+      {renderRow(awayTeam, "away", placeholderAway, awayRowRef)}
+    </div>
+  );
+}
+
 function QualifierPathBracket({
   path,
   matches,
@@ -1982,8 +2185,7 @@ function QualifierPathBracket({
               startY = dividerY - rect.top;
             }
             const baseCenter = startY - semisOffset;
-            const desiredOffset =
-              endY - baseCenter + connectorStrokeWidth / 4;
+            const desiredOffset = endY - baseCenter;
             setSemisOffset((prev) =>
               Math.abs(prev - desiredOffset) < 0.5 ? prev : desiredOffset
             );
@@ -2031,11 +2233,11 @@ function QualifierPathBracket({
   return (
     <div
       ref={containerRef}
-      className="relative flex flex-col gap-4 overflow-hidden rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4 shadow-soft"
+      className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ebony">{path}</h3>
-        <span className="text-xs text-ink-400">{matches[0]?.stage}</span>
+        <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
+        <span className="text-xs text-slate-500">{matches[0]?.stage}</span>
       </div>
       <div ref={bracketRef} className="relative w-fit max-w-full">
         <svg
@@ -2047,8 +2249,10 @@ function QualifierPathBracket({
               key={`${path}-${index}`}
               d={pathDef}
               fill="none"
-              stroke="var(--color-primary-dark)"
-              strokeWidth={2}
+              stroke="rgb(203 213 225)"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
           ))}
         </svg>
@@ -2065,89 +2269,74 @@ function QualifierPathBracket({
                 neutralOverride: match.neutral,
               });
               return (
-                <div
-                  key={match.id}
-                  ref={(el) => {
+                <KnockoutMatchCard
+                  homeTeam={match.homeResolved ?? match.homeTeam}
+                  awayTeam={match.awayResolved ?? match.awayTeam}
+                  winnerSelection={winnerSelections[String(match.id)] ?? null}
+                  onWinnerSelect={(selection) => onWinnerSelect(match.id, selection)}
+                  flags={flags}
+                  homeWinProb={probabilities.homeWinProb}
+                  awayWinProb={probabilities.awayWinProb}
+                  drawProb={probabilities.drawProb}
+                  compact
+                  containerRef={(el) => {
                     if (el) {
                       matchRefs.current.set(match.id, el);
                     } else {
                       matchRefs.current.delete(match.id);
                     }
                   }}
-                >
-                  <MatchCard
-                    id={match.id}
-                    homeTeam={match.homeResolved ?? match.homeTeam}
-                    awayTeam={match.awayResolved ?? match.awayTeam}
-                    showScore={false}
-                    winnerSelection={winnerSelections[String(match.id)] ?? null}
-                    onWinnerSelect={(selection) => onWinnerSelect(match.id, selection)}
-                    allowDraw={false}
-                    orientation="vertical"
-                    stackMode="centered"
-                    homeWinProb={probabilities.homeWinProb}
-                    awayWinProb={probabilities.awayWinProb}
-                    drawProb={probabilities.drawProb}
-                    homeBoxRef={(el) => {
-                      if (el) {
-                        matchHomeRefs.current.set(match.id, el);
-                      } else {
-                        matchHomeRefs.current.delete(match.id);
-                      }
-                    }}
-                    awayBoxRef={(el) => {
-                      if (el) {
-                        matchAwayRefs.current.set(match.id, el);
-                      } else {
-                        matchAwayRefs.current.delete(match.id);
-                      }
-                    }}
-                    flags={flags}
-                  />
-                </div>
+                  homeRowRef={(el) => {
+                    if (el) {
+                      matchHomeRefs.current.set(match.id, el);
+                    } else {
+                      matchHomeRefs.current.delete(match.id);
+                    }
+                  }}
+                  awayRowRef={(el) => {
+                    if (el) {
+                      matchAwayRefs.current.set(match.id, el);
+                    } else {
+                      matchAwayRefs.current.delete(match.id);
+                    }
+                  }}
+                />
               );
             })}
           </div>
           {final && (
-            <div
-              ref={(el) => {
+            <KnockoutMatchCard
+              homeTeam={final.homeResolved ?? final.homeTeam}
+              awayTeam={final.awayResolved ?? final.awayTeam}
+              winnerSelection={winnerSelections[String(final.id)] ?? null}
+              onWinnerSelect={(selection) => onWinnerSelect(final.id, selection)}
+              flags={flags}
+              homeWinProb={finalProbabilities?.homeWinProb}
+              awayWinProb={finalProbabilities?.awayWinProb}
+              drawProb={finalProbabilities?.drawProb ?? null}
+              compact={false}
+              containerRef={(el) => {
                 if (el) {
                   matchRefs.current.set(final.id, el);
                 } else {
                   matchRefs.current.delete(final.id);
                 }
               }}
-            >
-              <MatchCard
-                id={final.id}
-                homeTeam={final.homeResolved ?? final.homeTeam}
-                awayTeam={final.awayResolved ?? final.awayTeam}
-                showScore={false}
-                winnerSelection={winnerSelections[String(final.id)] ?? null}
-                onWinnerSelect={(selection) => onWinnerSelect(final.id, selection)}
-                allowDraw={false}
-                orientation="vertical"
-                stackMode="centered"
-                homeWinProb={finalProbabilities?.homeWinProb}
-                awayWinProb={finalProbabilities?.awayWinProb}
-                drawProb={finalProbabilities?.drawProb ?? null}
-                homeBoxRef={(el) => {
-                  if (el) {
-                    matchHomeRefs.current.set(final.id, el);
-                  } else {
-                    matchHomeRefs.current.delete(final.id);
-                  }
-                }}
-                awayBoxRef={(el) => {
-                  if (el) {
-                    matchAwayRefs.current.set(final.id, el);
-                  } else {
-                    matchAwayRefs.current.delete(final.id);
-                  }
-                }}
-                flags={flags}
-              />
-            </div>
+              homeRowRef={(el) => {
+                if (el) {
+                  matchHomeRefs.current.set(final.id, el);
+                } else {
+                  matchHomeRefs.current.delete(final.id);
+                }
+              }}
+              awayRowRef={(el) => {
+                if (el) {
+                  matchAwayRefs.current.set(final.id, el);
+                } else {
+                  matchAwayRefs.current.delete(final.id);
+                }
+              }}
+            />
           )}
         </div>
       </div>
@@ -2173,84 +2362,134 @@ function GroupTable({
   showTieInfo: boolean;
 }) {
   return (
-    <div className="min-w-0 w-[520px] box-border overflow-hidden rounded border border-ink-900 bg-white/80 p-0 text-xs shadow-soft lg:text-sm">
-      <table className="w-full table-fixed border-collapse text-xs text-ink-200 lg:text-sm">
-        <colgroup>
-          <col style={{ width: "32px" }} />
-          <col style={{ width: "270px" }} />
-          <col style={{ width: "32px" }} />
-          <col style={{ width: "24px" }} />
-          <col style={{ width: "24px" }} />
-          <col style={{ width: "24px" }} />
-          <col style={{ width: "28px" }} />
-          <col style={{ width: "28px" }} />
-          <col style={{ width: "28px" }} />
-          <col style={{ width: "30px" }} />
-        </colgroup>
-        <thead>
-          <tr className="h-9 border-b-2 border-ink-900 text-xs uppercase tracking-wide text-ink-400">
-            <th className="px-1 py-1 pl-3 text-left w-[32px] normal-case">Pos</th>
-            <th className="box-border w-[270px] px-0 py-1 text-left normal-case">
-              <div className="pl-10 pr-1">Team</div>
-            </th>
-            <th className="px-1 py-1 text-right w-[32px] normal-case">Pld</th>
-            <th className="px-1 py-1 text-right w-[24px]">W</th>
-            <th className="px-1 py-1 text-right w-[24px]">D</th>
-            <th className="px-1 py-1 text-right w-[24px]">L</th>
-            <th className="px-1 py-1 text-right w-[28px]">GF</th>
-            <th className="px-1 py-1 text-right w-[28px]">GA</th>
-            <th className="px-1 py-1 text-right w-[28px]">GD</th>
-            <th className="px-1 py-1 pr-3 text-right w-[30px] normal-case">Pts</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => {
-            const isTopTwo = row.position <= highlightTop;
-            const isThird = row.position === 3;
-            const highlight = isTopTwo || (highlightThird && isThird);
-            const weakHighlight = !highlightThird && highlightWeakThird && isThird;
-            const isLastRow = index === rows.length - 1;
-            return (
-              <tr
-                key={row.team}
-                className={cn(
-                  "h-9 border-b border-ink-900",
-                  isLastRow && "border-b-0",
-                  highlight && "bg-[#f2e2e2] text-ebony",
-                  weakHighlight && "bg-[#f8f1f0] text-ebony"
-                )}
-              >
-                <td className="px-1 py-1 pl-3 text-left font-mono">
-                  {row.position}
-                </td>
-                <td className="box-border w-[270px] px-0 py-1 min-w-0">
-                  <div className="flex min-w-0 items-center gap-2 px-1">
-                    <TeamFlag team={row.team} flags={flags} />
-                    <span className="truncate">{formatDisplayLabel(row.team)}</span>
-                    {showTieInfo && row.randomTiebreak && (
-                      <span
-                        className="inline-flex h-4 w-4 flex-none items-center justify-center rounded-full border border-ink-400 text-[10px] font-semibold text-ink-400"
-                        title={TIEBREAK_TOOLTIP}
-                        aria-label={TIEBREAK_TOOLTIP}
-                      >
-                        i
-                      </span>
+    <div className="min-w-0 w-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto lg:overflow-visible">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col style={{ width: "40px" }} />
+            <col />
+            <col style={{ width: "36px" }} />
+            <col style={{ width: "32px" }} />
+            <col style={{ width: "32px" }} />
+            <col style={{ width: "32px" }} />
+            <col style={{ width: "36px" }} />
+            <col style={{ width: "36px" }} />
+            <col style={{ width: "36px" }} />
+            <col style={{ width: "44px" }} />
+          </colgroup>
+          <thead className="bg-slate-50">
+            <tr className="border-b border-slate-200">
+              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                Pos
+              </th>
+              <th className="px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                Team
+              </th>
+              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                Pld
+              </th>
+              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                W
+              </th>
+              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                D
+              </th>
+              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                L
+              </th>
+              <th className="px-1 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                GF
+              </th>
+              <th className="px-1 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                GA
+              </th>
+              <th className="px-1 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                GD
+              </th>
+              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                Pts
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row) => {
+              const isTopTwo = row.position <= highlightTop;
+              const isThird = row.position === 3;
+              const weakHighlight = !highlightThird && highlightWeakThird && isThird;
+              const isCutLine = row.position === highlightTop;
+              return (
+                <tr
+                  key={row.team}
+                  className={cn(
+                    "transition-colors hover:bg-slate-50/70",
+                    isCutLine && "border-b border-slate-200"
+                  )}
+                >
+                  <td
+                    className={cn(
+                      "px-2 py-1.5 text-center text-sm tabular-nums text-slate-600",
+                      isTopTwo
+                        ? "border-l-4 border-emerald-400/50 pl-2"
+                        : highlightThird && isThird
+                          ? "border-l-4 border-slate-300 pl-2"
+                          : weakHighlight
+                            ? "border-l-4 border-slate-200 pl-2"
+                            : "border-l-4 border-transparent"
                     )}
-                  </div>
-                </td>
-                <td className="px-1 py-1 text-right font-mono">{row.played}</td>
-                <td className="px-1 py-1 text-right font-mono">{row.wins}</td>
-                <td className="px-1 py-1 text-right font-mono">{row.draws}</td>
-                <td className="px-1 py-1 text-right font-mono">{row.losses}</td>
-                <td className="px-1 py-1 text-right font-mono">{row.gf}</td>
-                <td className="px-1 py-1 text-right font-mono">{row.ga}</td>
-                <td className="px-1 py-1 text-right font-mono">{row.gd}</td>
-                <td className="px-1 py-1 pr-3 text-right font-mono">{row.points}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  >
+                    {row.position}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <TeamFlag
+                        team={row.team}
+                        flags={flags}
+                        className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                      />
+                      <span className="min-w-0 truncate text-sm font-medium text-slate-900">
+                        {formatDisplayLabel(row.team)}
+                      </span>
+                      {showTieInfo && row.randomTiebreak && (
+                        <span
+                          className="inline-flex h-4 w-4 flex-none items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold text-slate-500"
+                          title={TIEBREAK_TOOLTIP}
+                          aria-label={TIEBREAK_TOOLTIP}
+                        >
+                          i
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-2 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                    {row.played}
+                  </td>
+                  <td className="px-2 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                    {row.wins}
+                  </td>
+                  <td className="px-2 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                    {row.draws}
+                  </td>
+                  <td className="px-2 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                    {row.losses}
+                  </td>
+                  <td className="px-1 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                    {row.gf}
+                  </td>
+                  <td className="px-1 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                    {row.ga}
+                  </td>
+                  <td className="px-1 py-1.5 text-center text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
+                    {row.gd > 0 ? `+${row.gd}` : row.gd}
+                  </td>
+                  <td className="px-2 py-1.5 text-center text-sm font-semibold tabular-nums text-slate-900 whitespace-nowrap">
+                    {row.points}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -4126,8 +4365,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                   <span>Group {group.id}</span>
                   <span className="text-xs text-ink-400">Group stage</span>
                 </div>
-                <div className="flex flex-wrap items-start gap-6">
-                  <div className="flex min-w-[520px] flex-1 flex-col gap-3">
+                <div className="flex flex-wrap justify-center gap-6 lg:flex-nowrap lg:items-start lg:justify-between">
+                  <div className="flex w-full max-w-[520px] flex-col gap-3 lg:max-w-none lg:flex-1">
                     {matches.map((match, index) => {
                       const probabilities = getMatchProbabilityLabels({
                         homeTeam: match.homeTeam,
@@ -4155,7 +4394,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       );
                     })}
                   </div>
-                  <div className="w-fit min-w-[380px] flex-none">
+                  <div className="flex w-full max-w-[520px] lg:max-w-none lg:flex-1">
                     <GroupTable
                       group={group}
                       rows={rows}
@@ -4175,8 +4414,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 <span>Ranking of 3rd place teams</span>
                 <span className="text-xs text-ink-400">Group stage</span>
               </div>
-              <div className="flex flex-wrap items-start gap-6">
-                <div className="w-fit min-w-[380px] flex-none">
+              <div className="flex flex-wrap justify-center gap-6 lg:flex-nowrap lg:items-start lg:justify-between">
+                <div className="flex w-full max-w-[520px] lg:max-w-none lg:flex-1">
                   <GroupTable
                     group={{ id: "Third place", teams: [] }}
                     rows={thirdPlaceRankingRows}
@@ -4205,7 +4444,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div className="overflow-x-auto overflow-y-visible pb-2">
           <div
             ref={knockoutContainerRef}
-            className="relative min-w-[900px]"
+            className="relative min-w-[900px] px-2"
           >
             <svg
               className="absolute inset-0 z-0 h-full w-full pointer-events-none"
@@ -4216,8 +4455,10 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                   key={`${path}-${index}`}
                   d={path}
                   fill="none"
-                  stroke="var(--color-primary-dark)"
-                  strokeWidth={2}
+                  stroke="rgb(203 213 225)"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               ))}
             </svg>
@@ -4253,7 +4494,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     className="relative min-w-[200px]"
                     style={columnHeight ? { height: columnHeight } : undefined}
                   >
-                    <div className="flex justify-center pb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">
+                    <div className="flex justify-center pb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
                       <span className="w-[200px] text-center">
                         {stage === "Final" ? "Final / Third place" : stage}
                       </span>
@@ -4320,25 +4561,21 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             onClick={handleRoundOf32Click}
                           >
                             {stage === "Final" && (
-                              <div
-                                className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-ink-400"
-                                style={{ top: -labelGap }}
-                              >
-                                Final
-                              </div>
-                            )}
-                            <MatchCard
-                              id={match.id}
+                            <div
+                              className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-slate-600"
+                              style={{ top: -labelGap }}
+                            >
+                              Final
+                            </div>
+                          )}
+                            <KnockoutMatchCard
                               homeTeam={match.homeResolved ?? match.homeLabel}
                               awayTeam={match.awayResolved ?? match.awayLabel}
-                              showScore={false}
                               winnerSelection={knockoutWinners[String(match.id)] ?? null}
                               onWinnerSelect={(selection) =>
                                 updateKnockoutWinner(match.id, selection)
                               }
-                              allowDraw={false}
-                              orientation="vertical"
-                              stackMode="centered"
+                              compact={isRoundOf32}
                               flags={data.flags}
                               homeWinProb={probabilities.homeWinProb}
                               awayWinProb={probabilities.awayWinProb}
@@ -4352,7 +4589,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                         thirdPlaceMatchTop !== null && (
                           <>
                             <div
-                              className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-ink-400"
+                              className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-slate-600"
                               style={{ top: thirdPlaceMatchTop - labelGap }}
                             >
                               Third place
@@ -4379,18 +4616,14 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                       }
                                     }}
                                   >
-                                    <MatchCard
-                                      id={match.id}
+                                    <KnockoutMatchCard
                                       homeTeam={match.homeResolved ?? match.homeLabel}
                                       awayTeam={match.awayResolved ?? match.awayLabel}
-                                      showScore={false}
                                       winnerSelection={knockoutWinners[String(match.id)] ?? null}
                                       onWinnerSelect={(selection) =>
                                         updateKnockoutWinner(match.id, selection)
                                       }
-                                      allowDraw={false}
-                                      orientation="vertical"
-                                      stackMode="centered"
+                                      compact={false}
                                       flags={data.flags}
                                       homeWinProb={probabilities.homeWinProb}
                                       awayWinProb={probabilities.awayWinProb}
