@@ -101,6 +101,13 @@ function isPlaceholderLabel(name: string) {
   );
 }
 
+function isConcreteTeam(name: string | null | undefined) {
+  if (!name) {
+    return false;
+  }
+  return !isPlaceholderLabel(name);
+}
+
 function formatDisplayLabel(label: string) {
   if (!label) {
     return label;
@@ -560,14 +567,18 @@ function resolveQualifierState(
           ? winnersByPathRound.get(`${match.path}:${match.awaySource}`) ??
             `Winner ${formatQualifierSource(match.awaySource)}`
           : "");
-      const winner = resolveWinner(
-        match.id,
-        homeResolved,
-        awayResolved,
-        {},
-        false,
-        qualifierWinners
-      );
+      const isPickableMatch =
+        isConcreteTeam(homeResolved) && isConcreteTeam(awayResolved);
+      const winner = isPickableMatch
+        ? resolveWinner(
+            match.id,
+            homeResolved,
+            awayResolved,
+            {},
+            false,
+            qualifierWinners
+          )
+        : undefined;
       if (winner) {
         const key = `${match.path}:${match.round}`;
         if (winnersByPathRound.get(key) !== winner) {
@@ -1951,16 +1962,17 @@ function KnockoutMatchCard({
   homeRowRef?: React.Ref<HTMLButtonElement>;
   awayRowRef?: React.Ref<HTMLButtonElement>;
 }) {
-  const placeholderHome = isPlaceholderLabel(homeTeam);
-  const placeholderAway = isPlaceholderLabel(awayTeam);
+  const placeholderHome = !isConcreteTeam(homeTeam);
+  const placeholderAway = !isConcreteTeam(awayTeam);
   const isPickableMatch = !placeholderHome && !placeholderAway;
-  const winner =
-    winnerSelection === "home"
+  const winner = isPickableMatch
+    ? winnerSelection === "home"
       ? homeTeam
       : winnerSelection === "away"
         ? awayTeam
-        : null;
-  const hasSelection = winnerSelection !== null;
+        : null
+    : null;
+  const hasSelection = isPickableMatch && winnerSelection !== null;
   const showDraw = Boolean(drawProb);
   const homeValue = parseProbabilityLabel(homeWinProb);
   const awayValue = parseProbabilityLabel(awayWinProb);
@@ -1984,7 +1996,7 @@ function KnockoutMatchCard({
   ) => {
     if (isPlaceholder) {
       return (
-      <span className="inline-block max-w-full truncate rounded-md bg-slate-50 px-2 py-0.5 text-left text-xs text-slate-600 ring-1 ring-slate-200">
+      <span className="inline-flex h-5 max-w-full items-center truncate rounded-md bg-slate-50 px-2 text-left text-xs text-slate-600 ring-1 ring-slate-200">
         {formatDisplayLabel(team)}
       </span>
     );
@@ -2045,7 +2057,7 @@ function KnockoutMatchCard({
             )}
             aria-hidden="true"
           />
-          <div className="min-w-0 flex-1 pl-2">
+          <div className="flex min-w-0 flex-1 items-center pl-2">
             {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
           </div>
         </div>
@@ -2876,6 +2888,42 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
 
   const slotWinners = qualifierState.slotWinners;
 
+  const unpickableQualifierIds = React.useMemo(() => {
+    return qualifierState.matches
+      .filter(
+        (match) =>
+          !isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)
+      )
+      .map((match) => String(match.id));
+  }, [qualifierState.matches]);
+
+  React.useEffect(() => {
+    if (unpickableQualifierIds.length === 0) {
+      return;
+    }
+    setQualifierWinners((prev) => {
+      let next = { ...prev };
+      let changed = false;
+      unpickableQualifierIds.forEach((matchId) => {
+        if (next[matchId]) {
+          next = clearDependentSelections(next, matchId, qualifierDependents);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+    setAutoQualifierWinners((prev) => {
+      if (!Object.keys(prev).length) {
+        return prev;
+      }
+      const next = { ...prev };
+      unpickableQualifierIds.forEach((matchId) => {
+        delete next[matchId];
+      });
+      return next;
+    });
+  }, [qualifierDependents, unpickableQualifierIds]);
+
   const computeKnockoutContext = React.useCallback(
     (
       scores: Record<string, MatchScore>,
@@ -3395,14 +3443,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         qualifiedThirdGroups,
         matchStageById,
       });
-      const winner = resolveWinner(
-        match.id,
-        homeResolved,
-        awayResolved,
-        {},
-        false,
-        knockoutWinners
-      );
+      const isPickableMatch =
+        isConcreteTeam(homeResolved) && isConcreteTeam(awayResolved);
+      const winner = isPickableMatch
+        ? resolveWinner(
+            match.id,
+            homeResolved,
+            awayResolved,
+            {},
+            false,
+            knockoutWinners
+          )
+        : undefined;
       if (winner) {
         winners.set(match.id, winner);
         const loser = winner === homeResolved ? awayResolved : homeResolved;
@@ -3425,6 +3477,42 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     allGroupMatchesComplete,
     matchStageById,
   ]);
+
+  const unpickableKnockoutIds = React.useMemo(() => {
+    return knockoutState.matches
+      .filter(
+        (match) =>
+          !isConcreteTeam(match.homeResolved) ||
+          !isConcreteTeam(match.awayResolved)
+      )
+      .map((match) => String(match.id));
+  }, [knockoutState.matches]);
+
+  React.useEffect(() => {
+    if (unpickableKnockoutIds.length === 0) {
+      return;
+    }
+    setKnockoutWinners((prev) => {
+      const { next, clearedIds } = clearKnockoutSelectionsByMatchIds(
+        prev,
+        unpickableKnockoutIds
+      );
+      if (clearedIds.length === 0) {
+        return prev;
+      }
+      setAutoKnockoutWinners((currentAuto) => {
+        if (!Object.keys(currentAuto).length) {
+          return currentAuto;
+        }
+        const nextAuto = { ...currentAuto };
+        clearedIds.forEach((matchId) => {
+          delete nextAuto[matchId];
+        });
+        return nextAuto;
+      });
+      return next;
+    });
+  }, [clearKnockoutSelectionsByMatchIds, unpickableKnockoutIds]);
 
   React.useEffect(() => {
     if (process.env.NODE_ENV === "production") {
