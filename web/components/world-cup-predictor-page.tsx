@@ -1516,7 +1516,7 @@ function MatchCard({
           className={cn(
             "group relative flex h-9 w-11 select-none items-center justify-center rounded-full bg-white shadow-sm transition hover:shadow focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-1 cursor-pointer",
             isUnset && "ring-1 ring-slate-200",
-            isWin && "ring-2 ring-emerald-300",
+            isWin && "ring-2 ring-blue-400",
             isDraw && isScoreSet && "ring-2 ring-slate-300",
             isLoss && "ring-1 ring-slate-200",
             !isPickableMatch && "cursor-default opacity-60",
@@ -1945,6 +1945,7 @@ function KnockoutMatchCard({
   awayWinProb,
   drawProb,
   compact,
+  isFinal,
   containerRef,
   homeRowRef,
   awayRowRef,
@@ -1958,6 +1959,7 @@ function KnockoutMatchCard({
   awayWinProb?: string;
   drawProb?: string | null;
   compact?: boolean;
+  isFinal?: boolean;
   containerRef?: React.Ref<HTMLDivElement>;
   homeRowRef?: React.Ref<HTMLButtonElement>;
   awayRowRef?: React.Ref<HTMLButtonElement>;
@@ -1978,6 +1980,14 @@ function KnockoutMatchCard({
     : null;
   const hasSelection = isPickableMatch && winnerSelection !== null;
   const needsPick = isPickableMatch && winner === null;
+  const isFinalResolved = Boolean(isFinal && winner);
+  const championSide = isFinalResolved
+    ? winner === homeTeam
+      ? "home"
+      : winner === awayTeam
+        ? "away"
+        : null
+    : null;
   const showDraw = Boolean(drawProb);
   const homeValue = parseProbabilityLabel(homeWinProb);
   const awayValue = parseProbabilityLabel(awayWinProb);
@@ -2001,7 +2011,7 @@ function KnockoutMatchCard({
   ) => {
     if (isPlaceholder) {
       return (
-      <span className="inline-flex max-w-full items-center truncate rounded-md bg-slate-50 px-2 py-0.5 text-left text-xs text-slate-500 ring-1 ring-slate-200">
+      <span className="inline-flex h-[20px] max-w-full items-center truncate rounded-md bg-slate-50 px-2 text-left text-[12px] leading-[20px] text-slate-500 ring-1 ring-slate-200">
         {formatDisplayLabel(team)}
       </span>
     );
@@ -2009,7 +2019,7 @@ function KnockoutMatchCard({
   return (
       <span
         className={cn(
-          "block min-w-0 truncate text-left text-sm",
+          "block min-w-0 truncate text-left text-sm leading-[20px]",
           !isResolved && "font-medium text-slate-900",
           isResolved && isWinner && "font-semibold text-slate-900",
           isResolved && isLoser && "font-medium text-slate-700"
@@ -2029,6 +2039,7 @@ function KnockoutMatchCard({
     const isWinner = winner === team;
     const isResolved = winner !== null;
     const isLoser = isResolved && !isWinner;
+    const isChampionRow = isFinalResolved && isWinner;
     return (
       <button
         ref={rowRef}
@@ -2043,9 +2054,13 @@ function KnockoutMatchCard({
         className={cn(
           "flex w-full items-center gap-2 px-3",
           paddedRow,
-          isResolved && isWinner && "bg-emerald-50/40",
+          isResolved && isWinner && !isChampionRow && "bg-blue-100/50",
+          isChampionRow && "bg-amber-100/60",
           isPickableMatch
-            ? "cursor-pointer transition-colors hover:bg-slate-50/30"
+            ? cn(
+                "cursor-pointer transition-colors",
+                !(isResolved && isWinner) && "hover:bg-slate-50/30"
+              )
             : "cursor-default opacity-70"
         )}
       >
@@ -2058,12 +2073,18 @@ function KnockoutMatchCard({
           <span
             className={cn(
               "absolute left-0 top-0 h-full w-1 rounded-full",
-              isResolved && isWinner ? "bg-emerald-300/80" : "bg-transparent"
+              isResolved && isWinner
+                ? isChampionRow
+                  ? "bg-amber-300"
+                  : "bg-blue-400/80"
+                : "bg-transparent"
             )}
             aria-hidden="true"
           />
-          <div className="flex min-w-0 flex-1 items-center pl-2">
-            {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
+          <div className="flex min-w-0 flex-1 items-center gap-2 pl-2">
+            <div className="flex min-w-0 flex-1 items-center">
+              {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
+            </div>
           </div>
         </div>
         {scoreSlot}
@@ -2075,21 +2096,24 @@ function KnockoutMatchCard({
     <div
       ref={containerRef}
       className={cn(
-        "w-[192px] overflow-visible rounded-xl shadow-sm transition-shadow hover:shadow",
+        "w-[192px] overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
         needsPick
           ? "bg-amber-50/30 ring-2 ring-amber-200"
-          : "bg-white ring-1 ring-slate-200"
+          : "bg-white ring-2 ring-slate-200"
       )}
     >
       {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
       <div
         className={cn(
           "px-3",
-          hasSelection && "opacity-55",
-          (isPendingMatch || isLockedMatch) && "opacity-0"
+          (isPendingMatch || isLockedMatch) && "opacity-0",
+          championSide === "home" &&
+            "bg-[linear-gradient(180deg,rgba(254,243,199,0.6)_0%,rgba(254,243,199,0.3)_30%,rgba(254,243,199,0)_50%,rgba(254,243,199,0)_100%)]",
+          championSide === "away" &&
+            "bg-[linear-gradient(0deg,rgba(254,243,199,0.6)_0%,rgba(254,243,199,0.3)_30%,rgba(254,243,199,0)_50%,rgba(254,243,199,0)_100%)]"
         )}
       >
-        <div className="flex items-center gap-1">
+        <div className={cn("flex items-center gap-1", hasSelection && "opacity-55")}>
           <span className="w-6 text-xs tabular-nums text-slate-600">
             {segments ? segments.home : "--"}
           </span>
@@ -2457,7 +2481,7 @@ function GroupTable({
                     className={cn(
                       "px-2 py-1.5 text-center text-sm tabular-nums text-slate-600",
                       isTopTwo
-                        ? "border-l-4 border-emerald-400/50 pl-2"
+                        ? "border-l-4 border-blue-500/50 pl-2"
                         : highlightThird && isThird
                           ? "border-l-4 border-slate-300 pl-2"
                           : weakHighlight
@@ -4684,6 +4708,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                               homeWinProb={probabilities.homeWinProb}
                               awayWinProb={probabilities.awayWinProb}
                               drawProb={probabilities.drawProb}
+                              isFinal={stage === "Final"}
                             />
                           </div>
                         );

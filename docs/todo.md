@@ -8,6 +8,16 @@
 * Hlines between groups
 * Team alignment
 * Predictor page
+    * champ styling
+    * 3rd place styling
+    * Knockout winner distinction
+        * More bold winner
+        * Greener background, or a background other than the probability home
+    * Green as the winning colour is confusing given the similarity to probabilities, EVEN IN GROUP MATCHES
+    * 3rd place table colouring
+    * Fucked top left corners on team tables
+    * Shouldn't show (i) on 3rd place table by yourself
+
     * Autotips
         * Simulate should only simulate unselected
         * Reset simulated results
