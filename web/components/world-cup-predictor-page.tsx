@@ -1971,6 +1971,7 @@ function KnockoutMatchCard({
     (placeholderHome && !placeholderAway) ||
     (!placeholderHome && placeholderAway);
   const isLockedMatch = placeholderHome && placeholderAway;
+  const hideProbabilities = isPendingMatch || isLockedMatch;
   const winner = isPickableMatch
     ? winnerSelection === "home"
       ? homeTeam
@@ -1981,13 +1982,6 @@ function KnockoutMatchCard({
   const hasSelection = isPickableMatch && winnerSelection !== null;
   const needsPick = isPickableMatch && winner === null;
   const isFinalResolved = Boolean(isFinal && winner);
-  const championSide = isFinalResolved
-    ? winner === homeTeam
-      ? "home"
-      : winner === awayTeam
-        ? "away"
-        : null
-    : null;
   const showDraw = Boolean(drawProb);
   const homeValue = parseProbabilityLabel(homeWinProb);
   const awayValue = parseProbabilityLabel(awayWinProb);
@@ -1999,7 +1993,7 @@ function KnockoutMatchCard({
         away: awayValue,
       })
     : normalizeTwoSegments({ home: homeValue, away: awayValue });
-  const paddedRow = compact ? "py-1.5" : "py-2";
+  const paddedRow = compact ? "py-1.5" : "py-0.5";
   const scoreSlot = <div className="flex w-0 flex-none" />;
 
   const renderTeamLabel = (
@@ -2052,23 +2046,29 @@ function KnockoutMatchCard({
         }}
         disabled={!isPickableMatch}
         className={cn(
-          "flex w-full items-center gap-2 px-3",
+          "flex w-full flex-1 items-center gap-2 pl-0 pr-3",
           paddedRow,
-          isResolved && isWinner && !isChampionRow && "bg-blue-100/50",
-          isChampionRow && "bg-amber-100/60",
+          isResolved &&
+            isWinner &&
+            !isChampionRow &&
+            "bg-[linear-gradient(90deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]",
+          isChampionRow &&
+            "bg-[linear-gradient(90deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]",
           isPickableMatch
             ? cn(
                 "cursor-pointer transition-colors",
                 !(isResolved && isWinner) && "hover:bg-slate-50/30"
               )
-            : "cursor-default opacity-70"
+            : "cursor-default"
         )}
       >
-        <TeamFlag
-          team={team}
-          flags={flags}
-          className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
-        />
+        {!isPlaceholder && (
+          <TeamFlag
+            team={team}
+            flags={flags}
+            className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+          />
+        )}
         <div className="relative flex min-w-0 flex-1 items-center">
           <span
             className={cn(
@@ -2081,7 +2081,12 @@ function KnockoutMatchCard({
             )}
             aria-hidden="true"
           />
-          <div className="flex min-w-0 flex-1 items-center gap-2 pl-2">
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-2",
+              isPlaceholder ? "pl-0" : "pl-2"
+            )}
+          >
             <div className="flex min-w-0 flex-1 items-center">
               {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
             </div>
@@ -2098,49 +2103,52 @@ function KnockoutMatchCard({
       className={cn(
         "w-[192px] overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
         needsPick
-          ? "bg-amber-50/30 ring-2 ring-amber-200"
+          ? "bg-amber-50 ring-2 ring-amber-200"
           : "bg-white ring-2 ring-slate-200"
       )}
     >
-      {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
-      <div
-        className={cn(
-          "px-3",
-          (isPendingMatch || isLockedMatch) && "opacity-0",
-          championSide === "home" &&
-            "bg-[linear-gradient(180deg,rgba(254,243,199,0.6)_0%,rgba(254,243,199,0.3)_30%,rgba(254,243,199,0)_50%,rgba(254,243,199,0)_100%)]",
-          championSide === "away" &&
-            "bg-[linear-gradient(0deg,rgba(254,243,199,0.6)_0%,rgba(254,243,199,0.3)_30%,rgba(254,243,199,0)_50%,rgba(254,243,199,0)_100%)]"
-        )}
-      >
-        <div className={cn("flex items-center gap-1", hasSelection && "opacity-55")}>
-          <span className="w-6 text-xs tabular-nums text-slate-600">
-            {segments ? segments.home : "--"}
-          </span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200/70">
-            <div className="flex h-full">
-              <div
-                className="h-full bg-emerald-300/70"
-                style={{ width: `${segments?.home ?? 0}%` }}
-              />
-              {showDraw && (
+      <div className="flex">
+        <div
+          className="flex w-7 flex-col items-center justify-center px-3 py-1"
+        >
+          <div
+            className={cn(
+              "flex flex-col items-center gap-1",
+              hideProbabilities && "opacity-0",
+              hasSelection && "opacity-55"
+            )}
+          >
+            <span className="text-xs tabular-nums text-slate-600">
+              {segments ? segments.home : "--"}
+            </span>
+            <div className="h-6 w-2 overflow-hidden rounded-full bg-slate-200/70">
+              <div className="flex h-full flex-col">
                 <div
-                  className="h-full bg-slate-300/70"
-                  style={{ width: `${segments?.draw ?? 0}%` }}
+                  className="w-full bg-emerald-300/70"
+                  style={{ height: `${segments?.home ?? 0}%` }}
                 />
-              )}
-              <div
-                className="h-full bg-rose-300/70"
-                style={{ width: `${segments?.away ?? 0}%` }}
-              />
+                {showDraw && (
+                  <div
+                    className="w-full bg-slate-300/70"
+                    style={{ height: `${segments?.draw ?? 0}%` }}
+                  />
+                )}
+                <div
+                  className="w-full bg-rose-300/70"
+                  style={{ height: `${segments?.away ?? 0}%` }}
+                />
+              </div>
             </div>
+            <span className="text-xs tabular-nums text-slate-600">
+              {segments ? segments.away : "--"}
+            </span>
           </div>
-          <span className="w-6 text-right text-xs tabular-nums text-slate-600">
-            {segments ? segments.away : "--"}
-          </span>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
+          {renderRow(awayTeam, "away", placeholderAway, awayRowRef)}
         </div>
       </div>
-      {renderRow(awayTeam, "away", placeholderAway, awayRowRef)}
     </div>
   );
 }
@@ -2210,20 +2218,17 @@ function QualifierPathBracket({
         const nextPaths: string[] = [];
         const connectorInset = 12;
         const connectorStrokeWidth = 2;
-        const finalTarget = path.startsWith("IC Path") ? 0.75 : 0.5;
+        const isIcPath = path.startsWith("IC Path");
         const endX = finalRect.left - rect.left + connectorInset;
         const finalHomeBox = matchHomeRefs.current.get(final.id);
         const finalAwayBox = matchAwayRefs.current.get(final.id);
-        let endY = finalRect.top - rect.top + finalRect.height * finalTarget;
-        if (path.startsWith("IC Path") && finalAwayBox) {
-          const awayRect = finalAwayBox.getBoundingClientRect();
-          endY = awayRect.top - rect.top + awayRect.height / 2;
-        } else if (finalHomeBox && finalAwayBox) {
+        let endY = finalRect.top - rect.top + finalRect.height / 2;
+        if (!isIcPath && finalHomeBox && finalAwayBox) {
           const homeRect = finalHomeBox.getBoundingClientRect();
           const awayRect = finalAwayBox.getBoundingClientRect();
           endY = (homeRect.bottom + awayRect.top) / 2 - rect.top;
         }
-        if (path.startsWith("IC Path") && semis.length === 1) {
+        if (isIcPath && semis.length === 1) {
           const semiEl = matchRefs.current.get(semis[0].id);
           if (semiEl) {
             const semiRect = semiEl.getBoundingClientRect();
