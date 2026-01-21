@@ -4492,7 +4492,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             return (
               <div
                 key={group.id}
-                className="rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4 shadow-soft"
+                className="rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4"
               >
                 <div className="mb-3 flex items-center justify-between text-sm font-semibold text-ebony">
                   <span>Group {group.id}</span>
@@ -4542,7 +4542,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             );
           })}
           {thirdPlaceRankingRows.length > 0 && (
-            <div className="rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4 shadow-soft">
+            <div className="rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4">
               <div className="mb-3 flex items-center justify-between text-sm font-semibold text-ebony">
                 <span>Ranking of 3rd place teams</span>
                 <span className="text-xs text-ink-400">Group stage</span>
