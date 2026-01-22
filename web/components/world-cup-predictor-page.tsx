@@ -1431,9 +1431,6 @@ function MatchCard({
       draw: allowDraw ? parseProbabilityLabel(drawProb ?? undefined) : null,
       away: parseProbabilityLabel(awayProb),
     });
-    const maxValue = segments
-      ? Math.max(segments.home, segments.draw, segments.away)
-      : null;
     const formattedHome = formatDisplayLabel(homeTeam);
     const formattedAway = formatDisplayLabel(awayTeam);
     const displayHome =
@@ -1499,35 +1496,17 @@ function MatchCard({
       setScores(1, 1);
     };
 
-    const renderScorePill = (
+    const homeIsWinner = isScoreSet && !isDraw && score.home !== null && score.away !== null && score.home > score.away;
+    const awayIsWinner = isScoreSet && !isDraw && score.home !== null && score.away !== null && score.away > score.home;
+
+    const renderScoreInput = (
       side: "home" | "away",
       inputRef: React.RefObject<HTMLInputElement>
     ) => {
       const value = side === "home" ? score.home : score.away;
-      const isUnset = !isScoreSet;
-      const isWin =
-        isScoreSet &&
-        !isDraw &&
-        ((side === "home" && score.home > score.away) ||
-          (side === "away" && score.away > score.home));
-      const isLoss = isScoreSet && !isDraw && !isWin;
+      const isWin = side === "home" ? homeIsWinner : awayIsWinner;
       return (
-        <div
-          className={cn(
-            "group relative flex h-9 w-11 select-none items-center justify-center rounded-full bg-white shadow-sm transition hover:shadow focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-1 cursor-pointer",
-            isUnset && "ring-1 ring-slate-200",
-            isWin && "ring-2 ring-blue-400",
-            isDraw && isScoreSet && "ring-2 ring-slate-300",
-            isLoss && "ring-1 ring-slate-200",
-            !isPickableMatch && "cursor-default opacity-60",
-            !isPickableMatch && "hover:shadow-none"
-          )}
-          onClick={() => {
-            if (isPickableMatch) {
-              inputRef.current?.focus();
-            }
-          }}
-        >
+        <div className="group relative flex items-center justify-center">
           <input
             ref={inputRef}
             type="number"
@@ -1535,7 +1514,7 @@ function MatchCard({
             min={0}
             max={31}
             value={value ?? ""}
-            placeholder={isUnset ? "-" : undefined}
+            placeholder="-"
             onChange={(event) =>
               updateSideScore(side, parseScore(event.target.value))
             }
@@ -1548,177 +1527,124 @@ function MatchCard({
               adjustScore(side, event.deltaY > 0 ? -1 : 1);
             }}
             disabled={!isPickableMatch}
-            onClick={(event) => event.stopPropagation()}
             className={cn(
-              "relative z-10 h-full w-full select-text bg-transparent text-center text-base font-semibold leading-none tabular-nums focus:outline-none appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-              isUnset ? "text-slate-400" : "text-slate-900"
+              "w-8 h-7 rounded-md text-center text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors",
+              !isScoreSet && "bg-slate-100 text-slate-400 placeholder:text-slate-400",
+              isScoreSet && isWin && "bg-blue-100 text-blue-700 ring-1 ring-blue-300",
+              isScoreSet && isDraw && "bg-slate-200 text-slate-700 ring-1 ring-slate-300",
+              isScoreSet && !isWin && !isDraw && "bg-slate-100 text-slate-600",
+              !isPickableMatch && "cursor-default opacity-60"
             )}
           />
-          {isPickableMatch && (
-            <>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  adjustScore(side, -1);
-                }}
-                className="pointer-events-none absolute left-[-14px] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-slate-50/40 text-[11px] font-semibold text-slate-500 opacity-0 ring-1 ring-transparent transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:cursor-pointer group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-focus-within:cursor-pointer group-hover:ring-slate-200 group-focus-within:ring-slate-200 hover:bg-slate-100/70 hover:text-slate-600 hover:ring-slate-300"
-                aria-label={`Decrease ${side} score`}
-              >
-                -
-              </button>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  adjustScore(side, 1);
-                }}
-                className="pointer-events-none absolute right-[-14px] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-slate-50/40 text-[11px] font-semibold text-slate-500 opacity-0 ring-1 ring-transparent transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:cursor-pointer group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-focus-within:cursor-pointer group-hover:ring-slate-200 group-focus-within:ring-slate-200 hover:bg-slate-100/70 hover:text-slate-600 hover:ring-slate-300"
-                aria-label={`Increase ${side} score`}
-              >
-                +
-              </button>
-            </>
-          )}
         </div>
+      );
+    };
+
+    const renderTeamRow = (
+      side: "home" | "away",
+      team: string,
+      displayName: string,
+      inputRef: React.RefObject<HTMLInputElement>
+    ) => {
+      const isWin = side === "home" ? homeIsWinner : awayIsWinner;
+      const isLoser = side === "home" ? awayIsWinner : homeIsWinner;
+      return (
+        <button
+          type="button"
+          onClick={() => handleTeamSelect(side)}
+          disabled={!isPickableMatch}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 transition-colors w-full",
+            side === "home" ? "justify-end" : "justify-start",
+            isPickableMatch && "cursor-pointer hover:bg-slate-50/50",
+            !isPickableMatch && "cursor-default"
+          )}
+        >
+          {side === "away" && (
+            <TeamFlag
+              team={team}
+              flags={flags}
+              className="h-4 w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+            />
+          )}
+          <span
+            className={cn(
+              "min-w-0 truncate text-sm leading-5",
+              side === "home" && "text-right",
+              !isScoreSet && "font-medium text-slate-900",
+              isScoreSet && isWin && "font-semibold text-slate-900",
+              isScoreSet && isDraw && "font-medium text-slate-700",
+              isScoreSet && isLoser && "font-medium text-slate-500"
+            )}
+          >
+            {displayName || "TBD"}
+          </span>
+          {side === "home" && (
+            <TeamFlag
+              team={team}
+              flags={flags}
+              className="h-4 w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+            />
+          )}
+        </button>
       );
     };
 
     return (
       <div
         className={cn(
-          "grid items-stretch gap-x-3 py-1.5 transition-colors grid-cols-[1fr_44px_120px_44px_1fr]",
-          isPickableMatch && "hover:bg-slate-50",
-          showDivider && "border-b border-slate-100"
+          "overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm transition-shadow hover:shadow",
+          isScoreSet && !isDraw && "ring-blue-200",
+          isScoreSet && isDraw && "ring-slate-300"
         )}
       >
-        <div
-          className={cn(
-            "flex h-full w-full min-w-0 items-center justify-end gap-2",
-            !isPickableMatch && "opacity-60"
-          )}
-          onClick={isPickableMatch ? () => handleTeamSelect("home") : undefined}
-          role={isPickableMatch ? "button" : undefined}
-          tabIndex={isPickableMatch ? 0 : -1}
-          onKeyDown={
-            isPickableMatch
-              ? (event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    handleTeamSelect("home");
-                  }
-                }
-              : undefined
-          }
-        >
-          <TeamFlag
-            team={homeTeam}
-            flags={flags}
-            className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
-          />
-          <span className="min-w-0 truncate text-sm font-medium text-slate-900 text-right">
-            {displayHome || "TBD"}
-          </span>
-        </div>
-        {renderScorePill("home", homeInputRef)}
-        <button
-          type="button"
-          onClick={handleDrawSelect}
-          disabled={!allowDraw || !isPickableMatch}
-          className={cn(
-            "flex h-full w-full flex-col items-center justify-center gap-0.5",
-            allowDraw && isPickableMatch && "cursor-pointer",
-            !isPickableMatch && "cursor-default opacity-50"
-          )}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleDrawSelect();
-            }
-          }}
-        >
-          <div
-            className={cn(
-              "flex h-1.5 w-[120px] overflow-hidden rounded-full bg-slate-200/70"
-            )}
-          >
-            <div
-              className="h-full bg-emerald-500/50"
-              style={{ width: `${segments?.home ?? 0}%` }}
-            />
-            <div
-              className="h-full bg-slate-500/40"
-              style={{ width: `${segments?.draw ?? 0}%` }}
-            />
-            <div
-              className="h-full bg-rose-500/45"
-              style={{ width: `${segments?.away ?? 0}%` }}
-            />
+        <div className="flex items-center">
+          {/* Home team */}
+          <div className="flex-1 min-w-0">
+            {renderTeamRow("home", homeTeam, displayHome, homeInputRef)}
           </div>
-          <div
-            className={cn(
-              "flex w-[120px] justify-between text-[11px] leading-none tabular-nums text-slate-600"
-            )}
-          >
-            <span
+
+          {/* Score area */}
+          <div className="flex items-center gap-1 px-2">
+            {renderScoreInput("home", homeInputRef)}
+            <button
+              type="button"
+              onClick={handleDrawSelect}
+              disabled={!allowDraw || !isPickableMatch}
               className={cn(
-                maxValue !== null && segments?.home === maxValue
-                  ? "text-slate-800 font-medium"
-                  : undefined
+                "flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-md transition-colors",
+                allowDraw && isPickableMatch && "cursor-pointer hover:bg-slate-50",
+                isDraw && isScoreSet && "bg-slate-100",
+                !isPickableMatch && "cursor-default"
               )}
             >
-              {segments ? segments.home : "--"}
-            </span>
-            <span
-              className={cn(
-                maxValue !== null && segments?.draw === maxValue
-                  ? "text-slate-800 font-medium"
-                  : undefined
-              )}
-            >
-              {segments ? segments.draw : "--"}
-            </span>
-            <span
-              className={cn(
-                maxValue !== null && segments?.away === maxValue
-                  ? "text-slate-800 font-medium"
-                  : undefined
-              )}
-            >
-              {segments ? segments.away : "--"}
-            </span>
+              <div className="flex h-1 w-16 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full bg-emerald-400"
+                  style={{ width: `${segments?.home ?? 0}%` }}
+                />
+                <div
+                  className="h-full bg-slate-400"
+                  style={{ width: `${segments?.draw ?? 0}%` }}
+                />
+                <div
+                  className="h-full bg-rose-400"
+                  style={{ width: `${segments?.away ?? 0}%` }}
+                />
+              </div>
+              <div className="flex w-16 justify-between text-xs leading-none tabular-nums text-slate-600">
+                <span>{segments ? segments.home : "--"}</span>
+                <span>{segments ? segments.draw : "--"}</span>
+                <span>{segments ? segments.away : "--"}</span>
+              </div>
+            </button>
+            {renderScoreInput("away", awayInputRef)}
           </div>
-        </button>
-        {renderScorePill("away", awayInputRef)}
-        <div
-          className={cn(
-            "flex h-full w-full min-w-0 items-center justify-start gap-2",
-            !isPickableMatch && "opacity-60"
-          )}
-          onClick={isPickableMatch ? () => handleTeamSelect("away") : undefined}
-          role={isPickableMatch ? "button" : undefined}
-          tabIndex={isPickableMatch ? 0 : -1}
-          onKeyDown={
-            isPickableMatch
-              ? (event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    handleTeamSelect("away");
-                  }
-                }
-              : undefined
-          }
-        >
-          <TeamFlag
-            team={awayTeam}
-            flags={flags}
-            className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
-          />
-          <span className="min-w-0 truncate text-sm font-medium text-slate-900">
-            {displayAway || "TBD"}
-          </span>
+
+          {/* Away team */}
+          <div className="flex-1 min-w-0">
+            {renderTeamRow("away", awayTeam, displayAway, awayInputRef)}
+          </div>
         </div>
       </div>
     );
@@ -2103,7 +2029,7 @@ function KnockoutMatchCard({
       className={cn(
         "w-[192px] overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
         needsPick
-          ? "bg-amber-50 ring-2 ring-amber-200"
+          ? "bg-[#fff5f2] ring-2 ring-[#ffb4a1]"
           : "bg-white ring-2 ring-slate-200"
       )}
     >
@@ -4497,14 +4423,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             return (
               <div
                 key={group.id}
-                className="rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4"
+                className="space-y-4"
               >
-                <div className="mb-3 flex items-center justify-between text-sm font-semibold text-ebony">
-                  <span>Group {group.id}</span>
-                  <span className="text-xs text-ink-400">Group stage</span>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900">Group {group.id}</h3>
                 </div>
-                <div className="flex flex-wrap justify-center gap-6 lg:flex-nowrap lg:items-start lg:justify-between">
-                  <div className="flex w-full max-w-[520px] flex-col gap-3 lg:max-w-none lg:flex-1">
+                <div className="flex flex-wrap justify-center gap-4 lg:flex-nowrap lg:items-start lg:justify-between">
+                  <div className="flex w-full max-w-[520px] flex-col gap-2 lg:max-w-none lg:flex-1">
                     {matches.map((match, index) => {
                       const probabilities = getMatchProbabilityLabels({
                         homeTeam: match.homeTeam,
@@ -4527,7 +4452,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                           homeWinProb={probabilities.homeWinProb}
                           awayWinProb={probabilities.awayWinProb}
                           drawProb={probabilities.drawProb}
-                          showDivider={index !== matches.length - 1}
+                          showDivider={false}
                         />
                       );
                     })}
@@ -4547,12 +4472,11 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             );
           })}
           {thirdPlaceRankingRows.length > 0 && (
-            <div className="rounded-md border border-[#E6E9ED] bg-[#F4F5F6] p-4">
-              <div className="mb-3 flex items-center justify-between text-sm font-semibold text-ebony">
-                <span>Ranking of 3rd place teams</span>
-                <span className="text-xs text-ink-400">Group stage</span>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">Ranking of 3rd place teams</h3>
               </div>
-              <div className="flex flex-wrap justify-center gap-6 lg:flex-nowrap lg:items-start lg:justify-between">
+              <div className="flex flex-wrap justify-center gap-4 lg:flex-nowrap lg:items-start lg:justify-between">
                 <div className="flex w-full max-w-[520px] lg:max-w-none lg:flex-1">
                   <GroupTable
                     group={{ id: "Third place", teams: [] }}
