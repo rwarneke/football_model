@@ -4432,19 +4432,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Select group match outcomes and see standings update instantly.
           </p>
         </div>
-        <div className="flex flex-col gap-8 divide-y divide-slate-200">
-          {groupTables.map(({ group, rows }, groupIndex) => {
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {groupTables.map(({ group, rows }) => {
             const matches = groupMatchesFor(group.id, resolvedGroupMatches);
             return (
               <div
                 key={group.id}
-                className={cn("space-y-4", groupIndex > 0 && "pt-8")}
+                className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
                 </div>
-                <div className="flex flex-wrap justify-center gap-4 lg:flex-nowrap lg:items-start lg:justify-between">
-                  <div className="flex w-full max-w-[520px] flex-col gap-3 lg:max-w-none lg:flex-1">
+                <div className="flex flex-col gap-4">
+                  <div className="flex w-full flex-col gap-3">
                     {matches.map((match, index) => {
                       const probabilities = getMatchProbabilityLabels({
                         homeTeam: match.homeTeam,
@@ -4472,7 +4472,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       );
                     })}
                   </div>
-                  <div className="flex w-full max-w-[520px] lg:max-w-none lg:flex-1">
+                  <div className="flex w-full">
                     <GroupTable
                       group={group}
                       rows={rows}
