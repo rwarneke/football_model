@@ -2109,40 +2109,37 @@ function KnockoutMatchCard({
     >
       <div className="flex">
         <div
-          className="flex w-7 flex-col items-center justify-center px-3 py-1"
+          className={cn(
+            "flex h-[72px] w-7 flex-col items-center justify-center px-4 py-1",
+            hideProbabilities && "invisible",
+            hasSelection && "opacity-55"
+          )}
+          aria-hidden={hideProbabilities}
         >
-          <div
-            className={cn(
-              "flex flex-col items-center gap-1",
-              hideProbabilities && "opacity-0",
-              hasSelection && "opacity-55"
-            )}
-          >
-            <span className="text-xs tabular-nums text-slate-600">
-              {segments ? segments.home : "--"}
-            </span>
-            <div className="h-6 w-2 overflow-hidden rounded-full bg-slate-200/70">
-              <div className="flex h-full flex-col">
+          <span className="text-xs tabular-nums text-slate-600">
+            {segments ? segments.home : "--"}
+          </span>
+          <div className="h-6 w-2 overflow-hidden rounded-full bg-slate-200/70">
+            <div className="flex h-full flex-col">
+              <div
+                className="w-full bg-emerald-300/70"
+                style={{ height: `${segments?.home ?? 0}%` }}
+              />
+              {showDraw && (
                 <div
-                  className="w-full bg-emerald-300/70"
-                  style={{ height: `${segments?.home ?? 0}%` }}
+                  className="w-full bg-slate-300/70"
+                  style={{ height: `${segments?.draw ?? 0}%` }}
                 />
-                {showDraw && (
-                  <div
-                    className="w-full bg-slate-300/70"
-                    style={{ height: `${segments?.draw ?? 0}%` }}
-                  />
-                )}
-                <div
-                  className="w-full bg-rose-300/70"
-                  style={{ height: `${segments?.away ?? 0}%` }}
-                />
-              </div>
+              )}
+              <div
+                className="w-full bg-rose-300/70"
+                style={{ height: `${segments?.away ?? 0}%` }}
+              />
             </div>
-            <span className="text-xs tabular-nums text-slate-600">
-              {segments ? segments.away : "--"}
-            </span>
           </div>
+          <span className="text-xs tabular-nums text-slate-600">
+            {segments ? segments.away : "--"}
+          </span>
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
           {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
@@ -2223,7 +2220,11 @@ function QualifierPathBracket({
         const finalHomeBox = matchHomeRefs.current.get(final.id);
         const finalAwayBox = matchAwayRefs.current.get(final.id);
         let endY = finalRect.top - rect.top + finalRect.height / 2;
-        if (!isIcPath && finalHomeBox && finalAwayBox) {
+        if (isIcPath && finalAwayBox) {
+          // IC Path: connect to away slot (home is already determined)
+          const awayRect = finalAwayBox.getBoundingClientRect();
+          endY = awayRect.top - rect.top + awayRect.height / 2;
+        } else if (!isIcPath && finalHomeBox && finalAwayBox) {
           const homeRect = finalHomeBox.getBoundingClientRect();
           const awayRect = finalAwayBox.getBoundingClientRect();
           endY = (homeRect.bottom + awayRect.top) / 2 - rect.top;
@@ -2256,7 +2257,7 @@ function QualifierPathBracket({
             return;
           }
           const semiRect = semiEl.getBoundingClientRect();
-          const startX = semiRect.right - rect.left - connectorInset;
+          const startX = Math.round(semiRect.right - rect.left - connectorInset);
           let startY = semiRect.top - rect.top + semiRect.height / 2;
           const semiHomeBox = matchHomeRefs.current.get(match.id);
           const semiAwayBox = matchAwayRefs.current.get(match.id);
@@ -2265,9 +2266,13 @@ function QualifierPathBracket({
             const awayRect = semiAwayBox.getBoundingClientRect();
             startY = (homeRect.bottom + awayRect.top) / 2 - rect.top;
           }
-          const midX = startX + (endX - startX) * 0.5;
+          // For IC Path with one semi, use endY directly to ensure straight line
+          const drawStartY = isIcPath && semis.length === 1 ? endY : startY;
+          const midX = Math.round(startX + (endX - startX) * 0.5);
+          const roundedEndY = Math.round(endY);
+          const roundedStartY = Math.round(drawStartY);
           nextPaths.push(
-            `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`
+            `M ${startX} ${roundedStartY} L ${midX} ${roundedStartY} L ${midX} ${roundedEndY} L ${endX} ${roundedEndY}`
           );
         });
         setPaths(nextPaths);
