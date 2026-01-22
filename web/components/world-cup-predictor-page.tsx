@@ -189,7 +189,7 @@ function parseScore(value: string) {
   if (!value) {
     return null;
   }
-  const parsed = Number(value);
+  const parsed = parseInt(value, 10);
   if (!Number.isFinite(parsed)) {
     return null;
   }
@@ -1283,6 +1283,11 @@ function TeamBox({
                   onChange={(event) =>
                     onScoreChange?.(parseScore(event.target.value))
                   }
+                  onKeyDown={(event) => {
+                    if ([".", ",", "e", "E", "+", "-"].includes(event.key)) {
+                      event.preventDefault();
+                    }
+                  }}
                   disabled={disabled}
                   onClick={(event) => event.stopPropagation()}
                   className="w-8 rounded border border-ink-900 bg-white text-right text-xs font-mono text-ink-200 focus:outline-none lg:text-sm"
@@ -1311,6 +1316,11 @@ function TeamBox({
                   onChange={(event) =>
                     onScoreChange?.(parseScore(event.target.value))
                   }
+                  onKeyDown={(event) => {
+                    if ([".", ",", "e", "E", "+", "-"].includes(event.key)) {
+                      event.preventDefault();
+                    }
+                  }}
                   disabled={disabled}
                   onClick={(event) => event.stopPropagation()}
                   className="w-8 rounded border border-ink-900 bg-white text-right text-xs font-mono text-ink-200 focus:outline-none lg:text-sm"
@@ -1460,6 +1470,11 @@ function MatchCard({
       event: React.KeyboardEvent<HTMLInputElement>,
       side: "home" | "away"
     ) => {
+      // Block non-integer characters
+      if ([".", ",", "e", "E", "+", "-"].includes(event.key)) {
+        event.preventDefault();
+        return;
+      }
       if (event.key === "ArrowUp" || event.key === "ArrowRight") {
         event.preventDefault();
         adjustScore(side, event.shiftKey ? 5 : 1);
