@@ -1532,7 +1532,7 @@ function MatchCard({
               !isScoreSet && "bg-slate-100 text-slate-400 placeholder:text-slate-400",
               isScoreSet && isWin && "bg-blue-100 text-blue-700 ring-1 ring-blue-300",
               isScoreSet && isDraw && "bg-slate-200 text-slate-700 ring-1 ring-slate-300",
-              isScoreSet && !isWin && !isDraw && "bg-slate-100 text-slate-600",
+              isScoreSet && !isWin && !isDraw && "bg-transparent text-slate-400",
               !isPickableMatch && "cursor-default opacity-60"
             )}
           />
@@ -1554,7 +1554,7 @@ function MatchCard({
           onClick={() => handleTeamSelect(side)}
           disabled={!isPickableMatch}
           className={cn(
-            "flex items-center gap-3 px-3 py-2 transition-colors w-full",
+            "flex items-center gap-3 px-2 py-2 transition-colors w-full",
             side === "home" ? "justify-end" : "justify-start",
             isPickableMatch && "cursor-pointer hover:bg-slate-50/50",
             !isPickableMatch && "cursor-default"
@@ -1593,9 +1593,9 @@ function MatchCard({
     return (
       <div
         className={cn(
-          "overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm transition-shadow hover:shadow",
-          isScoreSet && !isDraw && "ring-blue-200",
-          isScoreSet && isDraw && "ring-slate-300"
+          "overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
+          isPickableMatch && !isScoreSet && "bg-[#fff5f2] ring-2 ring-[#ffb4a1]",
+          (isScoreSet || !isPickableMatch) && "bg-white ring-2 ring-slate-200"
         )}
       >
         <div className="flex items-center">
@@ -1972,7 +1972,7 @@ function KnockoutMatchCard({
         }}
         disabled={!isPickableMatch}
         className={cn(
-          "flex w-full flex-1 items-center gap-2 pl-0 pr-3",
+          "flex w-full flex-1 items-center gap-2 pl-0 pr-2",
           paddedRow,
           isResolved &&
             isWinner &&
@@ -2365,36 +2365,36 @@ function GroupTable({
             <col style={{ width: "36px" }} />
             <col style={{ width: "44px" }} />
           </colgroup>
-          <thead className="bg-slate-50">
-            <tr className="border-b border-slate-200">
-              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 rounded-tl-xl border-l-4 border-slate-50">
                 Pos
               </th>
-              <th className="px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Team
               </th>
-              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pld
               </th>
-              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 W
               </th>
-              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 D
               </th>
-              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 L
               </th>
-              <th className="px-1 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GF
               </th>
-              <th className="px-1 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GA
               </th>
-              <th className="px-1 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GD
               </th>
-              <th className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 rounded-tr-xl">
                 Pts
               </th>
             </tr>
@@ -2415,7 +2415,7 @@ function GroupTable({
                 >
                   <td
                     className={cn(
-                      "px-2 py-1.5 text-center text-sm tabular-nums text-slate-600",
+                      "px-2 py-2.5 text-center text-sm tabular-nums text-slate-600",
                       isTopTwo
                         ? "border-l-4 border-blue-500/50 pl-2"
                         : highlightThird && isThird
@@ -2427,7 +2427,7 @@ function GroupTable({
                   >
                     {row.position}
                   </td>
-                  <td className="px-2 py-1.5">
+                  <td className="px-2 py-2.5">
                     <div className="flex min-w-0 items-center gap-2">
                       <TeamFlag
                         team={row.team}
@@ -2448,28 +2448,28 @@ function GroupTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-2 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.played}
                   </td>
-                  <td className="px-2 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.wins}
                   </td>
-                  <td className="px-2 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.draws}
                   </td>
-                  <td className="px-2 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.losses}
                   </td>
-                  <td className="px-1 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.gf}
                   </td>
-                  <td className="px-1 py-1.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.ga}
                   </td>
-                  <td className="px-1 py-1.5 text-center text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-1 py-2.5 text-center text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
                     {row.gd > 0 ? `+${row.gd}` : row.gd}
                   </td>
-                  <td className="px-2 py-1.5 text-center text-sm font-semibold tabular-nums text-slate-900 whitespace-nowrap">
+                  <td className="px-2 py-2.5 text-center text-sm font-semibold tabular-nums text-slate-900 whitespace-nowrap">
                     {row.points}
                   </td>
                 </tr>
@@ -4417,19 +4417,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Select group match outcomes and see standings update instantly.
           </p>
         </div>
-        <div className="flex flex-col gap-6">
-          {groupTables.map(({ group, rows }) => {
+        <div className="flex flex-col gap-8 divide-y divide-slate-200">
+          {groupTables.map(({ group, rows }, groupIndex) => {
             const matches = groupMatchesFor(group.id, resolvedGroupMatches);
             return (
               <div
                 key={group.id}
-                className="space-y-4"
+                className={cn("space-y-4", groupIndex > 0 && "pt-8")}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900">Group {group.id}</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
                 </div>
                 <div className="flex flex-wrap justify-center gap-4 lg:flex-nowrap lg:items-start lg:justify-between">
-                  <div className="flex w-full max-w-[520px] flex-col gap-2 lg:max-w-none lg:flex-1">
+                  <div className="flex w-full max-w-[520px] flex-col gap-3 lg:max-w-none lg:flex-1">
                     {matches.map((match, index) => {
                       const probabilities = getMatchProbabilityLabels({
                         homeTeam: match.homeTeam,
@@ -4472,9 +4472,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             );
           })}
           {thirdPlaceRankingRows.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-8">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-900">Ranking of 3rd place teams</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Ranking of 3rd place teams</h3>
               </div>
               <div className="flex flex-wrap justify-center gap-4 lg:flex-nowrap lg:items-start lg:justify-between">
                 <div className="flex w-full max-w-[520px] lg:max-w-none lg:flex-1">
