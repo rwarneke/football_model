@@ -3833,7 +3833,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             } else if (isSemiToFinal) {
               // SF → Final/Third: Exit from LEFT, use fixed turn point for consistency
               const endX = toRect.right - rect.left - connectorInset;
-              const turnX = startX - 40; // Fixed distance from SF
+              const turnX = startX - 30; // Same distance as other stages
               path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
             } else {
               // Standard right-side connection
@@ -3859,7 +3859,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             } else if (isSemiToFinal) {
               // SF → Final/Third: Exit from RIGHT, use fixed turn point for consistency
               const endX = toRect.left - rect.left + connectorInset;
-              const turnX = startX + 40; // Fixed distance from SF
+              const turnX = startX + 30; // Same distance as other stages
               path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
             } else {
               // Standard left-side connection
