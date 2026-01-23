@@ -197,15 +197,17 @@ function parseScore(value: string) {
   return clamped;
 }
 
-function formatProbability(value: number | null | undefined) {
+function formatProbability(value: number | null | undefined, forceDecimal = false) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return undefined;
   }
   const percent = value * 100;
-  if (percent < 0.95) {
-    return `${percent.toFixed(1)}%`;
-  }
-  if (percent >= 99.05) {
+  // Always use 1dp if forced, or if value is very small or very large
+  if (forceDecimal || percent < 0.5 || percent >= 99.5) {
+    // If value would round to 0.0, display "<0.1"
+    if (percent > 0 && percent < 0.05) {
+      return "<0.1%";
+    }
     const rounded = Number(percent.toFixed(1));
     const capped = Math.min(rounded, 99.9);
     return `${capped.toFixed(1)}%`;
@@ -213,9 +215,18 @@ function formatProbability(value: number | null | undefined) {
   return `${Math.round(percent)}%`;
 }
 
+function shouldUseDecimalPrecision(values: (number | null | undefined)[]) {
+  // If any probability would round to 0 (< 0.5%), use decimal precision for all
+  return values.some((v) => v !== null && v !== undefined && Number.isFinite(v) && v * 100 < 0.5);
+}
+
 function parseProbabilityLabel(label?: string | null) {
   if (!label) {
     return null;
+  }
+  // Handle "<0.1%" format
+  if (label === "<0.1%") {
+    return 0.05; // Use midpoint for bar width calculation
   }
   const match = label.match(/(\d+(?:\.\d+)?)%/);
   if (!match) {
@@ -228,6 +239,18 @@ function parseProbabilityLabel(label?: string | null) {
   return Math.max(0, Math.min(100, value));
 }
 
+function formatSegmentDisplay(value: number): string {
+  // If value is very small (from "<0.1%" parsing), display as "<0.1"
+  if (value > 0 && value < 0.1) {
+    return "<0.1";
+  }
+  // If value has decimal part, display with 1dp
+  if (value !== Math.round(value)) {
+    return value.toFixed(1);
+  }
+  return String(value);
+}
+
 function normalizeProbabilitySegments(values: {
   home: number | null;
   draw: number | null;
@@ -238,6 +261,20 @@ function normalizeProbabilitySegments(values: {
     return null;
   }
   const raw = [home, draw, away];
+  // Check if any value has a decimal (indicating precision mode)
+  const hasDecimal = raw.some((v) => v !== Math.round(v));
+  if (hasDecimal) {
+    // Preserve 1dp precision, normalize to sum to 100
+    const rounded = raw.map((value) => Number(value.toFixed(1)));
+    const total = rounded.reduce((sum, value) => sum + value, 0);
+    const remainder = Number((100 - total).toFixed(1));
+    if (Math.abs(remainder) >= 0.05) {
+      // Adjust draw to make sum 100
+      rounded[1] = Math.max(0, Number((rounded[1] + remainder).toFixed(1)));
+    }
+    return { home: rounded[0], draw: rounded[1], away: rounded[2] };
+  }
+  // Integer mode
   const rounded = raw.map((value) => Math.round(value));
   const total = rounded.reduce((sum, value) => sum + value, 0);
   const remainder = 100 - total;
@@ -253,6 +290,18 @@ function normalizeTwoSegments(values: { home: number | null; away: number | null
   if (home === null || away === null) {
     return null;
   }
+  // Check if any value has a decimal (indicating precision mode)
+  const hasDecimal = home !== Math.round(home) || away !== Math.round(away);
+  if (hasDecimal) {
+    const roundedHome = Number(home.toFixed(1));
+    const roundedAway = Number(away.toFixed(1));
+    const remainder = Number((100 - roundedHome - roundedAway).toFixed(1));
+    return {
+      home: Math.max(0, Number((roundedHome + remainder).toFixed(1))),
+      away: roundedAway,
+    };
+  }
+  // Integer mode
   const roundedHome = Math.round(home);
   const roundedAway = Math.round(away);
   const remainder = 100 - (roundedHome + roundedAway);
@@ -1648,9 +1697,9 @@ function MatchCard({
                 />
               </div>
               <div className="flex w-16 justify-between text-xs leading-none tabular-nums text-slate-600">
-                <span>{segments ? segments.home : "--"}</span>
-                <span>{segments ? segments.draw : "--"}</span>
-                <span>{segments ? segments.away : "--"}</span>
+                <span>{segments ? formatSegmentDisplay(segments.home) : "--"}</span>
+                <span>{segments ? formatSegmentDisplay(segments.draw) : "--"}</span>
+                <span>{segments ? formatSegmentDisplay(segments.away) : "--"}</span>
               </div>
             </button>
             {renderScoreInput("away", awayInputRef)}
@@ -2058,7 +2107,7 @@ function KnockoutMatchCard({
           aria-hidden={hideProbabilities}
         >
           <span className="text-xs tabular-nums text-slate-600">
-            {segments ? segments.home : "--"}
+            {segments ? formatSegmentDisplay(segments.home) : "--"}
           </span>
           <div className="h-6 w-2 overflow-hidden rounded-full bg-slate-200/70">
             <div className="flex h-full flex-col">
@@ -2079,7 +2128,7 @@ function KnockoutMatchCard({
             </div>
           </div>
           <span className="text-xs tabular-nums text-slate-600">
-            {segments ? segments.away : "--"}
+            {segments ? formatSegmentDisplay(segments.away) : "--"}
           </span>
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
@@ -2609,10 +2658,15 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
       if (!values) {
         return { homeWinProb: undefined, awayWinProb: undefined, drawProb: null };
       }
+      // Check if any probability would round to 0 - if so, use 1dp for all
+      const allValues = allowDraw
+        ? [values.home, values.draw, values.away]
+        : [values.home, values.away];
+      const useDecimal = shouldUseDecimalPrecision(allValues);
       return {
-        homeWinProb: formatProbability(values.home),
-        awayWinProb: formatProbability(values.away),
-        drawProb: allowDraw ? formatProbability(values.draw) ?? null : null,
+        homeWinProb: formatProbability(values.home, useDecimal),
+        awayWinProb: formatProbability(values.away, useDecimal),
+        drawProb: allowDraw ? formatProbability(values.draw, useDecimal) ?? null : null,
       };
     },
     [data.winProbabilities]
