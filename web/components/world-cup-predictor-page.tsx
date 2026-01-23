@@ -3644,6 +3644,111 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     return round32Order;
   }, [knockoutMatchesByStage]);
 
+  // Split matches into top and bottom halves for each stage
+  // Matches are assigned based on which Round of 32 matches they descend from
+  const splitMatchesByStage = React.useMemo(() => {
+    const split: Record<string, { top: ResolvedKnockoutMatch[]; bottom: ResolvedKnockoutMatch[] }> = {};
+    
+    // Build lookup map from original match data for tracing ancestry
+    const matchById = new Map<number, KnockoutMatch>();
+    for (const match of data.knockoutMatches) {
+      matchById.set(match.id, match);
+    }
+    
+    // Split Round of 32 matches into top and bottom halves
+    const round32Matches = knockoutMatchesByStage.get("Round of 32") ?? [];
+    const orderedRound32 = roundOf32Order
+      .map((id) => round32Matches.find((m) => m.id === id))
+      .filter(Boolean) as ResolvedKnockoutMatch[];
+    const midPoint = Math.ceil(orderedRound32.length / 2);
+    const topRound32Ids = new Set(orderedRound32.slice(0, midPoint).map(m => m.id));
+    const bottomRound32Ids = new Set(orderedRound32.slice(midPoint).map(m => m.id));
+    
+    split["Round of 32"] = {
+      top: orderedRound32.slice(0, midPoint),
+      bottom: orderedRound32.slice(midPoint),
+    };
+    
+    // Helper function to extract source match ID from a label
+    const extractSource = (label: string): number | null => {
+      if (label.startsWith("Winner Match ")) {
+        const id = Number(label.replace("Winner Match ", "").trim());
+        return Number.isFinite(id) ? id : null;
+      }
+      if (label.startsWith("Loser Match ")) {
+        const id = Number(label.replace("Loser Match ", "").trim());
+        return Number.isFinite(id) ? id : null;
+      }
+      return null;
+    };
+    
+    // Helper function to find all Round of 32 ancestors of a match
+    const findRound32Ancestors = (matchId: number, visited: Set<number> = new Set()): Set<number> => {
+      if (visited.has(matchId)) {
+        return new Set();
+      }
+      visited.add(matchId);
+      
+      const match = matchById.get(matchId);
+      if (!match) {
+        return new Set();
+      }
+      
+      // If this is a Round of 32 match, return itself
+      if (match.stage === "Round of 32") {
+        return new Set([matchId]);
+      }
+      
+      // Otherwise, trace back through its sources
+      const sources = [
+        extractSource(match.homeLabel),
+        extractSource(match.awayLabel),
+      ].filter((id): id is number => id !== null);
+      
+      const ancestors = new Set<number>();
+      for (const sourceId of sources) {
+        const sourceAncestors = findRound32Ancestors(sourceId, visited);
+        for (const ancestor of sourceAncestors) {
+          ancestors.add(ancestor);
+        }
+      }
+      return ancestors;
+    };
+    
+    // For each subsequent stage, assign matches to top/bottom based on their Round of 32 ancestry
+    for (const stage of ["Round of 16", "Quarterfinal", "Semifinal"]) {
+      const matches = knockoutMatchesByStage.get(stage) ?? [];
+      const topMatches: ResolvedKnockoutMatch[] = [];
+      const bottomMatches: ResolvedKnockoutMatch[] = [];
+      
+      for (const match of matches) {
+        const ancestors = findRound32Ancestors(match.id);
+        const hasTopAncestor = Array.from(ancestors).some(id => topRound32Ids.has(id));
+        const hasBottomAncestor = Array.from(ancestors).some(id => bottomRound32Ids.has(id));
+        
+        // If match has any top ancestor, it goes to top half
+        // If it only has bottom ancestors, it goes to bottom half
+        if (hasTopAncestor) {
+          topMatches.push(match);
+        } else if (hasBottomAncestor) {
+          bottomMatches.push(match);
+        } else {
+          // Fallback: if we can't determine, assign based on match ID
+          // (shouldn't happen in a well-formed bracket, but handle gracefully)
+          if (match.id % 2 === 0) {
+            topMatches.push(match);
+          } else {
+            bottomMatches.push(match);
+          }
+        }
+      }
+      
+      split[stage] = { top: topMatches, bottom: bottomMatches };
+    }
+    
+    return split;
+  }, [knockoutMatchesByStage, roundOf32Order]);
+
   const knockoutEdges = React.useMemo(() => {
     const edges: Array<{ from: number; to: number }> = [];
     for (const match of data.knockoutMatches) {
@@ -3687,14 +3792,70 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           }
           const fromRect = fromEl.getBoundingClientRect();
           const toRect = toEl.getBoundingClientRect();
-          const startX = fromRect.right - rect.left - connectorInset;
+          const fromStage = matchStageById[edge.from];
+          const toStage = matchStageById[edge.to];
+          
+          // Determine if matches are on left or right side
+          const fromMatches = knockoutMatchesByStage.get(fromStage) ?? [];
+          const toMatches = knockoutMatchesByStage.get(toStage) ?? [];
+          const fromMatch = fromMatches.find(m => m.id === edge.from);
+          const toMatch = toMatches.find(m => m.id === edge.to);
+          
+          // Check if matches are in top (left) or bottom (right) half
+          const fromIsTop = fromMatch && splitMatchesByStage[fromStage]?.top.some(m => m.id === edge.from);
+          const toIsTop = toMatch && splitMatchesByStage[toStage]?.top.some(m => m.id === edge.to);
+          const fromIsRight = !fromIsTop && fromStage !== "Final";
+          const toIsRight = !toIsTop && toStage !== "Final";
+          
           const startY = fromRect.top - rect.top + fromRect.height / 2;
-          const endX = toRect.left - rect.left + connectorInset;
           const endY = toRect.top - rect.top + toRect.height / 2;
-          const midX = startX + (endX - startX) * 0.5;
-          paths.push(
-            `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`
-          );
+          
+          let path: string;
+          const isRound16ToQuarter = fromStage === "Round of 16" && toStage === "Quarterfinal";
+          const isQuarterToSemi = fromStage === "Quarterfinal" && toStage === "Semifinal";
+          
+          if (fromIsRight) {
+            // Right side: exit from LEFT edge, enter RIGHT edge of destination
+            const startX = fromRect.left - rect.left + connectorInset;
+            if (isRound16ToQuarter) {
+              // R16 → Quarters: Exit from left, go short distance, turn right angle, enter right side
+              const endX = toRect.right - rect.left - connectorInset;
+              const horizontalDistance = 30;
+              const turnX = startX - horizontalDistance;
+              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+            } else if (isQuarterToSemi) {
+              // Quarters → Semis: Exit from left, enter right
+              const endX = toRect.right - rect.left - connectorInset;
+              const midX = startX + (endX - startX) * 0.5;
+              path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+            } else {
+              // Standard right-side connection
+              const endX = toRect.right - rect.left - connectorInset;
+              const midX = startX + (endX - startX) * 0.5;
+              path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+            }
+          } else {
+            // Left side or center: exit from RIGHT edge, enter LEFT edge
+            const startX = fromRect.right - rect.left - connectorInset;
+            if (isRound16ToQuarter) {
+              // R16 → Quarters: Exit from right, go short distance, turn right angle, enter left side
+              const endX = toRect.left - rect.left + connectorInset;
+              const horizontalDistance = 30;
+              const turnX = startX + horizontalDistance;
+              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+            } else if (isQuarterToSemi) {
+              // Quarters → Semis: Exit from right, enter left
+              const endX = toRect.left - rect.left + connectorInset;
+              const midX = startX + (endX - startX) * 0.5;
+              path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+            } else {
+              // Standard left-side connection
+              const endX = toRect.left - rect.left + connectorInset;
+              const midX = startX + (endX - startX) * 0.5;
+              path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+            }
+          }
+          paths.push(path);
         }
         setKnockoutPaths(paths);
       });
@@ -3710,7 +3871,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutEdges, thirdPlaceOffset, finalCenterOverride, knockoutListHeight]);
+  }, [knockoutEdges, thirdPlaceOffset, finalCenterOverride, knockoutListHeight, matchStageById, knockoutMatchesByStage, splitMatchesByStage]);
 
   React.useLayoutEffect(() => {
     const list = roundOf32ListRef.current;
@@ -3826,14 +3987,37 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           return;
         }
         const listRect = finalList.getBoundingClientRect();
-        const finalRect = finalEl.getBoundingClientRect();
-        const baseGap = 72;
-        const nextTop = finalRect.bottom - listRect.top + baseGap;
+        const containerRect = knockoutContainerRef.current?.getBoundingClientRect();
+        if (!containerRect) {
+          return;
+        }
+        const semifinalMatches = knockoutMatchesByStage.get("Semifinal") ?? [];
+        const centers = semifinalMatches
+          .map((match) => {
+            const el = knockoutRefs.current.get(match.id);
+            if (!el) {
+              return null;
+            }
+            const rect = el.getBoundingClientRect();
+            return rect.top - containerRect.top + rect.height / 2;
+          })
+          .filter((value): value is number => typeof value === "number");
+        if (centers.length === 0) {
+          return;
+        }
+        const semisAvg = centers.reduce((sum, value) => sum + value, 0) / centers.length;
+        const listOffset = listRect.top - containerRect.top;
+        // Position third place lower than semis, with same offset as final is above (symmetric)
+        const finalOffset = 80; // Distance above/below semis average
+        const nextTop = semisAvg - listOffset + finalOffset;
         setThirdPlaceOffset((prev) => (prev === nextTop ? prev : nextTop));
       });
     };
     const observer = new ResizeObserver(compute);
     observer.observe(finalList);
+    if (knockoutContainerRef.current) {
+      observer.observe(knockoutContainerRef.current);
+    }
     compute();
     window.addEventListener("resize", compute);
     return () => {
@@ -3843,7 +4027,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, knockoutCenters]);
+  }, [knockoutMatchesByStage, knockoutCenters, knockoutContainerRef]);
 
   React.useLayoutEffect(() => {
     const container = knockoutContainerRef.current;
@@ -3877,7 +4061,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         const avg =
           centers.reduce((sum, value) => sum + value, 0) / centers.length;
         const listOffset = finalListRect.top - containerRect.top;
-        const nextCenter = avg - listOffset;
+        // Position final higher than semis (above the average), symmetric with third place below
+        const finalOffset = 80; // Distance above semis average
+        const nextCenter = avg - listOffset - finalOffset;
         setFinalCenterOverride((prev) => (prev === nextCenter ? prev : nextCenter));
       });
     };
@@ -4521,7 +4707,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div className="overflow-x-auto overflow-y-visible pb-2">
           <div
             ref={knockoutContainerRef}
-            className="relative min-w-[900px] px-2"
+            className="relative min-w-[900px] lg:min-w-0 px-2"
           >
             <svg
               className="absolute inset-0 z-0 h-full w-full pointer-events-none"
@@ -4539,7 +4725,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 />
               ))}
             </svg>
-            <div className="relative z-10 flex gap-6">
+            {/* Mobile/Tablet: Original linear layout */}
+            <div className="relative z-10 flex gap-6 lg:hidden">
               {stageOrder.map((stage) => {
                 const matches = knockoutMatchesByStage.get(stage) ?? [];
                 const isRoundOf32 = stage === "Round of 32";
@@ -4571,11 +4758,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     className="relative min-w-[200px]"
                     style={columnHeight ? { height: columnHeight } : undefined}
                   >
-                    <div className="flex justify-center pb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      <span className="w-[200px] text-center">
-                        {stage === "Final" ? "Final / Third place" : stage}
-                      </span>
-                    </div>
                     <div
                       ref={(el) => {
                         if (isRoundOf32) {
@@ -4587,7 +4769,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       }}
                       className={cn(
                         "relative",
-                        isRoundOf32 ? "flex flex-col gap-[9px] pt-0" : "pt-4"
+                        isRoundOf32 ? "flex flex-col gap-[9px] pt-2" : "pt-4"
                       )}
                       style={
                         !isRoundOf32 && knockoutListHeight
@@ -4717,6 +4899,400 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                   </div>
                 );
               })}
+            </div>
+
+            {/* Desktop: Split bracket layout with fixed blocks */}
+            <div className="relative z-10 hidden lg:flex lg:justify-between" style={{ minHeight: knockoutListHeight ? `${knockoutListHeight + 40}px` : undefined }}>
+              {(() => {
+                const baseColumnWidth = 200;
+                const baseGap = 24;
+                // Calculate fixed width for left/right blocks (R32 to Semis)
+                const leftBlockWidth = (3 - 1) * (baseColumnWidth + baseGap) + baseColumnWidth; // Position 1 to 3
+                
+                // Column positions within each block
+                const getLeftPosition = (pos: number) => {
+                  return `${(pos - 1) * (baseColumnWidth + baseGap)}px`;
+                };
+                
+                return (
+                  <>
+                    {/* Left block: Top half bracket (R32 to Semis) - fixed width, left-aligned */}
+                    <div className="relative" style={{ width: `${leftBlockWidth}px`, flexShrink: 0 }}>
+                      {stageOrder
+                        .filter((stage) => stage !== "Final")
+                        .map((stage) => {
+                        const matches = splitMatchesByStage[stage]?.top ?? [];
+                        const isRoundOf32 = stage === "Round of 32";
+                        const cardHeight = knockoutCardHeight ?? 64;
+                        const headerOffset = 20;
+                        const labelGap = 28;
+                        const columnHeight = knockoutListHeight
+                          ? knockoutListHeight + headerOffset
+                          : undefined;
+                          // Map stages to positions within left block: R32=1, R16=2, Quarters=2.5, Semis=3
+                          const leftPositions: Record<string, number> = {
+                            'Round of 32': 1,
+                            'Round of 16': 2,
+                            'Quarterfinal': 2.5,
+                            'Semifinal': 3,
+                          };
+                          const pos = leftPositions[stage];
+                          if (pos === undefined) {
+                            return null;
+                          }
+                          return (
+                            <div
+                              key={`top-${stage}`}
+                              className="absolute top-0"
+                              style={{
+                                left: getLeftPosition(pos),
+                                width: `${baseColumnWidth}px`,
+                                height: columnHeight,
+                              }}
+                            >
+                        <div
+                          ref={(el) => {
+                            if (isRoundOf32) {
+                              roundOf32ListRef.current = el;
+                            }
+                          }}
+                          className={cn(
+                            "relative",
+                            isRoundOf32 ? "flex flex-col gap-4 pt-2" : "pt-4"
+                          )}
+                          style={
+                            !isRoundOf32 && knockoutListHeight
+                              ? {
+                                  minHeight: `${knockoutListHeight}px`,
+                                }
+                              : undefined
+                          }
+                        >
+                          {matches.map((match) => {
+                            if (!match) {
+                              return null;
+                            }
+                            const handleRoundOf32Click = isRoundOf32
+                              ? () => logRoundOf32Match(match)
+                              : undefined;
+                            const center = knockoutCenters[match.id] ?? 0;
+                            const top = isRoundOf32 ? undefined : center - cardHeight / 2;
+                            const probabilities = getMatchProbabilityLabels({
+                              homeTeam: match.homeResolved ?? match.homeLabel,
+                              awayTeam: match.awayResolved ?? match.awayLabel,
+                              allowDraw: false,
+                              country: match.country,
+                            });
+                            return (
+                              <div
+                                key={match.id}
+                                ref={(el) => {
+                                  if (el) {
+                                    knockoutRefs.current.set(match.id, el);
+                                  } else {
+                                    knockoutRefs.current.delete(match.id);
+                                  }
+                                }}
+                                className={cn(
+                                  isRoundOf32 && "relative",
+                                  !isRoundOf32 && "absolute left-0"
+                                )}
+                                style={top !== undefined ? { top } : undefined}
+                                onClick={handleRoundOf32Click}
+                              >
+                                <KnockoutMatchCard
+                                  homeTeam={match.homeResolved ?? match.homeLabel}
+                                  awayTeam={match.awayResolved ?? match.awayLabel}
+                                  winnerSelection={knockoutWinners[String(match.id)] ?? null}
+                                  onWinnerSelect={(selection) =>
+                                    updateKnockoutWinner(match.id, selection)
+                                  }
+                                  compact={isRoundOf32}
+                                  flags={data.flags}
+                                  homeWinProb={probabilities.homeWinProb}
+                                  awayWinProb={probabilities.awayWinProb}
+                                  drawProb={probabilities.drawProb}
+                                  isFinal={false}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                          </div>
+                        );
+                      })}
+
+                    </div>
+
+                    {/* Center: Final and Third place - centered horizontally */}
+                    <div className="relative flex-shrink-0" style={{ width: `${baseColumnWidth}px` }}>
+                      {stageOrder
+                        .filter((stage) => stage === "Final")
+                        .map((stage) => {
+                          const matches = knockoutMatchesByStage.get(stage) ?? [];
+                          const cardHeight = knockoutCardHeight ?? 64;
+                          const headerOffset = 20;
+                          const thirdPlaceMatchTop = stage === "Final" ? thirdPlaceOffset : null;
+                          const labelGap = 28;
+                          const finalStageHeight =
+                            thirdPlaceMatchTop !== null
+                              ? Math.max(
+                                  knockoutListHeight ?? 0,
+                                  thirdPlaceMatchTop + cardHeight
+                                )
+                              : knockoutListHeight ?? null;
+                          const columnHeight =
+                            knockoutListHeight && stage === "Final" && finalStageHeight
+                              ? finalStageHeight + headerOffset
+                              : knockoutListHeight
+                                ? knockoutListHeight + headerOffset
+                                : undefined;
+                          return (
+                            <div
+                              key={stage}
+                              className="relative"
+                              style={{
+                                width: `${baseColumnWidth}px`,
+                                height: columnHeight,
+                              }}
+                            >
+                        <div
+                          ref={(el) => {
+                            if (stage === "Final") {
+                              finalListRef.current = el;
+                            }
+                          }}
+                          className="relative pt-4"
+                          style={
+                            knockoutListHeight
+                              ? {
+                                  minHeight: `${
+                                    stage === "Final" && finalStageHeight
+                                      ? finalStageHeight
+                                      : knockoutListHeight
+                                  }px`,
+                                }
+                              : undefined
+                          }
+                        >
+                          {matches.map((match) => {
+                            if (!match) {
+                              return null;
+                            }
+                            const center =
+                              stage === "Final" && finalCenterOverride !== null
+                                ? finalCenterOverride
+                                : knockoutCenters[match.id] ?? 0;
+                            const top = center - cardHeight / 2;
+                            const probabilities = getMatchProbabilityLabels({
+                              homeTeam: match.homeResolved ?? match.homeLabel,
+                              awayTeam: match.awayResolved ?? match.awayLabel,
+                              allowDraw: false,
+                              country: match.country,
+                            });
+                            return (
+                              <div
+                                key={match.id}
+                                ref={(el) => {
+                                  if (el) {
+                                    knockoutRefs.current.set(match.id, el);
+                                  } else {
+                                    knockoutRefs.current.delete(match.id);
+                                  }
+                                }}
+                                className="relative"
+                                style={{ top }}
+                              >
+                                <div
+                                  className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-slate-600"
+                                  style={{ top: -labelGap }}
+                                >
+                                  Final
+                                </div>
+                                <KnockoutMatchCard
+                                  homeTeam={match.homeResolved ?? match.homeLabel}
+                                  awayTeam={match.awayResolved ?? match.awayLabel}
+                                  winnerSelection={knockoutWinners[String(match.id)] ?? null}
+                                  onWinnerSelect={(selection) =>
+                                    updateKnockoutWinner(match.id, selection)
+                                  }
+                                  compact={false}
+                                  flags={data.flags}
+                                  homeWinProb={probabilities.homeWinProb}
+                                  awayWinProb={probabilities.awayWinProb}
+                                  drawProb={probabilities.drawProb}
+                                  isFinal={stage === "Final"}
+                                />
+                              </div>
+                            );
+                          })}
+                          {stage === "Final" &&
+                            thirdPlaceMatches.length > 0 &&
+                            thirdPlaceMatchTop !== null && (
+                              <>
+                                <div
+                                  className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-slate-600"
+                                  style={{ top: thirdPlaceMatchTop - labelGap }}
+                                >
+                                  Third place
+                                </div>
+                                <div
+                                  className="absolute left-0"
+                                  style={{ top: thirdPlaceMatchTop }}
+                                >
+                                  {thirdPlaceMatches.map((match) => {
+                                    const probabilities = getMatchProbabilityLabels({
+                                      homeTeam: match.homeResolved ?? match.homeLabel,
+                                      awayTeam: match.awayResolved ?? match.awayLabel,
+                                      allowDraw: false,
+                                      country: match.country,
+                                    });
+                                    return (
+                                      <div
+                                        key={match.id}
+                                        ref={(el) => {
+                                          if (el) {
+                                            knockoutRefs.current.set(match.id, el);
+                                          } else {
+                                            knockoutRefs.current.delete(match.id);
+                                          }
+                                        }}
+                                      >
+                                        <KnockoutMatchCard
+                                          homeTeam={match.homeResolved ?? match.homeLabel}
+                                          awayTeam={match.awayResolved ?? match.awayLabel}
+                                          winnerSelection={knockoutWinners[String(match.id)] ?? null}
+                                          onWinnerSelect={(selection) =>
+                                            updateKnockoutWinner(match.id, selection)
+                                          }
+                                          compact={false}
+                                          flags={data.flags}
+                                          homeWinProb={probabilities.homeWinProb}
+                                          awayWinProb={probabilities.awayWinProb}
+                                          drawProb={probabilities.drawProb}
+                                        />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                        </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {/* Right block: Bottom half bracket (Semis to R32) - fixed width, right-aligned */}
+                    <div className="relative" style={{ width: `${leftBlockWidth}px`, flexShrink: 0 }}>
+                      {stageOrder
+                        .filter((stage) => stage !== "Final")
+                        .map((stage) => {
+                          const matches = splitMatchesByStage[stage]?.bottom ?? [];
+                          const isRoundOf32 = stage === "Round of 32";
+                          const cardHeight = knockoutCardHeight ?? 64;
+                          const headerOffset = 20;
+                          const columnHeight = knockoutListHeight
+                            ? knockoutListHeight + headerOffset
+                            : undefined;
+                          // Map stages to positions within right block - EXACTLY mirror the left block
+                          // Left block positions: R32=1, R16=2, Quarters=2.5, Semis=3
+                          // Right block should mirror: Semis=1, Quarters=2, R16=2.5, R32=3
+                          // Map stages to positions within right block - integer spacing to prevent overlap
+                          // With 200px columns, fractional positions cause overlap
+                          // Use integer positions: Semis=1, QF=1.5, R16=2, R32=3
+                          const rightPositions: Record<string, number> = {
+                            'Semifinal': 1,        // 0px
+                            'Quarterfinal': 1.5,   // 112px
+                            'Round of 16': 2,      // 224px (ends at 424px, no overlap with R32 at 448px)
+                            'Round of 32': 3,      // 448px
+                          };
+                          const rightPos = rightPositions[stage];
+                          if (rightPos === undefined) {
+                            return null;
+                          }
+                          const calculatedLeft = getLeftPosition(rightPos);
+                          // Calculate position from left edge of the right block using the same function
+                          return (
+                            <div
+                              key={`bottom-${stage}`}
+                              className="absolute top-0"
+                              style={{
+                                left: calculatedLeft,
+                                width: `${baseColumnWidth}px`,
+                                height: columnHeight,
+                              }}
+                            >
+                            <div
+                              className={cn(
+                                "relative",
+                                isRoundOf32 ? "flex flex-col gap-4 pt-2" : "pt-4"
+                              )}
+                              style={
+                                !isRoundOf32 && knockoutListHeight
+                                  ? {
+                                      minHeight: `${knockoutListHeight}px`,
+                                    }
+                                  : undefined
+                              }
+                            >
+                              {matches.map((match) => {
+                            if (!match) {
+                              return null;
+                            }
+                            const handleRoundOf32Click = isRoundOf32
+                              ? () => logRoundOf32Match(match)
+                              : undefined;
+                            const center = knockoutCenters[match.id] ?? 0;
+                            const top = isRoundOf32 ? undefined : center - cardHeight / 2;
+                            const probabilities = getMatchProbabilityLabels({
+                              homeTeam: match.homeResolved ?? match.homeLabel,
+                              awayTeam: match.awayResolved ?? match.awayLabel,
+                              allowDraw: false,
+                              country: match.country,
+                            });
+                            return (
+                              <div
+                                key={match.id}
+                                ref={(el) => {
+                                  if (el) {
+                                    knockoutRefs.current.set(match.id, el);
+                                  } else {
+                                    knockoutRefs.current.delete(match.id);
+                                  }
+                                }}
+                                className={cn(
+                                  isRoundOf32 && "relative",
+                                  !isRoundOf32 && "absolute left-0"
+                                )}
+                                style={top !== undefined ? { top } : undefined}
+                                onClick={handleRoundOf32Click}
+                              >
+                                <KnockoutMatchCard
+                                  homeTeam={match.homeResolved ?? match.homeLabel}
+                                  awayTeam={match.awayResolved ?? match.awayLabel}
+                                  winnerSelection={knockoutWinners[String(match.id)] ?? null}
+                                  onWinnerSelect={(selection) =>
+                                    updateKnockoutWinner(match.id, selection)
+                                  }
+                                  compact={isRoundOf32}
+                                  flags={data.flags}
+                                  homeWinProb={probabilities.homeWinProb}
+                                  awayWinProb={probabilities.awayWinProb}
+                                  drawProb={probabilities.drawProb}
+                                  isFinal={false}
+                                />
+                              </div>
+                            );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
