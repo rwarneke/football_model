@@ -5247,17 +5247,11 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       {stageOrder
                         .filter((stage) => stage === "Final")
                         .map((stage) => {
-                          // Check if tournament is complete (all knockout matches have winners)
-                          const allKnockoutMatches = Array.from(knockoutMatchesByStage.values()).flat();
-                          const allMatchesResolved = allKnockoutMatches.every(match => {
-                            const winner = knockoutWinners[String(match.id)];
-                            return winner !== null && winner !== undefined;
-                          });
-                          
-                          // Get champion (winner of Final)
+                          // Get champion (winner of Final) - only requires Final to be picked
                           const finalMatch = (knockoutMatchesByStage.get("Final") ?? [])[0];
-                          const champion = finalMatch && allMatchesResolved
-                            ? (knockoutWinners[String(finalMatch.id)] === "home"
+                          const finalWinner = finalMatch ? knockoutWinners[String(finalMatch.id)] : null;
+                          const champion = finalMatch && finalWinner !== null && finalWinner !== undefined
+                            ? (finalWinner === "home"
                                 ? (finalMatch.homeResolved ?? finalMatch.homeLabel)
                                 : (finalMatch.awayResolved ?? finalMatch.awayLabel))
                             : null;
@@ -5308,7 +5302,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                               : undefined
                           }
                         >
-                          {/* Champion block - appears when tournament is complete */}
+                          {/* Champion block - appears when Final has been picked */}
                           {champion && matches.length > 0 && (() => {
                             const finalMatch = matches[0];
                             const center =
