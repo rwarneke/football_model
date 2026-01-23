@@ -1594,8 +1594,8 @@ function MatchCard({
             className={cn(
               "w-8 h-7 rounded-md text-center text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors",
               !isScoreSet && "bg-slate-100 text-slate-400 placeholder:text-slate-400",
-              isScoreSet && isWin && "bg-blue-100 text-blue-700 ring-1 ring-blue-300",
-              isScoreSet && isDraw && "bg-slate-200 text-slate-700 ring-1 ring-slate-300",
+              isScoreSet && isWin && "bg-transparent text-blue-700",
+              isScoreSet && isDraw && "bg-transparent text-blue-700",
               isScoreSet && !isWin && !isDraw && "bg-transparent text-slate-400",
               !isPickableMatch && "cursor-default opacity-60"
             )}
@@ -1618,12 +1618,23 @@ function MatchCard({
           onClick={() => handleTeamSelect(side)}
           disabled={!isPickableMatch}
           className={cn(
-            "flex items-center gap-3 px-2 py-2 transition-colors w-full",
+            "group flex items-center gap-3 px-2 py-2 transition-all duration-200 w-full relative",
             side === "home" ? "justify-end" : "justify-start",
-            isPickableMatch && "cursor-pointer hover:bg-slate-50/50",
+            isPickableMatch && "cursor-pointer",
             !isPickableMatch && "cursor-default"
           )}
         >
+          {/* Hover gradient overlay */}
+          {isPickableMatch && !isWin && (
+            <div
+              className={cn(
+                "absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+                side === "home"
+                  ? "bg-[linear-gradient(to_right,rgba(219,234,254,0.3)_0%,rgba(219,234,254,0.3)_50%,transparent_100%)]"
+                  : "bg-[linear-gradient(to_left,rgba(219,234,254,0.3)_0%,rgba(219,234,254,0.3)_50%,transparent_100%)]"
+              )}
+            />
+          )}
           {side === "away" && (
             <TeamFlag
               team={team}
@@ -1654,22 +1665,85 @@ function MatchCard({
       );
     };
 
+    // Calculate gradient position for blue highlight (aligned with knockouts: blue-100 at 50% opacity)
+    const getGradientStyle = () => {
+      if (!isScoreSet) return {};
+      
+      if (isDraw) {
+        // For draws: gradient spans from home score to away score
+        // Scores are roughly centered, so gradient should span the score area
+        // Assuming score area is roughly 20% of width (scores + draw button)
+        return {
+          background: `linear-gradient(to right, 
+            transparent 0%, 
+            transparent 38%, 
+            rgba(219, 234, 254, 0.5) 40%, 
+            rgba(219, 234, 254, 0.5) 45%, 
+            rgba(219, 234, 254, 0.5) 55%, 
+            rgba(219, 234, 254, 0.5) 60%, 
+            transparent 62%, 
+            transparent 100%)`
+        };
+      } else if (homeIsWinner) {
+        // For home wins: gradient starts from left edge, fades to white around home score (~40% from left)
+        return {
+          background: `linear-gradient(to right, 
+            rgba(219, 234, 254, 0.5) 0%, 
+            rgba(219, 234, 254, 0.5) 35%, 
+            rgba(219, 234, 254, 0.5) 38%, 
+            rgba(255, 255, 255, 0) 42%, 
+            transparent 45%, 
+            transparent 100%)`
+        };
+      } else if (awayIsWinner) {
+        // For away wins: gradient starts from right edge, fades to white around away score (~60% from left)
+        return {
+          background: `linear-gradient(to right, 
+            transparent 0%, 
+            transparent 55%, 
+            rgba(255, 255, 255, 0) 58%, 
+            rgba(219, 234, 254, 0.5) 62%, 
+            rgba(219, 234, 254, 0.5) 65%, 
+            rgba(219, 234, 254, 0.5) 100%)`
+        };
+      }
+      return {};
+    };
+
     return (
       <div
         className={cn(
-          "overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
+          "group relative overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
           isPickableMatch && !isScoreSet && "bg-[#fff5f2] ring-2 ring-[#ffb4a1]",
           (isScoreSet || !isPickableMatch) && "bg-white ring-2 ring-slate-200"
         )}
       >
-        <div className="flex items-center">
+        {/* Blue gradient highlight background */}
+        {isScoreSet && (isDraw || homeIsWinner || awayIsWinner) && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={getGradientStyle()}
+          />
+        )}
+        <div className="relative flex items-center">
           {/* Home team */}
           <div className="flex-1 min-w-0">
             {renderTeamRow("home", homeTeam, displayHome, homeInputRef)}
           </div>
 
           {/* Score area */}
-          <div className="flex items-center gap-1 px-2">
+          <div className="group/draw relative flex items-center gap-1 px-2">
+            {/* Hover gradient for draw button - extends full height of match card, but only in score area */}
+            {allowDraw && isPickableMatch && !isScoreSet && (
+              <div
+                className="absolute inset-y-0 left-0 right-0 pointer-events-none opacity-0 group-hover/draw:opacity-100 transition-opacity duration-200"
+                style={{
+                  background: `linear-gradient(to right, 
+                    rgba(219, 234, 254, 0.3) 0%, 
+                    rgba(219, 234, 254, 0.3) 100%)`
+                }}
+              />
+            )}
             {renderScoreInput("home", homeInputRef)}
             <button
               type="button"
@@ -1677,8 +1751,7 @@ function MatchCard({
               disabled={!allowDraw || !isPickableMatch}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-md transition-colors",
-                allowDraw && isPickableMatch && "cursor-pointer hover:bg-slate-50",
-                isDraw && isScoreSet && "bg-slate-100",
+                allowDraw && isPickableMatch && "cursor-pointer",
                 !isPickableMatch && "cursor-default"
               )}
             >
@@ -2052,7 +2125,7 @@ function KnockoutMatchCard({
         }}
         disabled={!isPickableMatch}
         className={cn(
-          "flex w-full flex-1 items-center gap-2",
+          "group flex w-full flex-1 items-center gap-2 relative",
           centerPlaceholders && isLockedMatch ? "px-2 justify-center" : mirrored ? "pl-2 pr-0" : "pl-0 pr-2",
           paddedRow,
           isResolved &&
@@ -2061,14 +2134,20 @@ function KnockoutMatchCard({
             (mirrored ? mirroredGradient : normalGradient),
           isChampionRow &&
             (mirrored ? mirroredChampionGradient : normalChampionGradient),
-          isPickableMatch
-            ? cn(
-                "cursor-pointer transition-colors",
-                !(isResolved && isWinner) && "hover:bg-slate-50/30"
-              )
-            : "cursor-default"
+          isPickableMatch ? "cursor-pointer" : "cursor-default"
         )}
       >
+        {/* Hover gradient overlay */}
+        {isPickableMatch && !(isResolved && isWinner) && !isChampionRow && (
+          <div
+            className={cn(
+              "absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+              mirrored 
+                ? "bg-[linear-gradient(270deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.3)_10%,rgba(219,234,254,0.3)_100%)]"
+                : "bg-[linear-gradient(90deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.3)_10%,rgba(219,234,254,0.3)_100%)]"
+            )}
+          />
+        )}
         {mirrored ? (
           <>
             {scoreSlot}
@@ -2542,10 +2621,59 @@ function GroupTable({
   flags: Record<string, string | null>;
   showTieInfo: boolean;
 }) {
+  const tbodyRef = React.useRef<HTMLTableSectionElement>(null);
+  const [rowPositions, setRowPositions] = React.useState<number[]>([]);
+
+  React.useEffect(() => {
+    if (!tbodyRef.current) return;
+    const rows = tbodyRef.current.querySelectorAll('tr');
+    const positions: number[] = [];
+    let currentTop = 0;
+    rows.forEach((row) => {
+      positions.push(currentTop);
+      currentTop += row.getBoundingClientRect().height;
+    });
+    setRowPositions(positions);
+  }, [rows]);
+
+  // Get header height
+  const headerHeight = 40; // Approximate, could be measured if needed
+
   return (
-    <div className="w-full overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
+    <div className="w-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden relative">
+      {/* Qualifier markers overlay - positioned relative to table container */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 pointer-events-none z-10">
+        {rows.map((row, index) => {
+          const isTopTwo = row.position <= highlightTop;
+          const isThird = row.position === 3;
+          const weakHighlight = !highlightThird && highlightWeakThird && isThird;
+          const hasQualifier = isTopTwo || (highlightThird && isThird) || weakHighlight;
+          if (!hasQualifier || rowPositions.length === 0) return null;
+          
+          const rowTop = headerHeight + rowPositions[index];
+          const rowHeight = index < rowPositions.length - 1 
+            ? rowPositions[index + 1] - rowPositions[index]
+            : 40; // fallback
+          
+          return (
+            <div
+              key={row.team}
+              className={cn(
+                "absolute left-0 w-full",
+                isTopTwo || (highlightThird && isThird)
+                  ? "bg-blue-500/50"
+                  : "bg-slate-200"
+              )}
+              style={{
+                top: `${rowTop}px`,
+                height: `${rowHeight}px`,
+              }}
+            />
+          );
+        })}
+      </div>
       <div className="overflow-x-auto lg:overflow-visible pb-px">
-        <table className="w-full table-fixed text-sm overflow-hidden rounded-t-xl">
+        <table className="w-full table-fixed text-sm">
           <colgroup>
             <col style={{ width: "40px" }} />
             <col />
@@ -2558,9 +2686,9 @@ function GroupTable({
             <col style={{ width: "36px" }} />
             <col style={{ width: "44px" }} />
           </colgroup>
-          <thead className="bg-slate-50 border-b border-slate-200 rounded-t-xl">
+          <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 rounded-tl-xl border-l-4 border-transparent">
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pos
               </th>
               <th className="px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
@@ -2587,39 +2715,29 @@ function GroupTable({
               <th className="px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GD
               </th>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 rounded-tr-xl">
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pts
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 border-b border-slate-200">
+          <tbody ref={tbodyRef} className="divide-y divide-slate-100">
             {rows.map((row, index) => {
               const isTopTwo = row.position <= highlightTop;
               const isThird = row.position === 3;
               const weakHighlight = !highlightThird && highlightWeakThird && isThird;
               const isCutLine = row.position === highlightTop;
               const isLastRow = index === rows.length - 1;
+              const hasQualifier = isTopTwo || (highlightThird && isThird) || weakHighlight;
               return (
                 <tr
                   key={row.team}
                   className={cn(
                     "transition-colors hover:bg-slate-50/70",
                     isCutLine && "border-b border-slate-200",
-                    isLastRow && "border-t-0"
+                    isLastRow && "border-b-0"
                   )}
                 >
-                  <td
-                    className={cn(
-                      "px-2 py-2.5 text-center text-sm tabular-nums text-slate-600",
-                      isTopTwo
-                        ? "border-l-4 border-blue-500/50 pl-2"
-                        : highlightThird && isThird
-                          ? "border-l-4 border-blue-500/50 pl-2" // Blue for 3rd place qualifiers when all matches complete
-                          : weakHighlight
-                            ? "border-l-4 border-slate-200 pl-2" // Grey for all 3rd place when not all matches complete
-                            : "border-l-4 border-transparent"
-                    )}
-                  >
+                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-600">
                     {row.position}
                   </td>
                   <td className="px-2 py-2.5">
@@ -4854,13 +4972,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Select group match outcomes and see standings update instantly.
           </p>
         </div>
-        <div className="grid gap-4 lg:gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid gap-4 lg:gap-6 lg:grid-cols-2 2xl:grid-cols-3 justify-items-center">
           {groupTables.map(({ group, rows }) => {
             const matches = groupMatchesFor(group.id, resolvedGroupMatches);
             return (
               <div
                 key={group.id}
-                className="relative flex flex-col gap-4 overflow-hidden lg:rounded-xl lg:bg-white lg:p-4 lg:ring-1 lg:ring-slate-200 lg:shadow-sm"
+                className="relative flex flex-col gap-4 overflow-hidden max-w-[520px] lg:max-w-none lg:rounded-xl lg:bg-white lg:p-4 lg:ring-1 lg:ring-slate-200 lg:shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
