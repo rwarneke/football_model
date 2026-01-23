@@ -463,7 +463,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-md border border-ink-700 bg-white/80 p-4 shadow-soft">
+      <div className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-ebony">Ratings history</h2>
@@ -815,7 +815,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
           </div>
         </div>
       </div>
-      <div className="rounded-md border border-ink-700 bg-white/80 p-4 shadow-soft">
+      <div className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
         <div className="mb-3 flex flex-col gap-3 text-sm text-ink-400 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center justify-between gap-4">
             <span>{selectedTeams.length} selected</span>

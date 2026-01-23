@@ -10,7 +10,7 @@ export default function WorldCupPredictorRoute() {
   });
 
   return (
-    <main className="px-6 pb-16 pt-12">
+    <main className="px-2 pb-16 pt-12 md:px-6">
       <div className="flex w-full flex-col gap-10">
         <header className="space-y-4">
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">

@@ -1941,6 +1941,7 @@ function KnockoutMatchCard({
   homeRowRef,
   awayRowRef,
   mirrored,
+  compactMode,
 }: {
   homeTeam: string;
   awayTeam: string;
@@ -1957,6 +1958,7 @@ function KnockoutMatchCard({
   homeRowRef?: React.Ref<HTMLButtonElement>;
   awayRowRef?: React.Ref<HTMLButtonElement>;
   mirrored?: boolean;
+  compactMode?: boolean;
 }) {
   const placeholderHome = !isConcreteTeam(homeTeam);
   const placeholderAway = !isConcreteTeam(awayTeam);
@@ -2183,6 +2185,59 @@ function KnockoutMatchCard({
       {renderRow(awayTeam, "away", placeholderAway, awayRowRef)}
     </div>
   );
+
+  // Compact mode: just flags with blue background for winner
+  if (compactMode) {
+    const renderCompactRow = (team: string, side: "home" | "away", isPlaceholder: boolean) => {
+      const isWinner = winner === team;
+      const isResolved = winner !== null;
+      const isChampionRow = isFinalResolved && isWinner;
+      
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            if (!isPickableMatch) return;
+            onWinnerSelect(winnerSelection === side ? null : side);
+          }}
+          disabled={!isPickableMatch}
+          className={cn(
+            "flex items-center justify-center p-1",
+            isResolved && isWinner && !isChampionRow && "bg-blue-200",
+            isChampionRow && "bg-amber-200",
+            isPickableMatch ? "cursor-pointer" : "cursor-default"
+          )}
+        >
+          {isPlaceholder ? (
+            <div className="h-4 w-6 rounded-sm bg-slate-100 ring-1 ring-slate-200" />
+          ) : (
+            <TeamFlag
+              team={team}
+              flags={flags}
+              className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+            />
+          )}
+        </button>
+      );
+    };
+
+    return (
+      <div
+        ref={containerRef}
+        className={cn(
+          "w-[40px] overflow-hidden rounded-lg shadow-sm",
+          needsPick
+            ? "bg-[#fff5f2] ring-2 ring-[#ffb4a1]"
+            : "bg-white ring-2 ring-slate-200"
+        )}
+      >
+        <div className="flex flex-col">
+          {renderCompactRow(homeTeam, "home", placeholderHome)}
+          {renderCompactRow(awayTeam, "away", placeholderAway)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -2488,9 +2543,9 @@ function GroupTable({
   showTieInfo: boolean;
 }) {
   return (
-    <div className="min-w-0 w-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto lg:overflow-visible">
-        <table className="w-full table-fixed text-sm">
+    <div className="w-full overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
+      <div className="overflow-x-auto lg:overflow-visible pb-px">
+        <table className="w-full table-fixed text-sm overflow-hidden rounded-t-xl">
           <colgroup>
             <col style={{ width: "40px" }} />
             <col />
@@ -2498,14 +2553,14 @@ function GroupTable({
             <col style={{ width: "32px" }} />
             <col style={{ width: "32px" }} />
             <col style={{ width: "32px" }} />
-            <col style={{ width: "36px" }} />
-            <col style={{ width: "36px" }} />
+            <col className="hidden lg:table-column" style={{ width: "36px" }} />
+            <col className="hidden lg:table-column" style={{ width: "36px" }} />
             <col style={{ width: "36px" }} />
             <col style={{ width: "44px" }} />
           </colgroup>
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-slate-50 border-b border-slate-200 rounded-t-xl">
             <tr>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 rounded-tl-xl border-l-4 border-slate-50">
+              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 rounded-tl-xl border-l-4 border-transparent">
                 Pos
               </th>
               <th className="px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
@@ -2523,10 +2578,10 @@ function GroupTable({
               <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 L
               </th>
-              <th className="px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="hidden lg:table-cell px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GF
               </th>
-              <th className="px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="hidden lg:table-cell px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GA
               </th>
               <th className="px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
@@ -2537,18 +2592,20 @@ function GroupTable({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rows.map((row) => {
+          <tbody className="divide-y divide-slate-100 border-b border-slate-200">
+            {rows.map((row, index) => {
               const isTopTwo = row.position <= highlightTop;
               const isThird = row.position === 3;
               const weakHighlight = !highlightThird && highlightWeakThird && isThird;
               const isCutLine = row.position === highlightTop;
+              const isLastRow = index === rows.length - 1;
               return (
                 <tr
                   key={row.team}
                   className={cn(
                     "transition-colors hover:bg-slate-50/70",
-                    isCutLine && "border-b border-slate-200"
+                    isCutLine && "border-b border-slate-200",
+                    isLastRow && "border-t-0"
                   )}
                 >
                   <td
@@ -2557,9 +2614,9 @@ function GroupTable({
                       isTopTwo
                         ? "border-l-4 border-blue-500/50 pl-2"
                         : highlightThird && isThird
-                          ? "border-l-4 border-slate-300 pl-2"
+                          ? "border-l-4 border-blue-500/50 pl-2" // Blue for 3rd place qualifiers when all matches complete
                           : weakHighlight
-                            ? "border-l-4 border-slate-200 pl-2"
+                            ? "border-l-4 border-slate-200 pl-2" // Grey for all 3rd place when not all matches complete
                             : "border-l-4 border-transparent"
                     )}
                   >
@@ -2598,10 +2655,10 @@ function GroupTable({
                   <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.losses}
                   </td>
-                  <td className="px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="hidden lg:table-cell px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.gf}
                   </td>
-                  <td className="px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="hidden lg:table-cell px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.ga}
                   </td>
                   <td className="px-1 py-2.5 text-center text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
@@ -2699,6 +2756,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const [finalCenterOverride, setFinalCenterOverride] = React.useState<number | null>(
     null
   );
+  const [compactKnockout, setCompactKnockout] = React.useState(false);
   const matchStageById = React.useMemo(() => {
     const mapping: Record<number, string> = {};
     for (const match of data.knockoutMatches) {
@@ -3939,61 +3997,93 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           const endY = toRect.top - rect.top + toRect.height / 2;
           
           let path: string;
+          const isRound32ToRound16 = fromStage === "Round of 32" && toStage === "Round of 16";
           const isRound16ToQuarter = fromStage === "Round of 16" && toStage === "Quarterfinal";
           const isQuarterToSemi = fromStage === "Quarterfinal" && toStage === "Semifinal";
           const isSemiToFinal = fromStage === "Semifinal" && (toStage === "Final" || toStage === "Third place");
+          // In compact mode, subsequent rounds turn earlier (20px), R32→R16 uses fixed distance for true symmetry
+          const horizontalDistance = compactKnockout ? 20 : 30;
+          // For R32→R16 in compact mode, use a fixed distance for symmetry
+          // In non-compact mode, use midpoint (which worked before)
+          const r32ToR16TurnDistance = compactKnockout ? 8 : undefined;
           
           if (fromIsRight) {
             // Right side: exit from LEFT edge, enter RIGHT edge of destination
-            const startX = fromRect.left - rect.left + connectorInset;
-            if (isRound16ToQuarter) {
-              // R16 → Quarters: Exit from left, go short distance, turn right angle, enter right side
+            if (isRound32ToRound16) {
+              // R32 → R16: Right side spawns from actual left edge (no inset), left side uses inset
+              const startX = fromRect.left - rect.left; // No inset for right side R32→R16
               const endX = toRect.right - rect.left - connectorInset;
-              const horizontalDistance = 30;
-              const turnX = startX - horizontalDistance;
-              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
-            } else if (isQuarterToSemi) {
-              // Quarters → Semis: Exit from LEFT edge, go short distance left, then turn to enter SF from RIGHT
-              const endX = toRect.right - rect.left - connectorInset;
-              const horizontalDistance = 30;
-              const turnX = startX - horizontalDistance;
-              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
-            } else if (isSemiToFinal) {
-              // SF → Final/Third: Exit from LEFT, use fixed turn point for consistency
-              const endX = toRect.right - rect.left - connectorInset;
-              const turnX = startX - 30; // Same distance as other stages
-              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              if (compactKnockout) {
+                // R32 → R16: Use fixed distance from edge (goes left, so subtract)
+                const turnX = startX - r32ToR16TurnDistance!;
+                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              } else {
+                // R32 → R16: Use midpoint calculation (non-compact mode)
+                const midX = startX + (endX - startX) * 0.5;
+                path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+              }
             } else {
-              // Standard right-side connection
-              const endX = toRect.right - rect.left - connectorInset;
-              const midX = startX + (endX - startX) * 0.5;
-              path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+              const startX = fromRect.left - rect.left + connectorInset;
+              if (isRound16ToQuarter) {
+                // R16 → Quarters: Exit from left, go short distance, turn right angle, enter right side
+                const endX = toRect.right - rect.left - connectorInset;
+                const turnX = startX - horizontalDistance;
+                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              } else if (isQuarterToSemi) {
+                // Quarters → Semis: Exit from LEFT edge, go short distance left, then turn to enter SF from RIGHT
+                const endX = toRect.right - rect.left - connectorInset;
+                const turnX = startX - horizontalDistance;
+                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              } else if (isSemiToFinal) {
+                // SF → Final/Third: Exit from LEFT, use fixed turn point for consistency
+                const endX = toRect.right - rect.left - connectorInset;
+                const turnX = startX - horizontalDistance;
+                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              } else {
+                // Standard right-side connection
+                const endX = toRect.right - rect.left - connectorInset;
+                const midX = startX + (endX - startX) * 0.5;
+                path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+              }
             }
           } else {
             // Left side or center: exit from RIGHT edge, enter LEFT edge
-            const startX = fromRect.right - rect.left - connectorInset;
-            if (isRound16ToQuarter) {
-              // R16 → Quarters: Exit from right, go short distance, turn right angle, enter left side
+            if (isRound32ToRound16) {
+              // R32 → R16: Use same approach as R16→QF for consistency (mirrors right side)
+              const startX = fromRect.right - rect.left - connectorInset;
               const endX = toRect.left - rect.left + connectorInset;
-              const horizontalDistance = 30;
-              const turnX = startX + horizontalDistance;
-              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
-            } else if (isQuarterToSemi) {
-              // Quarters → Semis: Exit from RIGHT edge, go short distance right, then turn to enter SF from LEFT
-              const endX = toRect.left - rect.left + connectorInset;
-              const horizontalDistance = 30;
-              const turnX = startX + horizontalDistance;
-              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
-            } else if (isSemiToFinal) {
-              // SF → Final/Third: Exit from RIGHT, use fixed turn point for consistency
-              const endX = toRect.left - rect.left + connectorInset;
-              const turnX = startX + 30; // Same distance as other stages
-              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              if (compactKnockout) {
+                // R32 → R16: Use same fixed distance from edge (goes right, so add)
+                const turnX = startX + r32ToR16TurnDistance!;
+                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              } else {
+                // R32 → R16: Use midpoint calculation (non-compact mode)
+                const midX = startX + (endX - startX) * 0.5;
+                path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+              }
             } else {
-              // Standard left-side connection
-              const endX = toRect.left - rect.left + connectorInset;
-              const midX = startX + (endX - startX) * 0.5;
-              path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+              const startX = fromRect.right - rect.left - connectorInset;
+              if (isRound16ToQuarter) {
+                // R16 → Quarters: Exit from right, go short distance, turn right angle, enter left side
+                const endX = toRect.left - rect.left + connectorInset;
+                const turnX = startX + horizontalDistance;
+                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              } else if (isQuarterToSemi) {
+                // Quarters → Semis: Exit from RIGHT edge, go short distance right, then turn to enter SF from LEFT
+                const endX = toRect.left - rect.left + connectorInset;
+                const turnX = startX + horizontalDistance;
+                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              } else if (isSemiToFinal) {
+                // SF → Final/Third: Exit from RIGHT, use fixed turn point for consistency
+                const endX = toRect.left - rect.left + connectorInset;
+                const turnX = startX + horizontalDistance;
+                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              } else {
+                // Standard left-side connection
+                const endX = toRect.left - rect.left + connectorInset;
+                const midX = startX + (endX - startX) * 0.5;
+                path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+              }
             }
           }
           paths.push(path);
@@ -4012,7 +4102,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutEdges, thirdPlaceOffset, finalCenterOverride, knockoutListHeight, matchStageById, knockoutMatchesByStage, splitMatchesByStage]);
+  }, [knockoutEdges, thirdPlaceOffset, finalCenterOverride, knockoutListHeight, matchStageById, knockoutMatchesByStage, splitMatchesByStage, compactKnockout]);
 
   React.useLayoutEffect(() => {
     const list = roundOf32ListRef.current;
@@ -4108,7 +4198,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, roundOf32Order, knockoutCardHeight]);
+  }, [knockoutMatchesByStage, roundOf32Order, knockoutCardHeight, compactKnockout]);
 
   React.useLayoutEffect(() => {
     const finalMatch = (knockoutMatchesByStage.get("Final") ?? [])[0];
@@ -4168,7 +4258,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, knockoutCenters, knockoutContainerRef]);
+  }, [knockoutMatchesByStage, knockoutCenters, knockoutContainerRef, compactKnockout]);
 
   React.useLayoutEffect(() => {
     const container = knockoutContainerRef.current;
@@ -4225,7 +4315,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, knockoutCenters]);
+  }, [knockoutMatchesByStage, knockoutCenters, compactKnockout]);
 
   const handleAutopredict = React.useCallback(() => {
     let nextQualifierWinners = { ...qualifierWinners };
@@ -4764,19 +4854,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Select group match outcomes and see standings update instantly.
           </p>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 lg:gap-6 lg:grid-cols-2 2xl:grid-cols-3">
           {groupTables.map(({ group, rows }) => {
             const matches = groupMatchesFor(group.id, resolvedGroupMatches);
             return (
               <div
                 key={group.id}
-                className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm"
+                className="relative flex flex-col gap-4 overflow-hidden lg:rounded-xl lg:bg-white lg:p-4 lg:ring-1 lg:ring-slate-200 lg:shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
                 </div>
                 <div className="flex flex-col gap-4">
-                  <div className="flex w-full flex-col gap-3">
+                  <div className="flex w-full flex-col gap-3 px-0.5">
                     {matches.map((match, index) => {
                       const probabilities = getMatchProbabilityLabels({
                         homeTeam: match.homeTeam,
@@ -4804,7 +4894,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       );
                     })}
                   </div>
-                  <div className="flex w-full">
+                  <div className="flex w-full px-0.5">
                     <GroupTable
                       group={group}
                       rows={rows}
@@ -4845,6 +4935,15 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-semibold text-ebony">Knockout stage</h2>
+            <label className="flex items-center gap-2 text-sm text-ink-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={compactKnockout}
+                onChange={(e) => setCompactKnockout(e.target.checked)}
+                className="h-4 w-4 rounded border-ink-900 text-blue-600 focus:ring-blue-500"
+              />
+              Compact mode
+            </label>
           </div>
           <p className="text-sm text-ink-400">
             Winners advance automatically through the bracket.
@@ -4853,7 +4952,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div className="overflow-x-auto overflow-y-visible pb-2">
           <div
             ref={knockoutContainerRef}
-            className="relative min-w-[900px] lg:min-w-0 px-2"
+            className="relative px-0.5 lg:px-2"
+            style={{ minWidth: compactKnockout ? "392px" : "900px" }}
           >
             <svg
               className="absolute inset-0 z-0 h-full w-full pointer-events-none"
@@ -4874,16 +4974,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             {/* Split bracket layout - left/right/center all absolutely positioned */}
             <div className="z-10">
               {(() => {
-                const baseColumnWidth = 200;
-                const baseGap = 24;
+                // In compact mode, cards are 40px wide with tighter spacing
+                const baseColumnWidth = compactKnockout ? 48 : 200;
+                const baseGap = compactKnockout ? 8 : 24;
                 // Calculate preferred width for left/right blocks (R32 to Semis)
                 const leftBlockWidth = (3 - 1) * (baseColumnWidth + baseGap) + baseColumnWidth; // Position 1 to 3
                 // Minimum width calculation:
-                // Left SF right edge = 648px from left
-                // Right SF left edge = 648px from right
-                // Min gap between SFs = 2 × (R32-R16 gap) = 2 × 24 = 48px
-                // Total = 648 + 48 + 648 = 1344px
-                const minBracketWidth = 1344;
+                // In compact mode: Left SF right edge = (3-1) * (48+8) + 48 = 160px
+                // Min gap between SFs = 1.5 * 48 = 72px
+                // Right SF left edge = 160px from right
+                // Total = 160 + 72 + 160 = 392px
+                // In full mode: Left SF right edge = 648px from left, Right SF = 648px from right, gap = 48px
+                const minBracketWidth = compactKnockout ? 392 : 1344;
                 
                 // Column positions within each block
                 const getLeftPosition = (pos: number) => {
@@ -4989,6 +5091,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                   awayWinProb={probabilities.awayWinProb}
                                   drawProb={probabilities.drawProb}
                                   isFinal={false}
+                                  compactMode={compactKnockout}
                                 />
                               </div>
                             );
@@ -5099,6 +5202,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                   drawProb={probabilities.drawProb}
                                   isFinal={stage === "Final"}
                                   centerPlaceholders={stage === "Final"}
+                                  compactMode={compactKnockout}
                                 />
                               </div>
                             );
@@ -5142,6 +5246,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                           awayWinProb={probabilities.awayWinProb}
                                           drawProb={probabilities.drawProb}
                                           centerPlaceholders
+                                          compactMode={compactKnockout}
                                         />
                                       </div>
                                     );
@@ -5173,17 +5278,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                           const columnHeight = knockoutListHeight
                             ? knockoutListHeight + headerOffset
                             : undefined;
-                          // Map stages to positions from RIGHT edge - R32 at right edge, SF towards center
-                          const rightPositionsFromRight: Record<string, number> = {
-                            'Round of 32': 0,       // 0px from right (at right edge of page)
-                            'Round of 16': 224,     // 224px from right
-                            'Quarterfinal': 336,    // 336px from right
-                            'Semifinal': 448,       // 448px from right (closest to center)
+                          // Map stages to logical positions (same as left block but mirrored)
+                          const rightPositions: Record<string, number> = {
+                            'Round of 32': 1,       // At right edge
+                            'Round of 16': 2,       // One step in
+                            'Quarterfinal': 2.5,    // Interleaved
+                            'Semifinal': 3,         // Closest to center
                           };
-                          const posFromRight = rightPositionsFromRight[stage];
-                          if (posFromRight === undefined) {
+                          const pos = rightPositions[stage];
+                          if (pos === undefined) {
                             return null;
                           }
+                          // Convert logical position to pixels from right edge
+                          const posFromRight = (pos - 1) * (baseColumnWidth + baseGap);
                           return (
                             <div
                               key={`bottom-${stage}`}
@@ -5253,6 +5360,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                   drawProb={probabilities.drawProb}
                                   isFinal={false}
                                   mirrored
+                                  compactMode={compactKnockout}
                                 />
                               </div>
                             );

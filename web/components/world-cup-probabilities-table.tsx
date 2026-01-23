@@ -185,11 +185,11 @@ export function WorldCupProbabilitiesTable({
         cell: ({ row }) => {
           const group = row.original.group ?? "";
           if (!group.includes("*")) {
-            return <span className="font-mono text-ink-200">{group}</span>;
+            return <span className="font-mono text-sm text-slate-700">{group}</span>;
           }
           const [base, ...rest] = group.split("*");
           return (
-            <span className="font-mono text-ink-200">
+            <span className="font-mono text-sm text-slate-700">
               {base}
               <sup className="ml-[1px] text-[10px]">*</sup>
               {rest.join("*")}
@@ -203,17 +203,17 @@ export function WorldCupProbabilitiesTable({
         accessorFn: (row) => row.flagPath ?? "",
         meta: { minWidthCh: 4, isFlag: true },
         cell: ({ row }) => (
-          <div className="relative h-5 w-7 shrink-0 overflow-hidden rounded-[1px] border border-ink-700 bg-ink-800">
+          <div className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
             {row.original.flagPath ? (
               <Image
                 src={row.original.flagPath}
                 alt={`${row.original.team} flag`}
                 fill
                 className="object-cover"
-                sizes="28px"
+                sizes="24px"
               />
             ) : (
-              <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-ink-300">
+              <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold uppercase text-slate-500">
                 {teamInitials(row.original.team)}
               </span>
             )}
@@ -224,8 +224,13 @@ export function WorldCupProbabilitiesTable({
         id: "team",
         header: "Team",
         accessorFn: (row) => row.team,
+        sortingFn: (a, b, id) => {
+          const teamA = String(a.getValue(id) ?? "").toLowerCase();
+          const teamB = String(b.getValue(id) ?? "").toLowerCase();
+          return teamA.localeCompare(teamB);
+        },
         cell: ({ row }) => (
-          <span className="text-ebony break-words whitespace-normal">
+          <span className="min-w-0 truncate text-sm font-medium text-slate-900">
             {row.original.team}
           </span>
         ),
@@ -250,10 +255,10 @@ export function WorldCupProbabilitiesTable({
           const value = row.original.values[column];
           const formatted = formatProbability(value);
           if (formatted === "✓") {
-            return <span className="font-mono text-ink-200">✓</span>;
+            return <span className="text-sm font-mono tabular-nums text-slate-700">✓</span>;
           }
           return (
-            <span className="font-mono text-ink-200">{formatted}</span>
+            <span className="text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">{formatted}</span>
           );
         },
       })),
@@ -269,7 +274,7 @@ export function WorldCupProbabilitiesTable({
         sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
-          <span className="font-mono text-ink-200">
+          <span className="text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
             {Number.isFinite(row.original.ratingOverall)
               ? ratingFormatter.format(row.original.ratingOverall ?? 0)
               : ""}
@@ -288,7 +293,7 @@ export function WorldCupProbabilitiesTable({
         sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
-          <span className="font-mono text-ink-200">
+          <span className="text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
             {Number.isFinite(row.original.ratingAttack)
               ? ratingFormatter.format(row.original.ratingAttack ?? 0)
               : ""}
@@ -307,7 +312,7 @@ export function WorldCupProbabilitiesTable({
         sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
-          <span className="font-mono text-ink-200">
+          <span className="text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
             {Number.isFinite(row.original.ratingDefense)
               ? ratingFormatter.format(row.original.ratingDefense ?? 0)
               : ""}
@@ -333,16 +338,16 @@ export function WorldCupProbabilitiesTable({
   const lastProbabilityId = columns[columns.length - 1];
 
   return (
-    <div className="rounded-md border border-ink-900 bg-white/80 shadow-soft overflow-hidden">
+    <div className="min-w-0 w-full overflow-hidden lg:rounded-xl lg:bg-white lg:ring-1 lg:ring-slate-200 lg:shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <Table className="w-full border-separate border-spacing-0 text-xs lg:text-sm [--group-col-width:4ch] sm:[--group-col-width:6ch] [--prob-col-width:clamp(4ch,6vw,8ch)] sm:[--prob-col-width:clamp(6ch,6vw,9ch)]">
-          <TableHeader className="border-b-0">
+        <Table className="w-full table-auto lg:table-fixed text-sm [--group-col-width:4ch] sm:[--group-col-width:6ch] [--prob-col-width:clamp(4ch,6vw,8ch)] sm:[--prob-col-width:clamp(6ch,6vw,9ch)]">
+          <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-slate-50 border-b border-slate-200">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={`relative cursor-pointer select-none hover:text-ebony ${
+                    className={`relative cursor-pointer select-none hover:text-slate-900 ${
                       header.id === "flag"
                         ? "text-center min-w-[4ch]"
                         : header.id === "team"
@@ -354,15 +359,15 @@ export function WorldCupProbabilitiesTable({
                           header.id === "defense"
                         ? "text-right whitespace-nowrap"
                         : "text-right"
-                    } px-1 py-1 border-b-2 border-ink-900 ${
+                    } px-2 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
                       header.id === "group"
-                        ? "sticky left-0 z-40 bg-white"
+                        ? "sticky left-0 z-40 bg-slate-50 rounded-tl-xl border-l-4 border-transparent"
                         : header.id === "flag"
-                        ? "sticky left-[var(--group-col-width)] z-40 bg-white"
+                        ? "sticky left-[var(--group-col-width)] z-40 bg-slate-50"
                         : ""
                     } ${
                       header.id === lastProbabilityId
-                        ? "border-r border-ink-900"
+                        ? "rounded-tr-xl"
                         : ""
                     }`}
                     onClick={() => handleSortToggle(header.id)}
@@ -390,21 +395,20 @@ export function WorldCupProbabilitiesTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className="divide-y divide-slate-100">
             {table.getRowModel().rows.map((row, index, allRows) => {
               const isGroupEnd =
                 isGroupedByGroup &&
+                index > 0 &&
                 index < allRows.length - 1 &&
                 groupBase(row.original.group) !==
                   groupBase(allRows[index + 1]?.original.group);
               return (
-                <TableRow key={row.id} className="h-9 border-b-0">
+                <TableRow key={row.id} className="transition-colors hover:bg-slate-50/70">
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className={`px-1 py-1 ${
-                      isGroupEnd ? "border-b-2" : "border-b"
-                    } border-ink-900 ${
+                    className={`px-2 py-2.5 ${
                       cell.column.id === "flag"
                         ? "text-center min-w-[4ch]"
                         : cell.column.id === "team"
@@ -414,14 +418,12 @@ export function WorldCupProbabilitiesTable({
                         : "text-right"
                     } ${
                       cell.column.id === "group"
-                        ? "sticky left-0 z-30 bg-white"
+                        ? "sticky left-0 z-30 bg-white border-l-4 border-transparent"
                         : cell.column.id === "flag"
                         ? "sticky left-[var(--group-col-width)] z-30 bg-white"
                         : ""
                     } ${
-                      cell.column.id === lastProbabilityId
-                        ? "border-r border-ink-900"
-                        : ""
+                      isGroupEnd ? "border-b-2 border-slate-200" : ""
                     }`}
                     style={{
                       ...(cell.column.columnDef.meta?.isProbability

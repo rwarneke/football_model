@@ -2,8 +2,8 @@ import Link from "next/link";
 
 export default function WorldCupHomePage() {
   return (
-    <main className="px-3 pb-16 pt-12 md:px-12">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
+    <main className="px-2 pb-16 pt-12 lg:px-6">
+      <div className="flex w-full flex-col gap-10">
         <header className="space-y-4">
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
             World Cup 2026
@@ -17,7 +17,7 @@ export default function WorldCupHomePage() {
           </p>
         </header>
 
-        <section className="rounded-md border border-ink-700 bg-white/80 p-6 shadow-soft">
+        <section className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
           <h2 className="text-lg font-semibold text-ebony">Pages</h2>
           <div className="mt-4 flex flex-col gap-3 text-sm text-ink-400">
             <Link

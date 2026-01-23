@@ -148,7 +148,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
   });
 
   return (
-    <div className="rounded-md border border-ink-900 bg-ink-800/60 shadow-soft">
+    <div className="min-w-0 w-full overflow-hidden lg:rounded-xl lg:bg-white lg:ring-1 lg:ring-slate-200 lg:shadow-sm">
       <div className="table-scroll overflow-x-auto">
         <Table className="table-fixed w-full">
           <TableHeader>
