@@ -1483,6 +1483,8 @@ function MatchCard({
     onWinnerSelect(selection === side ? null : side);
   };
 
+  const [isDrawHovered, setIsDrawHovered] = React.useState(false);
+
   if (orientation === "horizontal" && showScore) {
     const isScoreSet = score.home !== null && score.away !== null;
     const segments = normalizeProbabilitySegments({
@@ -1624,14 +1626,14 @@ function MatchCard({
             !isPickableMatch && "cursor-default"
           )}
         >
-          {/* Hover gradient overlay */}
-          {isPickableMatch && !isWin && (
+          {/* Hover gradient overlay - only shows when hovering this specific button */}
+          {isPickableMatch && (
             <div
               className={cn(
                 "absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200",
                 side === "home"
-                  ? "bg-[linear-gradient(to_right,rgba(219,234,254,0.3)_0%,rgba(219,234,254,0.3)_50%,transparent_100%)]"
-                  : "bg-[linear-gradient(to_left,rgba(219,234,254,0.3)_0%,rgba(219,234,254,0.3)_50%,transparent_100%)]"
+                  ? "bg-[linear-gradient(to_right,rgba(219,234,254,0.5)_0%,rgba(219,234,254,0.5)_50%,transparent_100%)]"
+                  : "bg-[linear-gradient(to_left,rgba(219,234,254,0.5)_0%,rgba(219,234,254,0.5)_50%,transparent_100%)]"
               )}
             />
           )}
@@ -1646,7 +1648,8 @@ function MatchCard({
             className={cn(
               "min-w-0 truncate text-sm leading-5",
               side === "home" && "text-right",
-              !isScoreSet && "font-medium text-slate-900",
+              !isPickableMatch && "text-slate-400",
+              !isScoreSet && isPickableMatch && "font-medium text-slate-900",
               isScoreSet && isWin && "font-semibold text-slate-900",
               isScoreSet && isDraw && "font-medium text-slate-700",
               isScoreSet && isLoser && "font-medium text-slate-500"
@@ -1713,8 +1716,8 @@ function MatchCard({
     return (
       <div
         className={cn(
-          "group relative overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
-          isPickableMatch && !isScoreSet && "bg-[#fff5f2] ring-2 ring-[#ffb4a1]",
+          "relative overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
+          isPickableMatch && !isScoreSet && "bg-white ring-2 ring-[#ffb4a1]",
           (isScoreSet || !isPickableMatch) && "bg-white ring-2 ring-slate-200"
         )}
       >
@@ -1725,6 +1728,24 @@ function MatchCard({
             style={getGradientStyle()}
           />
         )}
+        {/* Hover gradient for draw button - positioned relative to match card, extends full height */}
+        {allowDraw && isPickableMatch && (
+          <div
+            className={cn(
+              "absolute inset-0 pointer-events-none transition-opacity duration-200",
+              isDrawHovered ? "opacity-100" : "opacity-0"
+            )}
+            style={{
+              background: `linear-gradient(to right, 
+                transparent 0%, 
+                transparent 38%, 
+                rgba(219, 234, 254, 0.5) 40%, 
+                rgba(219, 234, 254, 0.5) 60%, 
+                transparent 62%, 
+                transparent 100%)`
+            }}
+          />
+        )}
         <div className="relative flex items-center">
           {/* Home team */}
           <div className="flex-1 min-w-0">
@@ -1732,23 +1753,14 @@ function MatchCard({
           </div>
 
           {/* Score area */}
-          <div className="group/draw relative flex items-center gap-1 px-2">
-            {/* Hover gradient for draw button - extends full height of match card, but only in score area */}
-            {allowDraw && isPickableMatch && !isScoreSet && (
-              <div
-                className="absolute inset-y-0 left-0 right-0 pointer-events-none opacity-0 group-hover/draw:opacity-100 transition-opacity duration-200"
-                style={{
-                  background: `linear-gradient(to right, 
-                    rgba(219, 234, 254, 0.3) 0%, 
-                    rgba(219, 234, 254, 0.3) 100%)`
-                }}
-              />
-            )}
+          <div className="relative flex items-center gap-1 px-2">
             {renderScoreInput("home", homeInputRef)}
             <button
               type="button"
               onClick={handleDrawSelect}
               disabled={!allowDraw || !isPickableMatch}
+              onMouseEnter={() => setIsDrawHovered(true)}
+              onMouseLeave={() => setIsDrawHovered(false)}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-md transition-colors",
                 allowDraw && isPickableMatch && "cursor-pointer",
@@ -2138,13 +2150,13 @@ function KnockoutMatchCard({
         )}
       >
         {/* Hover gradient overlay */}
-        {isPickableMatch && !(isResolved && isWinner) && !isChampionRow && (
+        {isPickableMatch && !isChampionRow && (
           <div
             className={cn(
               "absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200",
               mirrored 
-                ? "bg-[linear-gradient(270deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.3)_10%,rgba(219,234,254,0.3)_100%)]"
-                : "bg-[linear-gradient(90deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.3)_10%,rgba(219,234,254,0.3)_100%)]"
+                ? "bg-[linear-gradient(270deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]"
+                : "bg-[linear-gradient(90deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]"
             )}
           />
         )}
@@ -2306,7 +2318,7 @@ function KnockoutMatchCard({
         className={cn(
           "w-[40px] overflow-hidden rounded-lg shadow-sm",
           needsPick
-            ? "bg-[#fff5f2] ring-2 ring-[#ffb4a1]"
+            ? "bg-white ring-2 ring-[#ffb4a1]"
             : "bg-white ring-2 ring-slate-200"
         )}
       >
@@ -2324,7 +2336,7 @@ function KnockoutMatchCard({
       className={cn(
         "w-[192px] overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
         needsPick
-          ? "bg-[#fff5f2] ring-2 ring-[#ffb4a1]"
+          ? "bg-white ring-2 ring-[#ffb4a1]"
           : "bg-white ring-2 ring-slate-200"
       )}
     >
