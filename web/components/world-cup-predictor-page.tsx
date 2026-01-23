@@ -5248,11 +5248,26 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       {stageOrder
                         .filter((stage) => stage === "Final")
                         .map((stage) => {
+                          // Check if tournament is complete (all knockout matches have winners)
+                          const allKnockoutMatches = Array.from(knockoutMatchesByStage.values()).flat();
+                          const allMatchesResolved = allKnockoutMatches.every(match => {
+                            const winner = knockoutWinners[String(match.id)];
+                            return winner !== null && winner !== undefined;
+                          });
+                          
+                          // Get champion (winner of Final)
+                          const finalMatch = (knockoutMatchesByStage.get("Final") ?? [])[0];
+                          const champion = finalMatch && allMatchesResolved
+                            ? (knockoutWinners[String(finalMatch.id)] === "home"
+                                ? (finalMatch.homeResolved ?? finalMatch.homeLabel)
+                                : (finalMatch.awayResolved ?? finalMatch.awayLabel))
+                            : null;
                           const matches = knockoutMatchesByStage.get(stage) ?? [];
                           const cardHeight = knockoutCardHeight ?? 64;
                           const headerOffset = 20;
                           const thirdPlaceMatchTop = stage === "Final" ? thirdPlaceOffset : null;
                           const labelGap = 28;
+                          const championGap = 80; // Gap for champion block (increased to prevent intersection)
                           const finalStageHeight =
                             thirdPlaceMatchTop !== null
                               ? Math.max(
@@ -5294,6 +5309,55 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                               : undefined
                           }
                         >
+                          {/* Champion block - appears when tournament is complete */}
+                          {champion && matches.length > 0 && (() => {
+                            const finalMatch = matches[0];
+                            const center =
+                              stage === "Final" && finalCenterOverride !== null
+                                ? finalCenterOverride
+                                : knockoutCenters[finalMatch.id] ?? 0;
+                            const finalTop = center - cardHeight / 2;
+                            
+                            // Position champion block
+                            let championTop: number;
+                            if (!compactKnockout && thirdPlaceMatchTop !== null) {
+                              // In non-compact mode: center between Final and Third place
+                              // Use the bottom of Final match and top of Third place match
+                              const finalBottom = finalTop + cardHeight;
+                              const thirdPlaceTop = thirdPlaceMatchTop;
+                              const midpoint = (finalBottom + thirdPlaceTop) / 2;
+                              // Total block height: CHAMPION text (~20px) + mb-3 (12px) + flag (24px) + gap-2 (8px) + team name (~20px) = ~84px
+                              // Center the block by positioning its center at the midpoint
+                              const championBlockHeight = 84;
+                              championTop = midpoint - championBlockHeight / 2; // Center the entire block
+                            } else {
+                              // In compact mode: position above Final
+                              const championBlockHeight = 80; // Approximate height of champion block content
+                              championTop = finalTop - championGap - championBlockHeight;
+                            }
+                            
+                            return (
+                              <div
+                                key="champion"
+                                className="absolute left-0 w-full"
+                                style={{ top: championTop }}
+                              >
+                                <div className="text-center text-sm font-semibold uppercase tracking-wide text-slate-600 mb-3">
+                                  CHAMPION
+                                </div>
+                                <div className="flex flex-col items-center gap-2">
+                                  <TeamFlag
+                                    team={champion}
+                                    flags={data.flags}
+                                    className="h-6 w-9 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                                  />
+                                  <div className="text-base font-bold text-slate-900">
+                                    {formatDisplayLabel(champion)}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
                           {matches.map((match) => {
                             if (!match) {
                               return null;
