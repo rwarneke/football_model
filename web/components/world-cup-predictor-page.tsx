@@ -4373,7 +4373,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         const listOffset = listRect.top - containerRect.top;
         // Position third place lower than semis, with same offset as final is above (symmetric)
         const finalOffset = 80; // Distance above/below semis average
-        const nextTop = semisAvg - listOffset + finalOffset;
+        // In compact mode, move third place up by one match height
+        const compactAdjustment = compactKnockout ? (knockoutCardHeight ?? 64) : 0;
+        const nextTop = semisAvg - listOffset + finalOffset - compactAdjustment;
         setThirdPlaceOffset((prev) => (prev === nextTop ? prev : nextTop));
       });
     };
@@ -4391,7 +4393,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, knockoutCenters, knockoutContainerRef, compactKnockout]);
+  }, [knockoutMatchesByStage, knockoutCenters, knockoutContainerRef, compactKnockout, knockoutCardHeight]);
 
   React.useLayoutEffect(() => {
     const container = knockoutContainerRef.current;
@@ -4431,7 +4433,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         // Position Final equidistant from semis as Third Place (symmetric)
         // Final CENTER = sfAvg - listOffset - 80 - cardHeight/2
         const finalOffset = 80; // Same offset used for Third Place
-        const nextCenter = sfAvg - listOffset - finalOffset - cardHeight / 2;
+        // In compact mode, move final down by one match height
+        const compactAdjustment = compactKnockout ? (knockoutCardHeight ?? 64) : 0;
+        const nextCenter = sfAvg - listOffset - finalOffset - cardHeight / 2 + compactAdjustment;
         
         setFinalCenterOverride((prev) => (prev === nextCenter ? prev : nextCenter));
       });
@@ -5082,7 +5086,10 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Winners advance automatically through the bracket.
           </p>
         </div>
-        <div className="overflow-x-scroll overflow-y-visible pb-2 knockout-scroll" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(203 213 225) rgb(241 245 249)' }}>
+        <div className={cn(
+          "overflow-x-scroll overflow-y-visible pb-2 knockout-scroll",
+          compactKnockout && "max-w-[520px] lg:max-w-none mx-auto"
+        )} style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(203 213 225) rgb(241 245 249)' }}>
           <div
             ref={knockoutContainerRef}
             className="relative px-0.5 lg:px-2"
