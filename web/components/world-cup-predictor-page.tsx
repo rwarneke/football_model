@@ -3813,6 +3813,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           let path: string;
           const isRound16ToQuarter = fromStage === "Round of 16" && toStage === "Quarterfinal";
           const isQuarterToSemi = fromStage === "Quarterfinal" && toStage === "Semifinal";
+          const isSemiToFinal = fromStage === "Semifinal" && (toStage === "Final" || toStage === "Third place");
           
           if (fromIsRight) {
             // Right side: exit from LEFT edge, enter RIGHT edge of destination
@@ -3824,10 +3825,16 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               const turnX = startX - horizontalDistance;
               path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
             } else if (isQuarterToSemi) {
-              // Quarters → Semis: Exit from left, enter right
+              // Quarters → Semis: Exit from LEFT edge, go short distance left, then turn to enter SF from RIGHT
               const endX = toRect.right - rect.left - connectorInset;
-              const midX = startX + (endX - startX) * 0.5;
-              path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+              const horizontalDistance = 30;
+              const turnX = startX - horizontalDistance;
+              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+            } else if (isSemiToFinal) {
+              // SF → Final/Third: Exit from LEFT, use fixed turn point for consistency
+              const endX = toRect.right - rect.left - connectorInset;
+              const turnX = startX - 40; // Fixed distance from SF
+              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
             } else {
               // Standard right-side connection
               const endX = toRect.right - rect.left - connectorInset;
@@ -3844,10 +3851,16 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               const turnX = startX + horizontalDistance;
               path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
             } else if (isQuarterToSemi) {
-              // Quarters → Semis: Exit from right, enter left
+              // Quarters → Semis: Exit from RIGHT edge, go short distance right, then turn to enter SF from LEFT
               const endX = toRect.left - rect.left + connectorInset;
-              const midX = startX + (endX - startX) * 0.5;
-              path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+              const horizontalDistance = 30;
+              const turnX = startX + horizontalDistance;
+              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+            } else if (isSemiToFinal) {
+              // SF → Final/Third: Exit from RIGHT, use fixed turn point for consistency
+              const endX = toRect.left - rect.left + connectorInset;
+              const turnX = startX + 40; // Fixed distance from SF
+              path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
             } else {
               // Standard left-side connection
               const endX = toRect.left - rect.left + connectorInset;
@@ -4033,6 +4046,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     const container = knockoutContainerRef.current;
     const finalList = finalListRef.current;
     const semifinalMatches = knockoutMatchesByStage.get("Semifinal") ?? [];
+    const round32Matches = knockoutMatchesByStage.get("Round of 32") ?? [];
+    const round16Matches = knockoutMatchesByStage.get("Round of 16") ?? [];
     if (!container || !finalList || semifinalMatches.length === 0) {
       setFinalCenterOverride(null);
       return;
@@ -4045,25 +4060,59 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
       frame = requestAnimationFrame(() => {
         const containerRect = container.getBoundingClientRect();
         const finalListRect = finalList.getBoundingClientRect();
-        const centers = semifinalMatches
+        const cardHeight = 64; // Match card height
+        
+        // Get SF centers
+        const sfCenters = semifinalMatches
           .map((match) => {
             const el = knockoutRefs.current.get(match.id);
-            if (!el) {
-              return null;
-            }
+            if (!el) return null;
             const rect = el.getBoundingClientRect();
             return rect.top - containerRect.top + rect.height / 2;
           })
           .filter((value): value is number => typeof value === "number");
-        if (centers.length === 0) {
-          return;
+        if (sfCenters.length === 0) return;
+        
+        const sfMin = Math.min(...sfCenters);
+        const sfMax = Math.max(...sfCenters);
+        const sfDistance = sfMax - sfMin;
+        const sfAvg = (sfMin + sfMax) / 2;
+        
+        // Calculate R32-R16 typical spacing for reference (use first few matches)
+        let r32r16Spacing = 80; // Default fallback
+        if (round32Matches.length >= 2 && round16Matches.length >= 1) {
+          const r32Centers = round32Matches.slice(0, 4).map((match) => {
+            const el = knockoutRefs.current.get(match.id);
+            if (!el) return null;
+            const rect = el.getBoundingClientRect();
+            return rect.top - containerRect.top + rect.height / 2;
+          }).filter((v): v is number => v !== null);
+          if (r32Centers.length >= 2) {
+            // Average spacing between consecutive R32 matches
+            let totalSpacing = 0;
+            for (let i = 1; i < r32Centers.length; i++) {
+              totalSpacing += r32Centers[i] - r32Centers[i - 1];
+            }
+            r32r16Spacing = totalSpacing / (r32Centers.length - 1);
+          }
         }
-        const avg =
-          centers.reduce((sum, value) => sum + value, 0) / centers.length;
+        
         const listOffset = finalListRect.top - containerRect.top;
-        // Position final higher than semis (above the average), symmetric with third place below
-        const finalOffset = 80; // Distance above semis average
-        const nextCenter = avg - listOffset - finalOffset;
+        
+        // Space needed to fit Final between SFs (Final height + padding on each side)
+        const finalSpaceNeeded = cardHeight + 40; // 64px card + 20px padding each side
+        
+        // Minimum SF distance is ~1.5x the R32 spacing
+        const minSfDistance = r32r16Spacing * 1.5;
+        
+        // Position Final equidistant from semis as Third Place (symmetric)
+        // Third Place TOP = sfAvg - listOffset + 80 (80px below sfAvg)
+        // Final BOTTOM = sfAvg - listOffset - 80 (80px above sfAvg)
+        // Final TOP = sfAvg - listOffset - 80 - cardHeight
+        // Final CENTER = sfAvg - listOffset - 80 - cardHeight/2
+        const finalOffset = 80; // Same offset used for Third Place
+        const nextCenter = sfAvg - listOffset - finalOffset - cardHeight / 2;
+        
         setFinalCenterOverride((prev) => (prev === nextCenter ? prev : nextCenter));
       });
     };
@@ -4704,10 +4753,10 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Winners advance automatically through the bracket.
           </p>
         </div>
-        <div className="overflow-x-auto overflow-y-visible pb-2">
+        <div className="overflow-x-auto lg:overflow-x-hidden overflow-y-visible pb-2">
           <div
             ref={knockoutContainerRef}
-            className="relative min-w-[900px] lg:min-w-0 px-2"
+            className="relative min-w-[900px] lg:min-w-0 lg:w-full px-2"
           >
             <svg
               className="absolute inset-0 z-0 h-full w-full pointer-events-none"
@@ -4849,12 +4898,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                         thirdPlaceMatchTop !== null && (
                           <>
                             <div
-                              className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-slate-600"
-                              style={{ top: thirdPlaceMatchTop - labelGap }}
-                            >
-                              Third place
-                            </div>
-                            <div
                               className="absolute left-0"
                               style={{ top: thirdPlaceMatchTop }}
                             >
@@ -4893,6 +4936,12 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                 );
                               })}
                             </div>
+                            <div
+                              className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-slate-600"
+                              style={{ top: thirdPlaceMatchTop + cardHeight + 12 }}
+                            >
+                              Third place
+                            </div>
                           </>
                         )}
                     </div>
@@ -4901,12 +4950,12 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               })}
             </div>
 
-            {/* Desktop: Split bracket layout with fixed blocks */}
-            <div className="relative z-10 hidden lg:flex lg:justify-between" style={{ minHeight: knockoutListHeight ? `${knockoutListHeight + 40}px` : undefined }}>
+            {/* Desktop: Split bracket layout - left/right/center all absolutely positioned */}
+            <div className="relative z-10 hidden lg:block" style={{ minHeight: knockoutListHeight ? `${knockoutListHeight + 40}px` : undefined }}>
               {(() => {
                 const baseColumnWidth = 200;
                 const baseGap = 24;
-                // Calculate fixed width for left/right blocks (R32 to Semis)
+                // Calculate preferred width for left/right blocks (R32 to Semis)
                 const leftBlockWidth = (3 - 1) * (baseColumnWidth + baseGap) + baseColumnWidth; // Position 1 to 3
                 
                 // Column positions within each block
@@ -4916,8 +4965,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 
                 return (
                   <>
-                    {/* Left block: Top half bracket (R32 to Semis) - fixed width, left-aligned */}
-                    <div className="relative" style={{ width: `${leftBlockWidth}px`, flexShrink: 0 }}>
+                    {/* Left block: Top half bracket (R32 to Semis) - always left-aligned */}
+                    <div className="absolute left-0 top-0" style={{ width: `calc(50% + ${leftBlockWidth / 2}px)` }}>
                       {stageOrder
                         .filter((stage) => stage !== "Final")
                         .map((stage) => {
@@ -4929,12 +4978,12 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                         const columnHeight = knockoutListHeight
                           ? knockoutListHeight + headerOffset
                           : undefined;
-                          // Map stages to positions within left block: R32=1, R16=2, Quarters=2.5, Semis=3
+                          // Map stages to positions from LEFT edge - R32 at left edge, SF towards center
                           const leftPositions: Record<string, number> = {
-                            'Round of 32': 1,
-                            'Round of 16': 2,
-                            'Quarterfinal': 2.5,
-                            'Semifinal': 3,
+                            'Round of 32': 1,       // 0px from left (at left edge of page)
+                            'Round of 16': 2,       // 224px from left
+                            'Quarterfinal': 2.5,    // 336px from left
+                            'Semifinal': 3,         // 448px from left (closest to center)
                           };
                           const pos = leftPositions[stage];
                           if (pos === undefined) {
@@ -5024,8 +5073,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
 
                     </div>
 
-                    {/* Center: Final and Third place - centered horizontally */}
-                    <div className="relative flex-shrink-0" style={{ width: `${baseColumnWidth}px` }}>
+                    {/* Center: Final and Third place - absolutely centered */}
+                    <div className="absolute left-1/2 -translate-x-1/2 z-10" style={{ width: `${baseColumnWidth}px` }}>
                       {stageOrder
                         .filter((stage) => stage === "Final")
                         .map((stage) => {
@@ -5100,7 +5149,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                     knockoutRefs.current.delete(match.id);
                                   }
                                 }}
-                                className="relative"
+                                className="absolute left-0"
                                 style={{ top }}
                               >
                                 <div
@@ -5130,12 +5179,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             thirdPlaceMatches.length > 0 &&
                             thirdPlaceMatchTop !== null && (
                               <>
-                                <div
-                                  className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-slate-600"
-                                  style={{ top: thirdPlaceMatchTop - labelGap }}
-                                >
-                                  Third place
-                                </div>
                                 <div
                                   className="absolute left-0"
                                   style={{ top: thirdPlaceMatchTop }}
@@ -5175,6 +5218,12 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                     );
                                   })}
                                 </div>
+                                <div
+                                  className="absolute left-0 w-full text-center text-xs font-semibold uppercase tracking-wide text-slate-600"
+                                  style={{ top: thirdPlaceMatchTop + cardHeight + 12 }}
+                                >
+                                  Third place
+                                </div>
                               </>
                             )}
                         </div>
@@ -5183,8 +5232,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                         })}
                     </div>
 
-                    {/* Right block: Bottom half bracket (Semis to R32) - fixed width, right-aligned */}
-                    <div className="relative" style={{ width: `${leftBlockWidth}px`, flexShrink: 0 }}>
+                    {/* Right block: Bottom half bracket (Semis to R32) - always right-aligned */}
+                    <div className="absolute right-0 top-0" style={{ width: `calc(50% + ${leftBlockWidth / 2}px)` }}>
                       {stageOrder
                         .filter((stage) => stage !== "Final")
                         .map((stage) => {
@@ -5195,30 +5244,23 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                           const columnHeight = knockoutListHeight
                             ? knockoutListHeight + headerOffset
                             : undefined;
-                          // Map stages to positions within right block - EXACTLY mirror the left block
-                          // Left block positions: R32=1, R16=2, Quarters=2.5, Semis=3
-                          // Right block should mirror: Semis=1, Quarters=2, R16=2.5, R32=3
-                          // Map stages to positions within right block - integer spacing to prevent overlap
-                          // With 200px columns, fractional positions cause overlap
-                          // Use integer positions: Semis=1, QF=1.5, R16=2, R32=3
-                          const rightPositions: Record<string, number> = {
-                            'Semifinal': 1,        // 0px
-                            'Quarterfinal': 1.5,   // 112px
-                            'Round of 16': 2,      // 224px (ends at 424px, no overlap with R32 at 448px)
-                            'Round of 32': 3,      // 448px
+                          // Map stages to positions from RIGHT edge - R32 at right edge, SF towards center
+                          const rightPositionsFromRight: Record<string, number> = {
+                            'Round of 32': 0,       // 0px from right (at right edge of page)
+                            'Round of 16': 224,     // 224px from right
+                            'Quarterfinal': 336,    // 336px from right
+                            'Semifinal': 448,       // 448px from right (closest to center)
                           };
-                          const rightPos = rightPositions[stage];
-                          if (rightPos === undefined) {
+                          const posFromRight = rightPositionsFromRight[stage];
+                          if (posFromRight === undefined) {
                             return null;
                           }
-                          const calculatedLeft = getLeftPosition(rightPos);
-                          // Calculate position from left edge of the right block using the same function
                           return (
                             <div
                               key={`bottom-${stage}`}
                               className="absolute top-0"
                               style={{
-                                left: calculatedLeft,
+                                right: posFromRight,
                                 width: `${baseColumnWidth}px`,
                                 height: columnHeight,
                               }}
