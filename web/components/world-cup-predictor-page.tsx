@@ -4850,10 +4850,10 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Winners advance automatically through the bracket.
           </p>
         </div>
-        <div className="overflow-x-auto lg:overflow-x-hidden overflow-y-visible pb-2">
+        <div className="overflow-x-auto overflow-y-visible pb-2">
           <div
             ref={knockoutContainerRef}
-            className="relative min-w-[900px] lg:min-w-0 lg:w-full px-2"
+            className="relative min-w-[900px] lg:min-w-0 px-2"
           >
             <svg
               className="absolute inset-0 z-0 h-full w-full pointer-events-none"
@@ -5050,12 +5050,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </div>
 
             {/* Desktop: Split bracket layout - left/right/center all absolutely positioned */}
-            <div className="relative z-10 hidden lg:block" style={{ minHeight: knockoutListHeight ? `${knockoutListHeight + 40}px` : undefined }}>
+            <div className="z-10 hidden lg:block">
               {(() => {
                 const baseColumnWidth = 200;
                 const baseGap = 24;
                 // Calculate preferred width for left/right blocks (R32 to Semis)
                 const leftBlockWidth = (3 - 1) * (baseColumnWidth + baseGap) + baseColumnWidth; // Position 1 to 3
+                // Minimum width calculation:
+                // Left SF right edge = 648px from left
+                // Right SF left edge = 648px from right
+                // Min gap between SFs = 2 × (R32-R16 gap) = 2 × 24 = 48px
+                // Total = 648 + 48 + 648 = 1344px
+                const minBracketWidth = 1344;
                 
                 // Column positions within each block
                 const getLeftPosition = (pos: number) => {
@@ -5063,7 +5069,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 };
                 
                 return (
-                  <>
+                  <div className="relative" style={{ minWidth: `${minBracketWidth}px`, minHeight: knockoutListHeight ? `${knockoutListHeight + 40}px` : undefined }}>
                     {/* Left block: Top half bracket (R32 to Semis) - always left-aligned */}
                     <div className="absolute left-0 top-0" style={{ width: `calc(50% + ${leftBlockWidth / 2}px)` }}>
                       {stageOrder
@@ -5434,7 +5440,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                         );
                       })}
                     </div>
-                  </>
+                  </div>
                 );
               })()}
             </div>
