@@ -4174,8 +4174,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     const container = knockoutContainerRef.current;
     const finalList = finalListRef.current;
     const semifinalMatches = knockoutMatchesByStage.get("Semifinal") ?? [];
-    const round32Matches = knockoutMatchesByStage.get("Round of 32") ?? [];
-    const round16Matches = knockoutMatchesByStage.get("Round of 16") ?? [];
     if (!container || !finalList || semifinalMatches.length === 0) {
       setFinalCenterOverride(null);
       return;
@@ -4203,40 +4201,11 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         
         const sfMin = Math.min(...sfCenters);
         const sfMax = Math.max(...sfCenters);
-        const sfDistance = sfMax - sfMin;
         const sfAvg = (sfMin + sfMax) / 2;
-        
-        // Calculate R32-R16 typical spacing for reference (use first few matches)
-        let r32r16Spacing = 80; // Default fallback
-        if (round32Matches.length >= 2 && round16Matches.length >= 1) {
-          const r32Centers = round32Matches.slice(0, 4).map((match) => {
-            const el = knockoutRefs.current.get(match.id);
-            if (!el) return null;
-            const rect = el.getBoundingClientRect();
-            return rect.top - containerRect.top + rect.height / 2;
-          }).filter((v): v is number => v !== null);
-          if (r32Centers.length >= 2) {
-            // Average spacing between consecutive R32 matches
-            let totalSpacing = 0;
-            for (let i = 1; i < r32Centers.length; i++) {
-              totalSpacing += r32Centers[i] - r32Centers[i - 1];
-            }
-            r32r16Spacing = totalSpacing / (r32Centers.length - 1);
-          }
-        }
         
         const listOffset = finalListRect.top - containerRect.top;
         
-        // Space needed to fit Final between SFs (Final height + padding on each side)
-        const finalSpaceNeeded = cardHeight + 40; // 64px card + 20px padding each side
-        
-        // Minimum SF distance is ~1.5x the R32 spacing
-        const minSfDistance = r32r16Spacing * 1.5;
-        
         // Position Final equidistant from semis as Third Place (symmetric)
-        // Third Place TOP = sfAvg - listOffset + 80 (80px below sfAvg)
-        // Final BOTTOM = sfAvg - listOffset - 80 (80px above sfAvg)
-        // Final TOP = sfAvg - listOffset - 80 - cardHeight
         // Final CENTER = sfAvg - listOffset - 80 - cardHeight/2
         const finalOffset = 80; // Same offset used for Third Place
         const nextCenter = sfAvg - listOffset - finalOffset - cardHeight / 2;
