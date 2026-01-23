@@ -2137,8 +2137,9 @@ function KnockoutMatchCard({
         }}
         disabled={!isPickableMatch}
         className={cn(
-          "group flex w-full flex-1 items-center gap-2 relative z-10",
-          centerPlaceholders && isLockedMatch ? "px-2 justify-center" : mirrored ? "pl-0 pr-0" : "pl-0 pr-0",
+          "group flex w-full flex-1 items-center relative z-10",
+          centerPlaceholders && isLockedMatch ? "px-2 justify-center gap-0" : "gap-2",
+          centerPlaceholders && isLockedMatch ? "" : mirrored ? "pl-0 pr-0" : "pl-0 pr-0",
           paddedRow,
           isResolved &&
             isWinner &&
@@ -2206,7 +2207,7 @@ function KnockoutMatchCard({
                 className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
               />
             )}
-            <div className="relative flex min-w-0 flex-1 items-center">
+            <div className={cn("relative flex min-w-0 items-center", isPlaceholder && centerPlaceholders ? "flex-1 justify-center" : "flex-1")}>
               <span
                 className={cn(
                   "absolute left-0 top-0 h-full w-1 rounded-full",
@@ -2220,17 +2221,15 @@ function KnockoutMatchCard({
               />
               <div
                 className={cn(
-                  "flex min-w-0 flex-1 items-center gap-2",
-                  isPlaceholder ? "pl-0" : "pl-2",
-                  isPlaceholder && centerPlaceholders && "justify-center"
+                  "flex items-center",
+                  isPlaceholder && centerPlaceholders ? "justify-center w-full" : "min-w-0 flex-1 gap-2",
+                  isPlaceholder ? "pl-0" : "pl-2"
                 )}
               >
-                <div className={cn("flex min-w-0 flex-1 items-center", isPlaceholder && centerPlaceholders && "justify-center")}>
-                  {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
-                </div>
+                {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
               </div>
             </div>
-            {scoreSlot}
+            {!(isPlaceholder && centerPlaceholders) && scoreSlot}
           </>
         )}
       </button>
@@ -5342,10 +5341,31 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                 className="absolute left-0 w-full"
                                 style={{ top: championTop }}
                               >
-                                <div className="text-center text-sm font-semibold uppercase tracking-wide text-slate-600 mb-3">
+                                {/* Gold gradient background - completely smooth fade from all sides */}
+                                <div
+                                  className="absolute pointer-events-none"
+                                  style={{
+                                    top: '-60px',
+                                    left: '-60px',
+                                    right: '-60px',
+                                    bottom: '-60px',
+                                    background: `
+                                      radial-gradient(ellipse at center, 
+                                        rgba(255, 215, 0, 0.12) 0%, 
+                                        rgba(255, 215, 0, 0.08) 20%, 
+                                        rgba(255, 215, 0, 0.05) 35%, 
+                                        rgba(255, 215, 0, 0.03) 50%, 
+                                        rgba(255, 215, 0, 0.015) 65%, 
+                                        rgba(255, 215, 0, 0.008) 80%, 
+                                        transparent 100%
+                                      )
+                                    `,
+                                  }}
+                                />
+                                <div className="relative text-center text-sm font-semibold uppercase tracking-wide text-slate-600 mb-3">
                                   CHAMPION
                                 </div>
-                                <div className="flex flex-col items-center gap-2">
+                                <div className="relative flex flex-col items-center gap-2">
                                   <TeamFlag
                                     team={champion}
                                     flags={data.flags}
