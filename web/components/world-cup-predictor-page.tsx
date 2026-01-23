@@ -1936,9 +1936,11 @@ function KnockoutMatchCard({
   drawProb,
   compact,
   isFinal,
+  centerPlaceholders,
   containerRef,
   homeRowRef,
   awayRowRef,
+  mirrored,
 }: {
   homeTeam: string;
   awayTeam: string;
@@ -1950,9 +1952,11 @@ function KnockoutMatchCard({
   drawProb?: string | null;
   compact?: boolean;
   isFinal?: boolean;
+  centerPlaceholders?: boolean;
   containerRef?: React.Ref<HTMLDivElement>;
   homeRowRef?: React.Ref<HTMLButtonElement>;
   awayRowRef?: React.Ref<HTMLButtonElement>;
+  mirrored?: boolean;
 }) {
   const placeholderHome = !isConcreteTeam(homeTeam);
   const placeholderAway = !isConcreteTeam(awayTeam);
@@ -1993,9 +1997,11 @@ function KnockoutMatchCard({
     isLoser: boolean,
     isResolved: boolean
   ) => {
+    // Center placeholders for Final/Third Place matches, otherwise use mirrored alignment
+    const textAlign = isPlaceholder && centerPlaceholders ? "text-center" : mirrored ? "text-right" : "text-left";
     if (isPlaceholder) {
       return (
-      <span className="inline-flex h-[20px] max-w-full items-center truncate rounded-md bg-slate-50 px-2 text-left text-[12px] leading-[20px] text-slate-500 ring-1 ring-slate-200">
+      <span className={cn("inline-flex h-[20px] max-w-full items-center truncate rounded-md bg-slate-50 px-2 text-[12px] leading-[20px] text-slate-500 ring-1 ring-slate-200", textAlign, centerPlaceholders && "justify-center")}>
         {formatDisplayLabel(team)}
       </span>
     );
@@ -2003,7 +2009,8 @@ function KnockoutMatchCard({
   return (
       <span
         className={cn(
-          "block min-w-0 truncate text-left text-sm leading-[20px]",
+          "block min-w-0 truncate text-sm leading-[20px]",
+          textAlign,
           !isResolved && "font-medium text-slate-900",
           isResolved && isWinner && "font-semibold text-slate-900",
           isResolved && isLoser && "font-medium text-slate-700"
@@ -2024,6 +2031,13 @@ function KnockoutMatchCard({
     const isResolved = winner !== null;
     const isLoser = isResolved && !isWinner;
     const isChampionRow = isFinalResolved && isWinner;
+    
+    // Gradient directions for winner highlight
+    const normalGradient = "bg-[linear-gradient(90deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]";
+    const mirroredGradient = "bg-[linear-gradient(270deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]";
+    const normalChampionGradient = "bg-[linear-gradient(90deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]";
+    const mirroredChampionGradient = "bg-[linear-gradient(270deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]";
+    
     return (
       <button
         ref={rowRef}
@@ -2036,14 +2050,15 @@ function KnockoutMatchCard({
         }}
         disabled={!isPickableMatch}
         className={cn(
-          "flex w-full flex-1 items-center gap-2 pl-0 pr-2",
+          "flex w-full flex-1 items-center gap-2",
+          centerPlaceholders && isLockedMatch ? "px-2 justify-center" : mirrored ? "pl-2 pr-0" : "pl-0 pr-2",
           paddedRow,
           isResolved &&
             isWinner &&
             !isChampionRow &&
-            "bg-[linear-gradient(90deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]",
+            (mirrored ? mirroredGradient : normalGradient),
           isChampionRow &&
-            "bg-[linear-gradient(90deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]",
+            (mirrored ? mirroredChampionGradient : normalChampionGradient),
           isPickableMatch
             ? cn(
                 "cursor-pointer transition-colors",
@@ -2052,40 +2067,122 @@ function KnockoutMatchCard({
             : "cursor-default"
         )}
       >
-        {!isPlaceholder && (
-          <TeamFlag
-            team={team}
-            flags={flags}
-            className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
-          />
-        )}
-        <div className="relative flex min-w-0 flex-1 items-center">
-          <span
-            className={cn(
-              "absolute left-0 top-0 h-full w-1 rounded-full",
-              isResolved && isWinner
-                ? isChampionRow
-                  ? "bg-amber-300"
-                  : "bg-blue-400/80"
-                : "bg-transparent"
-            )}
-            aria-hidden="true"
-          />
-          <div
-            className={cn(
-              "flex min-w-0 flex-1 items-center gap-2",
-              isPlaceholder ? "pl-0" : "pl-2"
-            )}
-          >
-            <div className="flex min-w-0 flex-1 items-center">
-              {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
+        {mirrored ? (
+          <>
+            {scoreSlot}
+            <div className="relative flex min-w-0 flex-1 items-center">
+              <div
+                className={cn(
+                  "flex min-w-0 flex-1 items-center justify-end gap-2",
+                  isPlaceholder ? "pr-0" : "pr-2"
+                )}
+              >
+                <div className="flex min-w-0 flex-1 items-center justify-end">
+                  {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
+                </div>
+              </div>
+              <span
+                className={cn(
+                  "absolute right-0 top-0 h-full w-1 rounded-full",
+                  isResolved && isWinner
+                    ? isChampionRow
+                      ? "bg-amber-300"
+                      : "bg-blue-400/80"
+                    : "bg-transparent"
+                )}
+                aria-hidden="true"
+              />
             </div>
-          </div>
-        </div>
-        {scoreSlot}
+            {!isPlaceholder && (
+              <TeamFlag
+                team={team}
+                flags={flags}
+                className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {!isPlaceholder && (
+              <TeamFlag
+                team={team}
+                flags={flags}
+                className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+              />
+            )}
+            <div className="relative flex min-w-0 flex-1 items-center">
+              <span
+                className={cn(
+                  "absolute left-0 top-0 h-full w-1 rounded-full",
+                  isResolved && isWinner
+                    ? isChampionRow
+                      ? "bg-amber-300"
+                      : "bg-blue-400/80"
+                    : "bg-transparent"
+                )}
+                aria-hidden="true"
+              />
+              <div
+                className={cn(
+                  "flex min-w-0 flex-1 items-center gap-2",
+                  isPlaceholder ? "pl-0" : "pl-2",
+                  isPlaceholder && centerPlaceholders && "justify-center"
+                )}
+              >
+                <div className={cn("flex min-w-0 flex-1 items-center", isPlaceholder && centerPlaceholders && "justify-center")}>
+                  {renderTeamLabel(team, isPlaceholder, isWinner, isLoser, isResolved)}
+                </div>
+              </div>
+            </div>
+            {scoreSlot}
+          </>
+        )}
       </button>
     );
   };
+
+  const probabilityBar = (
+    <div
+      className={cn(
+        "flex h-[72px] w-7 flex-col items-center justify-center px-4 py-1",
+        hideProbabilities && "invisible",
+        hasSelection && "opacity-55"
+      )}
+      aria-hidden={hideProbabilities}
+    >
+      <span className="text-xs tabular-nums text-slate-600">
+        {segments ? formatSegmentDisplay(segments.home) : "--"}
+      </span>
+      <div className="h-6 w-2 overflow-hidden rounded-full bg-slate-200/70">
+        <div className="flex h-full flex-col">
+          <div
+            className="w-full bg-emerald-300/70"
+            style={{ height: `${segments?.home ?? 0}%` }}
+          />
+          {showDraw && (
+            <div
+              className="w-full bg-slate-300/70"
+              style={{ height: `${segments?.draw ?? 0}%` }}
+            />
+          )}
+          <div
+            className="w-full bg-rose-300/70"
+            style={{ height: `${segments?.away ?? 0}%` }}
+          />
+        </div>
+      </div>
+      <span className="text-xs tabular-nums text-slate-600">
+        {segments ? formatSegmentDisplay(segments.away) : "--"}
+      </span>
+    </div>
+  );
+
+  const teamRows = (
+    <div className="flex min-w-0 flex-1 flex-col">
+      {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
+      {renderRow(awayTeam, "away", placeholderAway, awayRowRef)}
+    </div>
+  );
 
   return (
     <div
@@ -2097,44 +2194,21 @@ function KnockoutMatchCard({
           : "bg-white ring-2 ring-slate-200"
       )}
     >
-      <div className="flex">
-        <div
-          className={cn(
-            "flex h-[72px] w-7 flex-col items-center justify-center px-4 py-1",
-            hideProbabilities && "invisible",
-            hasSelection && "opacity-55"
-          )}
-          aria-hidden={hideProbabilities}
-        >
-          <span className="text-xs tabular-nums text-slate-600">
-            {segments ? formatSegmentDisplay(segments.home) : "--"}
-          </span>
-          <div className="h-6 w-2 overflow-hidden rounded-full bg-slate-200/70">
-            <div className="flex h-full flex-col">
-              <div
-                className="w-full bg-emerald-300/70"
-                style={{ height: `${segments?.home ?? 0}%` }}
-              />
-              {showDraw && (
-                <div
-                  className="w-full bg-slate-300/70"
-                  style={{ height: `${segments?.draw ?? 0}%` }}
-                />
-              )}
-              <div
-                className="w-full bg-rose-300/70"
-                style={{ height: `${segments?.away ?? 0}%` }}
-              />
-            </div>
-          </div>
-          <span className="text-xs tabular-nums text-slate-600">
-            {segments ? formatSegmentDisplay(segments.away) : "--"}
-          </span>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col">
-          {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
-          {renderRow(awayTeam, "away", placeholderAway, awayRowRef)}
-        </div>
+      <div className="flex h-[72px]">
+        {centerPlaceholders && isLockedMatch ? (
+          // For Final/Third Place with both placeholders, hide probability bar for proper centering
+          teamRows
+        ) : mirrored ? (
+          <>
+            {teamRows}
+            {probabilityBar}
+          </>
+        ) : (
+          <>
+            {probabilityBar}
+            {teamRows}
+          </>
+        )}
       </div>
     </div>
   );
@@ -4943,6 +5017,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                               awayWinProb={probabilities.awayWinProb}
                               drawProb={probabilities.drawProb}
                               isFinal={stage === "Final"}
+                              centerPlaceholders={stage === "Final"}
                             />
                           </div>
                         );
@@ -4985,6 +5060,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                       homeWinProb={probabilities.homeWinProb}
                                       awayWinProb={probabilities.awayWinProb}
                                       drawProb={probabilities.drawProb}
+                                      centerPlaceholders
                                     />
                                   </div>
                                 );
@@ -5225,6 +5301,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                   awayWinProb={probabilities.awayWinProb}
                                   drawProb={probabilities.drawProb}
                                   isFinal={stage === "Final"}
+                                  centerPlaceholders={stage === "Final"}
                                 />
                               </div>
                             );
@@ -5267,6 +5344,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                           homeWinProb={probabilities.homeWinProb}
                                           awayWinProb={probabilities.awayWinProb}
                                           drawProb={probabilities.drawProb}
+                                          centerPlaceholders
                                         />
                                       </div>
                                     );
@@ -5377,6 +5455,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                   awayWinProb={probabilities.awayWinProb}
                                   drawProb={probabilities.drawProb}
                                   isFinal={false}
+                                  mirrored
                                 />
                               </div>
                             );
