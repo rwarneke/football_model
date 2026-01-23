@@ -2137,17 +2137,20 @@ function KnockoutMatchCard({
         }}
         disabled={!isPickableMatch}
         className={cn(
-          "group flex w-full flex-1 items-center gap-2 relative",
-          centerPlaceholders && isLockedMatch ? "px-2 justify-center" : mirrored ? "pl-2 pr-0" : "pl-0 pr-2",
+          "group flex w-full flex-1 items-center gap-2 relative z-10",
+          centerPlaceholders && isLockedMatch ? "px-2 justify-center" : mirrored ? "pl-0 pr-0" : "pl-0 pr-0",
           paddedRow,
           isResolved &&
             isWinner &&
             !isChampionRow &&
             (mirrored ? mirroredGradient : normalGradient),
           isChampionRow &&
-            (mirrored ? mirroredChampionGradient : normalChampionGradient),
-          isPickableMatch ? "cursor-pointer" : "cursor-default"
+            (mirrored ? mirroredChampionGradient : normalChampionGradient)
         )}
+        style={{
+          cursor: isPickableMatch ? 'pointer' : 'default',
+          pointerEvents: 'auto'
+        }}
       >
         {/* Hover gradient overlay */}
         {isPickableMatch && !isChampionRow && (
@@ -2237,7 +2240,7 @@ function KnockoutMatchCard({
   const probabilityBar = (
     <div
       className={cn(
-        "flex h-[72px] w-7 flex-col items-center justify-center px-4 py-1",
+        "flex h-[72px] w-7 flex-col items-center justify-center px-4 py-1 pointer-events-none",
         hideProbabilities && "invisible",
         hasSelection && "opacity-55"
       )}
@@ -2271,7 +2274,7 @@ function KnockoutMatchCard({
   );
 
   const teamRows = (
-    <div className="flex min-w-0 flex-1 flex-col">
+    <div className="flex min-w-0 flex-1 flex-col relative z-10">
       {renderRow(homeTeam, "home", placeholderHome, homeRowRef)}
       {renderRow(awayTeam, "away", placeholderAway, awayRowRef)}
     </div>
@@ -5079,7 +5082,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Winners advance automatically through the bracket.
           </p>
         </div>
-        <div className="overflow-x-auto overflow-y-visible pb-2">
+        <div className="overflow-x-scroll overflow-y-visible pb-2 knockout-scroll" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(203 213 225) rgb(241 245 249)' }}>
           <div
             ref={knockoutContainerRef}
             className="relative px-0.5 lg:px-2"
