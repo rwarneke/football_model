@@ -1843,8 +1843,8 @@ function MatchCard({
         className={cn(
           "relative overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
           isPickableMatch && !isScoreSet && "bg-white ring-2 ring-[#ffb4a1]",
-          isScoreSet && "bg-white ring-2 ring-slate-500",
-          !isScoreSet && !isPickableMatch && "bg-white ring-2 ring-slate-200"
+          isScoreSet && "bg-white ring-1 ring-slate-400",
+          !isScoreSet && !isPickableMatch && "bg-white ring-1 ring-slate-200"
         )}
       >
         {/* Blue gradient highlight background */}
@@ -2449,7 +2449,9 @@ function KnockoutMatchCard({
           "w-[40px] overflow-hidden rounded-lg shadow-sm",
           needsPick
             ? "bg-white ring-2 ring-[#ffb4a1]"
-            : "bg-white ring-2 ring-slate-200"
+            : hasSelection
+              ? "bg-white ring-1 ring-slate-400"
+              : "bg-white ring-1 ring-slate-200"
         )}
       >
         <div className="flex flex-col">
@@ -2468,7 +2470,9 @@ function KnockoutMatchCard({
         "overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
         needsPick
           ? "bg-white ring-2 ring-[#ffb4a1]"
-          : "bg-white ring-2 ring-slate-200"
+          : hasSelection
+            ? "bg-white ring-1 ring-slate-400"
+            : "bg-white ring-1 ring-slate-200"
       )}
     >
       <div className="flex h-[72px]">
