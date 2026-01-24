@@ -3,6 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { FLAG_COLORS } from "@/lib/flag-colors";
 import type {
   GroupDefinition,
   GroupMatch,
@@ -44,6 +45,130 @@ type ResolvedKnockoutMatch = KnockoutMatch & {
 };
 
 const SKIP_INITIALS = new Set(["and", "of", "the"]);
+
+// Get flag colors for a team, with fallback to default colors
+const getTeamFlagColors = (team: string): string[] => {
+  // Try exact match first
+  if (FLAG_COLORS[team]) {
+    return FLAG_COLORS[team];
+  }
+  // Try with underscores instead of spaces
+  const teamWithUnderscores = team.replace(/\s+/g, '_');
+  if (FLAG_COLORS[teamWithUnderscores]) {
+    return FLAG_COLORS[teamWithUnderscores];
+  }
+  // Fallback to default vibrant colors
+  return ['#FF0000', '#0000FF', '#FFFF00', '#00FF00'];
+};
+
+// Confetti particle component - positioned relative to container
+const ConfettiParticle: React.FC<{
+  delay: number;
+  duration: number;
+  color: string;
+}> = ({ delay, duration, color }) => {
+  const angle = React.useRef(Math.random() * 360);
+  const distance = React.useRef(200 + Math.random() * 300);
+  const rotation = React.useRef(Math.random() * 720 - 360);
+  const size = React.useRef(8 + Math.random() * 6);
+  const isCircle = React.useRef(Math.random() > 0.5);
+
+  const x = Math.cos((angle.current * Math.PI) / 180) * distance.current;
+  const y = Math.sin((angle.current * Math.PI) / 180) * distance.current;
+  const finalRotation = rotation.current;
+
+  // Create unique animation ID for this particle
+  const animationId = React.useRef(`confetti-${Math.random().toString(36).substr(2, 9)}`);
+
+  // Inject keyframe animation for this specific particle
+  React.useEffect(() => {
+    const styleId = `style-${animationId.current}`;
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement;
+    
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    
+    styleEl.textContent = `
+      @keyframes ${animationId.current} {
+        0% {
+          opacity: 1;
+          transform: translate(-50%, -50%) translate(0, 0) rotate(0deg);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${finalRotation}deg);
+        }
+      }
+    `;
+
+    return () => {
+      const el = document.getElementById(styleId);
+      if (el) {
+        document.head.removeChild(el);
+      }
+    };
+  }, [x, y, finalRotation]);
+
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: '50%',
+        top: '50%',
+        width: `${size.current}px`,
+        height: `${size.current}px`,
+        backgroundColor: color,
+        borderRadius: isCircle.current ? '50%' : '0%',
+        animation: `${animationId.current} ${duration}ms ease-out ${delay}ms forwards`,
+        opacity: 1,
+      }}
+    />
+  );
+};
+
+// Confetti animation component - renders particles relative to its container
+const ConfettiAnimation: React.FC<{ duration: number; champion: string }> = ({ duration, champion }) => {
+  const [particles, setParticles] = React.useState<Array<{ id: number; delay: number; color: string }>>([]);
+  const flagColors = React.useMemo(() => getTeamFlagColors(champion), [champion]);
+
+  React.useEffect(() => {
+    // Generate 50 confetti particles using team flag colors
+    const newParticles = Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      delay: Math.random() * 300,
+      color: flagColors[Math.floor(Math.random() * flagColors.length)],
+    }));
+    setParticles(newParticles);
+
+    // Clean up after animation
+    const timer = setTimeout(() => {
+      setParticles([]);
+    }, duration + 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [duration, champion, flagColors]);
+
+  if (particles.length === 0) return null;
+
+  return (
+    <>
+      {particles.map((particle) => (
+        <ConfettiParticle
+          key={particle.id}
+          delay={particle.delay}
+          duration={duration}
+          color={particle.color}
+        />
+      ))}
+    </>
+  );
+};
+
 const HOST_TEAM_COUNTRIES: Record<string, string> = {
   USA: "United States",
   "United States": "United States",
@@ -4143,16 +4268,22 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             // Right side: exit from LEFT edge, enter RIGHT edge of destination
             if (isRound32ToRound16) {
               // R32 → R16: Right side spawns from actual left edge (no inset), left side uses inset
-              const startX = fromRect.left - rect.left; // No inset for right side R32→R16
+              const startX = fromRect.left - rect.left;
               const endX = toRect.right - rect.left - connectorInset;
-              if (compactKnockout) {
-                // R32 → R16: Use fixed distance from edge (goes left, so subtract)
-                const turnX = startX - r32ToR16TurnDistance!;
-                path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+              // Only draw if we have valid coordinates (both elements are found and positioned)
+              if (isFinite(startX) && isFinite(endX) && isFinite(startY) && isFinite(endY)) {
+                if (compactKnockout) {
+                  // R32 → R16: Use fixed distance from edge (goes left, so subtract)
+                  const turnX = startX - r32ToR16TurnDistance!;
+                  path = `M ${startX} ${startY} L ${turnX} ${startY} L ${turnX} ${endY} L ${endX} ${endY}`;
+                } else {
+                  // R32 → R16: Use midpoint calculation (non-compact mode)
+                  const midX = startX + (endX - startX) * 0.5;
+                  path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+                }
               } else {
-                // R32 → R16: Use midpoint calculation (non-compact mode)
-                const midX = startX + (endX - startX) * 0.5;
-                path = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+                // Skip invalid path (coordinates are NaN or Infinity)
+                continue;
               }
             } else {
               const startX = fromRect.left - rect.left + connectorInset;
@@ -4331,6 +4462,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
       }
     };
   }, [knockoutMatchesByStage, roundOf32Order, knockoutCardHeight, compactKnockout]);
+
+
 
   React.useLayoutEffect(() => {
     const finalMatch = (knockoutMatchesByStage.get("Final") ?? [])[0];
@@ -5092,7 +5225,12 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           <div
             ref={knockoutContainerRef}
             className="relative px-0.5 lg:px-2"
-            style={{ minWidth: compactKnockout ? "392px" : "900px" }}
+            style={{ 
+              minWidth: compactKnockout ? "392px" : "1596px",
+              maxWidth: compactKnockout ? "520px" : undefined,
+              marginLeft: compactKnockout ? "auto" : undefined,
+              marginRight: compactKnockout ? "auto" : undefined,
+            }}
           >
             <svg
               className="absolute inset-0 z-0 h-full w-full pointer-events-none"
@@ -5123,8 +5261,11 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 // Min gap between SFs = 1.5 * 48 = 72px
                 // Right SF left edge = 160px from right
                 // Total = 160 + 72 + 160 = 392px
-                // In full mode: Left SF right edge = 648px from left, Right SF = 648px from right, gap = 48px
-                const minBracketWidth = compactKnockout ? 392 : 1344;
+                // In full mode: Left SF right edge = 648px from left, Right SF = 648px from right
+                // Need larger gap to accommodate champion block (approximately 200px wide)
+                // Min gap between SFs = 300px (was 48px) to ensure champion doesn't intersect
+                // Total = 648 + 300 + 648 = 1596px
+                const minBracketWidth = compactKnockout ? 392 : 1596;
                 
                 // Column positions within each block
                 const getLeftPosition = (pos: number) => {
@@ -5132,9 +5273,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 };
                 
                 return (
-                  <div className="relative" style={{ minWidth: `${minBracketWidth}px`, minHeight: knockoutListHeight ? `${knockoutListHeight + 40}px` : undefined }}>
+                  <div 
+                    className="relative" 
+                    style={{ 
+                      minWidth: `${minBracketWidth}px`, 
+                      minHeight: knockoutListHeight ? `${knockoutListHeight + 40}px` : undefined,
+                      maxWidth: compactKnockout ? '520px' : undefined,
+                      marginLeft: compactKnockout ? 'auto' : undefined,
+                      marginRight: compactKnockout ? 'auto' : undefined,
+                    }}
+                  >
                     {/* Left block: Top half bracket (R32 to Semis) - always left-aligned */}
-                    <div className="absolute left-0 top-0" style={{ width: `calc(50% + ${leftBlockWidth / 2}px)` }}>
+                    <div className="absolute left-0 top-0" style={{ width: compactKnockout ? `${leftBlockWidth}px` : `calc(50% + ${leftBlockWidth / 2}px)` }}>
                       {stageOrder
                         .filter((stage) => stage !== "Final")
                         .map((stage) => {
@@ -5211,8 +5361,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                   }
                                 }}
                                 className={cn(
-                                  isRoundOf32 && "relative",
-                                  !isRoundOf32 && "absolute left-0"
+                                  "w-full flex justify-center",
+                                  isRoundOf32 ? "relative" : "absolute left-0"
                                 )}
                                 style={top !== undefined ? { top } : undefined}
                                 onClick={handleRoundOf32Click}
@@ -5332,8 +5482,31 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             return (
                               <div
                                 key="champion"
-                                className="absolute left-0 w-full"
-                                style={{ top: championTop }}
+                                data-champion-block
+                                className={cn(
+                                  "absolute flex flex-col items-center",
+                                  compactKnockout ? "" : "left-0 w-full"
+                                )}
+                                style={{ 
+                                  top: championTop,
+                                  ...(compactKnockout ? { 
+                                    // Position relative to bracket container (392px), not Final column (48px)
+                                    // Bracket center = 196px, champion (280px) should be centered there
+                                    // Champion left should be at: 196px - 140px = 56px from bracket left
+                                    // Final column (48px) is centered at bracket center (196px)
+                                    // Final column left edge is at: 196px - 24px = 172px from bracket left
+                                    // So champion left relative to Final column = 56px - 172px = -116px
+                                    // Final column center is at 24px from Final column left
+                                    // So from Final center: 24px - 140px = -116px from Final left
+                                    // Using left: calc(50% - 140px) where 50% = 24px (Final center)
+                                    // This gives: 24px - 140px = -116px, which positions champion left at bracket 56px ✓
+                                    left: 'calc(50% - 140px)',
+                                    width: '280px', 
+                                    maxWidth: '280px',
+                                    marginLeft: 0,
+                                    marginRight: 0,
+                                  } : {})
+                                }}
                               >
                                 {/* Gold gradient background - completely smooth fade from all sides */}
                                 <div
@@ -5356,16 +5529,23 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                     `,
                                   }}
                                 />
-                                <div className="relative text-center text-sm font-semibold uppercase tracking-wide text-slate-600 mb-3">
+                                <div className="relative text-center text-sm font-semibold uppercase tracking-wide text-slate-600 mb-3 w-full" style={{ paddingLeft: 0, paddingRight: 0 }}>
                                   CHAMPION
                                 </div>
-                                <div className="relative flex flex-col items-center gap-2">
-                                  <TeamFlag
-                                    team={champion}
-                                    flags={data.flags}
-                                    className="h-6 w-9 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
-                                  />
-                                  <div className="text-base font-bold text-slate-900">
+                                <div className="relative flex flex-col items-center gap-2 w-full" style={{ paddingLeft: 0, paddingRight: 0 }}>
+                                  <div 
+                                    data-champion-flag
+                                    className="relative flex items-center justify-center"
+                                  >
+                                    <TeamFlag
+                                      team={champion}
+                                      flags={data.flags}
+                                      className="h-6 w-9 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                                    />
+                                    {/* Confetti renders directly inside the flag container */}
+                                    {champion && <ConfettiAnimation key={champion} duration={2000} champion={champion} />}
+                                  </div>
+                                  <div className="text-base font-bold text-slate-900 text-center break-words w-full" style={{ paddingLeft: '8px', paddingRight: '8px', boxSizing: 'border-box' }}>
                                     {formatDisplayLabel(champion)}
                                   </div>
                                 </div>
@@ -5397,7 +5577,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                     knockoutRefs.current.delete(match.id);
                                   }
                                 }}
-                                className="absolute left-0"
+                                className="absolute left-0 w-full flex justify-center"
                                 style={{ top }}
                               >
                                 <div
@@ -5429,10 +5609,10 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             thirdPlaceMatches.length > 0 &&
                             thirdPlaceMatchTop !== null && (
                               <>
-                                <div
-                                  className="absolute left-0"
-                                  style={{ top: thirdPlaceMatchTop }}
-                                >
+                            <div
+                              className="absolute left-0 w-full flex justify-center"
+                              style={{ top: thirdPlaceMatchTop }}
+                            >
                                   {thirdPlaceMatches.map((match) => {
                                     const probabilities = getMatchProbabilityLabels({
                                       homeTeam: match.homeResolved ?? match.homeLabel,
@@ -5485,7 +5665,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     </div>
 
                     {/* Right block: Bottom half bracket (Semis to R32) - always right-aligned */}
-                    <div className="absolute right-0 top-0" style={{ width: `calc(50% + ${leftBlockWidth / 2}px)` }}>
+                    <div className="absolute right-0 top-0" style={{ width: compactKnockout ? `${leftBlockWidth}px` : `calc(50% + ${leftBlockWidth / 2}px)` }}>
                       {stageOrder
                         .filter((stage) => stage !== "Final")
                         .map((stage) => {
@@ -5558,8 +5738,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                   }
                                 }}
                                 className={cn(
-                                  isRoundOf32 && "relative",
-                                  !isRoundOf32 && "absolute left-0"
+                                  "w-full flex justify-center",
+                                  isRoundOf32 ? "relative" : "absolute left-0"
                                 )}
                                 style={top !== undefined ? { top } : undefined}
                                 onClick={handleRoundOf32Click}
