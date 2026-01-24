@@ -22,14 +22,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${sourceCodePro.variable}`}>
       <body className="min-h-screen bg-white text-ebony antialiased">
-        <header className="border-b border-ink-700/40 bg-[var(--color-accent-dark)]">
-          <div className="px-3 md:px-12">
-            <div className="mx-auto w-full max-w-6xl">
-              <SiteNav />
-            </div>
-          </div>
-        </header>
-        {children}
+        <div className="fixed inset-x-0 top-0 z-30 h-16 border-b border-slate-200 bg-white md:hidden" />
+        <div className="flex min-h-screen">
+          <aside className="relative z-40 w-0 shrink-0 md:sticky md:top-0 md:h-screen md:w-auto md:border-r md:border-slate-200 md:bg-white">
+            <SiteNav />
+          </aside>
+          <div className="flex-1 min-w-0 pt-16 md:pt-0">{children}</div>
+        </div>
       </body>
     </html>
   );

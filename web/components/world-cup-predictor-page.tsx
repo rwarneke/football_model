@@ -3154,6 +3154,20 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     null
   );
   const [compactKnockout, setCompactKnockout] = React.useState(false);
+  const hasUserSetCompactKnockout = React.useRef(false);
+
+  React.useEffect(() => {
+    if (hasUserSetCompactKnockout.current) {
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    if (isMobile) {
+      setCompactKnockout(true);
+    }
+  }, []);
 
   React.useEffect(() => {
     return () => {
@@ -4205,6 +4219,16 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     () => matchesByStage(knockoutState.matches),
     [knockoutState.matches]
   );
+  const isKnockoutBracketReady = React.useMemo(() => {
+    const roundOf32 = knockoutMatchesByStage.get("Round of 32") ?? [];
+    if (roundOf32.length === 0) {
+      return true;
+    }
+    return roundOf32.every(
+      (match) =>
+        isConcreteTeam(match.homeResolved) && isConcreteTeam(match.awayResolved)
+    );
+  }, [knockoutMatchesByStage]);
 
   const stageOrder = [
     "Round of 32",
@@ -6331,16 +6355,38 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-semibold text-ebony">Knockout stage</h2>
-            <label className="flex items-center gap-2 text-sm text-ink-400 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={compactKnockout}
-                onChange={(e) => setCompactKnockout(e.target.checked)}
-                className="h-4 w-4 rounded border-ink-900 text-blue-600 focus:ring-blue-500"
-              />
-              Compact mode
-            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-600">
+                Compact mode
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  hasUserSetCompactKnockout.current = true;
+                  setCompactKnockout((prev) => !prev);
+                }}
+                className={cn(
+                  "relative inline-flex h-6 w-14 items-center rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+                  compactKnockout ? "bg-slate-900" : "bg-slate-200"
+                )}
+                aria-pressed={compactKnockout}
+              >
+                <span
+                  className={cn(
+                    "flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-700 shadow-sm transition-transform",
+                    compactKnockout ? "translate-x-8" : "translate-x-0"
+                  )}
+                >
+                  {compactKnockout ? "ON" : "OFF"}
+                </span>
+              </button>
+            </div>
           </div>
+          {!isKnockoutBracketReady && (
+            <div className="mt-3 inline-flex w-fit max-w-full rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              All qualifier and group stage matches must be predicted.
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <LoadingButton
               loading={Boolean(loadingKeys["section:knockouts"])}
