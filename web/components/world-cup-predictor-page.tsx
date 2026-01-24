@@ -2500,6 +2500,8 @@ function QualifierPathBracket({
   matches,
   winnerSelections,
   onWinnerSelect,
+  onAutoPredict,
+  onReset,
   flags,
   getMatchProbabilityLabels,
 }: {
@@ -2507,6 +2509,8 @@ function QualifierPathBracket({
   matches: ResolvedQualifierMatch[];
   winnerSelections: Record<string, WinnerSelection>;
   onWinnerSelect: (id: string | number, selection: WinnerSelection) => void;
+  onAutoPredict: (path: string) => void;
+  onReset: (path: string) => void;
   flags: Record<string, string | null>;
   getMatchProbabilityLabels: (params: {
     homeTeam: string;
@@ -2636,9 +2640,24 @@ function QualifierPathBracket({
       ref={containerRef}
       className="relative flex w-full min-w-[432px] max-w-[432px] flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 p-4"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
-        <span className="text-xs text-slate-500">{matches[0]?.stage}</span>
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => onAutoPredict(path)}
+            className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+          >
+            Auto-predict
+          </button>
+          <button
+            type="button"
+            onClick={() => onReset(path)}
+            className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+          >
+            Reset
+          </button>
+        </div>
       </div>
       <div ref={bracketRef} className="relative w-full">
         <svg
@@ -2966,11 +2985,14 @@ function GroupTable({
                       </span>
                       {showTieInfo && row.randomTiebreak && (
                         <span
-                          className="inline-flex h-4 w-4 flex-none items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold text-slate-500"
-                          title={TIEBREAK_TOOLTIP}
+                          className="group relative inline-flex h-4 w-4 flex-none items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 cursor-help transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700 focus-visible:border-slate-400 focus-visible:bg-slate-50 focus-visible:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-1"
                           aria-label={TIEBREAK_TOOLTIP}
+                          tabIndex={0}
                         >
                           i
+                          <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-52 -translate-x-1/2 rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+                            {TIEBREAK_TOOLTIP}
+                          </span>
                         </span>
                       )}
                     </div>
@@ -3860,7 +3882,32 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     [groupTables]
   );
   const thirdPlaceEntries = thirdPlaceResults.entries;
-  const thirdPlaceRandomTiebreaks = thirdPlaceResults.randomTiebreakTeams;
+  const thirdPlaceCutoffTies = React.useMemo(() => {
+    const cutoffIndex = 7;
+    const groups = new Map<
+      string,
+      { teams: string[]; indices: number[] }
+    >();
+    thirdPlaceEntries.forEach((entry, index) => {
+      const key = `${entry.points}|${entry.gd}|${entry.gf}`;
+      const group = groups.get(key) ?? { teams: [], indices: [] };
+      group.teams.push(entry.team);
+      group.indices.push(index);
+      groups.set(key, group);
+    });
+    const tiedTeams = new Set<string>();
+    groups.forEach((group) => {
+      if (group.indices.length <= 1) {
+        return;
+      }
+      const minIndex = Math.min(...group.indices);
+      const maxIndex = Math.max(...group.indices);
+      if (minIndex <= cutoffIndex && maxIndex > cutoffIndex) {
+        group.teams.forEach((team) => tiedTeams.add(team));
+      }
+    });
+    return tiedTeams;
+  }, [thirdPlaceEntries]);
   const thirdPlaceRankingRows = React.useMemo(() => {
     const rowByTeam = new Map<string, GroupTableRow>();
     groupTables.forEach((entry) => {
@@ -3877,12 +3924,11 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         return {
           ...row,
           position: index + 1,
-          randomTiebreak:
-            row.randomTiebreak || thirdPlaceRandomTiebreaks.has(entry.team),
+          randomTiebreak: thirdPlaceCutoffTies.has(entry.team),
         };
       })
       .filter((row): row is GroupTableRow => Boolean(row));
-  }, [groupTables, thirdPlaceEntries, thirdPlaceRandomTiebreaks]);
+  }, [groupTables, thirdPlaceEntries, thirdPlaceCutoffTies]);
   const bestThirdGroups = thirdPlaceEntries.slice(0, 8);
   const qualifiedThirdGroups = React.useMemo(
     () => new Set(bestThirdGroups.map((entry) => entry.group)),
@@ -5110,29 +5156,819 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     slotWinners,
   ]);
 
+  const handleGroupAutopredict = React.useCallback(
+    (groupId: string) => {
+      const matches = groupMatchesFor(groupId, resolvedGroupMatches);
+      if (matches.length === 0) {
+        return;
+      }
+      let changed = false;
+      const nextScores = { ...groupScores };
+      const nextAutoScores = { ...autoGroupScores };
+      const allPredicted = matches.every((match) => {
+        const key = String(match.id);
+        const existing = nextScores[key];
+        const hasScore =
+          existing && existing.home !== null && existing.away !== null;
+        return hasScore;
+      });
+      if (allPredicted) {
+        matches.forEach((match) => {
+          const key = String(match.id);
+          if (nextScores[key]) {
+            delete nextScores[key];
+            changed = true;
+          }
+          if (nextAutoScores[key]) {
+            delete nextAutoScores[key];
+          }
+        });
+      }
+      matches.forEach((match) => {
+        const key = String(match.id);
+        const existing = nextScores[key];
+        const hasScore =
+          existing && existing.home !== null && existing.away !== null;
+        if (hasScore) {
+          return;
+        }
+        const matrix = resolveMatchScoreMatrix({
+          probabilities: data.winProbabilities,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          country: match.country,
+        });
+        if (!matrix) {
+          return;
+        }
+        const sample = sampleScoreMatrix(matrix);
+        if (!sample) {
+          return;
+        }
+        nextScores[key] = { home: sample.home, away: sample.away };
+        nextAutoScores[key] = true;
+        changed = true;
+      });
+      if (!changed) {
+        return;
+      }
+      setGroupScores(nextScores);
+      setAutoGroupScores(nextAutoScores);
+      clearKnockoutOnGroupChange(nextScores);
+    },
+    [
+      autoGroupScores,
+      clearKnockoutOnGroupChange,
+      data.winProbabilities,
+      groupScores,
+      resolvedGroupMatches,
+    ]
+  );
+
+  const handleGroupReset = React.useCallback(
+    (groupId: string) => {
+      const matches = groupMatchesFor(groupId, resolvedGroupMatches);
+      if (matches.length === 0) {
+        return;
+      }
+      const nextScores = { ...groupScores };
+      const nextAutoScores = { ...autoGroupScores };
+      let changed = false;
+      matches.forEach((match) => {
+        const key = String(match.id);
+        if (nextScores[key]) {
+          delete nextScores[key];
+          changed = true;
+        }
+        if (nextAutoScores[key]) {
+          delete nextAutoScores[key];
+        }
+      });
+      if (!changed) {
+        return;
+      }
+      setGroupScores(nextScores);
+      setAutoGroupScores(nextAutoScores);
+      clearKnockoutOnGroupChange(nextScores);
+    },
+    [autoGroupScores, clearKnockoutOnGroupChange, groupScores, resolvedGroupMatches]
+  );
+
+  const handleQualifierAutopredict = React.useCallback(
+    (path: string) => {
+      let nextQualifierWinners = { ...qualifierWinners };
+      let nextAutoQualifierWinners = { ...autoQualifierWinners };
+      const changedMatchIds = new Set<string>();
+
+      const qualifierStateLocal = resolveQualifierState(
+        data.qualifiers,
+        nextQualifierWinners
+      );
+      const matches = qualifierStateLocal.matches.filter(
+        (match) => match.path === path
+      );
+      if (matches.length === 0) {
+        return;
+      }
+      const allPredicted = matches.every((match) => {
+        const key = String(match.id);
+        return (nextQualifierWinners[key] ?? null) !== null;
+      });
+      if (allPredicted) {
+        matches.forEach((match) => {
+          const key = String(match.id);
+          const updated = { ...nextQualifierWinners, [key]: null };
+          const cleared = clearDependentSelections(
+            updated,
+            key,
+            qualifierDependents
+          );
+          Object.keys(nextQualifierWinners).forEach((id) => {
+            if (nextQualifierWinners[id] && cleared[id] === null) {
+              changedMatchIds.add(id);
+            }
+          });
+          if (nextQualifierWinners[key]) {
+            changedMatchIds.add(key);
+          }
+          nextQualifierWinners = cleared;
+        });
+        changedMatchIds.forEach((matchId) => {
+          delete nextAutoQualifierWinners[matchId];
+        });
+      }
+
+      const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
+        const prevSelection = nextQualifierWinners[matchId] ?? null;
+        if (prevSelection === selection) {
+          return false;
+        }
+        const updated = { ...nextQualifierWinners, [matchId]: selection };
+        const cleared = clearDependentSelections(
+          updated,
+          matchId,
+          qualifierDependents
+        );
+        const clearedIds = Object.keys(updated).filter(
+          (id) => updated[id] && cleared[id] === null
+        );
+        nextQualifierWinners = cleared;
+        if (selection) {
+          nextAutoQualifierWinners[matchId] = true;
+        }
+        clearedIds.forEach((id) => {
+          delete nextAutoQualifierWinners[id];
+          changedMatchIds.add(id);
+        });
+        changedMatchIds.add(matchId);
+        return true;
+      };
+
+      const maxIterations = 10;
+      let iteration = 0;
+      let progress = true;
+      while (progress && iteration < maxIterations) {
+        iteration += 1;
+        progress = false;
+        const qualifierStateIter = resolveQualifierState(
+          data.qualifiers,
+          nextQualifierWinners
+        );
+        const pathMatches = qualifierStateIter.matches.filter(
+          (match) => match.path === path
+        );
+        if (pathMatches.length === 0) {
+          break;
+        }
+        pathMatches.forEach((match) => {
+          const key = String(match.id);
+          const isManual =
+            nextQualifierWinners[key] && !nextAutoQualifierWinners[key];
+          if (isManual || nextQualifierWinners[key]) {
+            return;
+          }
+          if (
+            isPlaceholderLabel(match.homeResolved) ||
+            isPlaceholderLabel(match.awayResolved)
+          ) {
+            return;
+          }
+          const values = resolveMatchProbabilities({
+            probabilities: data.winProbabilities,
+            homeTeam: match.homeResolved,
+            awayTeam: match.awayResolved,
+            allowDraw: false,
+            neutralOverride: match.neutral,
+          });
+          const selection = sampleWinner(values);
+          if (!selection) {
+            return;
+          }
+          if (applyQualifierSelection(key, selection)) {
+            progress = true;
+          }
+        });
+      }
+      if (changedMatchIds.size === 0) {
+        return;
+      }
+      const affectedSlots = new Set<string>();
+      changedMatchIds.forEach((matchId) => {
+        const slots = qualifierSlotsByMatch.get(matchId);
+        if (slots) {
+          slots.forEach((slot) => affectedSlots.add(slot));
+        }
+      });
+      const affectedGroups = new Set<string>();
+      affectedSlots.forEach((slot) => {
+        const groups = groupIdsBySlot.get(slot);
+        if (groups) {
+          groups.forEach((groupId) => affectedGroups.add(groupId));
+        }
+      });
+      const nextGroupScores = { ...groupScores };
+      const nextAutoGroupScores = { ...autoGroupScores };
+      affectedSlots.forEach((slot) => {
+        const matchIds = groupMatchIdsByTeam.get(slot);
+        if (!matchIds) {
+          return;
+        }
+        matchIds.forEach((matchId) => {
+          delete nextGroupScores[matchId];
+          delete nextAutoGroupScores[matchId];
+        });
+      });
+      let nextKnockoutWinners = { ...knockoutWinners };
+      let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+      if (affectedGroups.size > 0) {
+        affectedGroups.forEach((groupId) => {
+          const rootMatches = knockoutRootsByGroup.get(groupId);
+          if (rootMatches) {
+            rootMatches.forEach((matchId) => {
+              nextKnockoutWinners[matchId] = null;
+              nextKnockoutWinners = clearDependentSelections(
+                nextKnockoutWinners,
+                matchId,
+                knockoutDependents
+              );
+            });
+          }
+        });
+        const clearedIds = Object.keys(knockoutWinners).filter(
+          (matchId) => knockoutWinners[matchId] && nextKnockoutWinners[matchId] === null
+        );
+        clearedIds.forEach((matchId) => {
+          delete nextAutoKnockoutWinners[matchId];
+        });
+      }
+      setQualifierWinners(nextQualifierWinners);
+      setAutoQualifierWinners(nextAutoQualifierWinners);
+      setGroupScores(nextGroupScores);
+      setAutoGroupScores(nextAutoGroupScores);
+      setKnockoutWinners(nextKnockoutWinners);
+      setAutoKnockoutWinners(nextAutoKnockoutWinners);
+    },
+    [
+      autoGroupScores,
+      autoKnockoutWinners,
+      autoQualifierWinners,
+      data.qualifiers,
+      data.winProbabilities,
+      groupIdsBySlot,
+      groupMatchIdsByTeam,
+      groupScores,
+      knockoutDependents,
+      knockoutRootsByGroup,
+      knockoutWinners,
+      qualifierDependents,
+      qualifierSlotsByMatch,
+      qualifierWinners,
+    ]
+  );
+
+  const handleQualifierReset = React.useCallback(
+    (path: string) => {
+      let nextQualifierWinners = { ...qualifierWinners };
+      const nextAutoQualifierWinners = { ...autoQualifierWinners };
+      const qualifierStateLocal = resolveQualifierState(
+        data.qualifiers,
+        nextQualifierWinners
+      );
+      const matches = qualifierStateLocal.matches.filter(
+        (match) => match.path === path
+      );
+      if (matches.length === 0) {
+        return;
+      }
+      const clearedMatchIds = new Set<string>();
+      matches.forEach((match) => {
+        const key = String(match.id);
+        const updated = { ...nextQualifierWinners, [key]: null };
+        const cleared = clearDependentSelections(
+          updated,
+          key,
+          qualifierDependents
+        );
+        Object.keys(nextQualifierWinners).forEach((id) => {
+          if (nextQualifierWinners[id] && cleared[id] === null) {
+            clearedMatchIds.add(id);
+          }
+        });
+        if (nextQualifierWinners[key]) {
+          clearedMatchIds.add(key);
+        }
+        nextQualifierWinners = cleared;
+      });
+      if (clearedMatchIds.size === 0) {
+        return;
+      }
+      clearedMatchIds.forEach((matchId) => {
+        delete nextAutoQualifierWinners[matchId];
+      });
+      const affectedSlots = new Set<string>();
+      clearedMatchIds.forEach((matchId) => {
+        const slots = qualifierSlotsByMatch.get(matchId);
+        if (slots) {
+          slots.forEach((slot) => affectedSlots.add(slot));
+        }
+      });
+      const affectedGroups = new Set<string>();
+      affectedSlots.forEach((slot) => {
+        const groups = groupIdsBySlot.get(slot);
+        if (groups) {
+          groups.forEach((groupId) => affectedGroups.add(groupId));
+        }
+      });
+      const nextGroupScores = { ...groupScores };
+      const nextAutoGroupScores = { ...autoGroupScores };
+      affectedSlots.forEach((slot) => {
+        const matchIds = groupMatchIdsByTeam.get(slot);
+        if (!matchIds) {
+          return;
+        }
+        matchIds.forEach((matchId) => {
+          delete nextGroupScores[matchId];
+          delete nextAutoGroupScores[matchId];
+        });
+      });
+      let nextKnockoutWinners = { ...knockoutWinners };
+      let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+      if (affectedGroups.size > 0) {
+        affectedGroups.forEach((groupId) => {
+          const rootMatches = knockoutRootsByGroup.get(groupId);
+          if (rootMatches) {
+            rootMatches.forEach((matchId) => {
+              nextKnockoutWinners[matchId] = null;
+              nextKnockoutWinners = clearDependentSelections(
+                nextKnockoutWinners,
+                matchId,
+                knockoutDependents
+              );
+            });
+          }
+        });
+        const clearedIds = Object.keys(knockoutWinners).filter(
+          (matchId) => knockoutWinners[matchId] && nextKnockoutWinners[matchId] === null
+        );
+        clearedIds.forEach((matchId) => {
+          delete nextAutoKnockoutWinners[matchId];
+        });
+      }
+      setQualifierWinners(nextQualifierWinners);
+      setAutoQualifierWinners(nextAutoQualifierWinners);
+      setGroupScores(nextGroupScores);
+      setAutoGroupScores(nextAutoGroupScores);
+      setKnockoutWinners(nextKnockoutWinners);
+      setAutoKnockoutWinners(nextAutoKnockoutWinners);
+    },
+    [
+      autoGroupScores,
+      autoKnockoutWinners,
+      autoQualifierWinners,
+      data.qualifiers,
+      groupIdsBySlot,
+      groupMatchIdsByTeam,
+      groupScores,
+      knockoutDependents,
+      knockoutRootsByGroup,
+      knockoutWinners,
+      qualifierDependents,
+      qualifierSlotsByMatch,
+      qualifierWinners,
+    ]
+  );
+
+  const handleSectionQualifiersAutopredict = React.useCallback(() => {
+    let nextQualifierWinners = { ...qualifierWinners };
+    let nextAutoQualifierWinners = { ...autoQualifierWinners };
+    let nextGroupScores = { ...groupScores };
+    let nextAutoGroupScores = { ...autoGroupScores };
+    let nextKnockoutWinners = { ...knockoutWinners };
+    let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+
+    const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
+      const prevSelection = nextQualifierWinners[matchId] ?? null;
+      if (prevSelection === selection) {
+        return { changed: false, clearedIds: [] as string[] };
+      }
+      const updated = { ...nextQualifierWinners, [matchId]: selection };
+      const cleared = clearDependentSelections(updated, matchId, qualifierDependents);
+      const clearedIds = Object.keys(updated).filter(
+        (id) => updated[id] && cleared[id] === null
+      );
+      nextQualifierWinners = cleared;
+      if (selection) {
+        nextAutoQualifierWinners[matchId] = true;
+      }
+      clearedIds.forEach((id) => {
+        delete nextAutoQualifierWinners[id];
+      });
+      return { changed: true, clearedIds };
+    };
+
+    const maxIterations = 10;
+    let iteration = 0;
+    let changed = false;
+    const changedQualifiers = new Set<string>();
+
+    while (iteration < maxIterations) {
+      iteration += 1;
+      let qualifierProgress = false;
+      const qualifierStateLocal = resolveQualifierState(
+        data.qualifiers,
+        nextQualifierWinners
+      );
+      qualifierStateLocal.matches.forEach((match) => {
+        const key = String(match.id);
+        const isManual =
+          nextQualifierWinners[key] && !nextAutoQualifierWinners[key];
+        const existingSelection = nextQualifierWinners[key] ?? null;
+        if (isManual || existingSelection) {
+          return;
+        }
+        if (
+          isPlaceholderLabel(match.homeResolved) ||
+          isPlaceholderLabel(match.awayResolved)
+        ) {
+          return;
+        }
+        const values = resolveMatchProbabilities({
+          probabilities: data.winProbabilities,
+          homeTeam: match.homeResolved,
+          awayTeam: match.awayResolved,
+          allowDraw: false,
+          neutralOverride: match.neutral,
+        });
+        const selection = sampleWinner(values);
+        if (!selection) {
+          return;
+        }
+        const result = applyQualifierSelection(key, selection);
+        if (result.changed) {
+          changed = true;
+          qualifierProgress = true;
+          changedQualifiers.add(key);
+        }
+      });
+      if (!qualifierProgress) {
+        break;
+      }
+    }
+
+    if (changedQualifiers.size > 0) {
+      const affectedSlots = new Set<string>();
+      changedQualifiers.forEach((matchId) => {
+        const slots = qualifierSlotsByMatch.get(matchId);
+        if (!slots) {
+          return;
+        }
+        slots.forEach((slot) => affectedSlots.add(slot));
+      });
+      const affectedGroups = new Set<string>();
+      affectedSlots.forEach((slot) => {
+        const groups = groupIdsBySlot.get(slot);
+        if (groups) {
+          groups.forEach((groupId) => affectedGroups.add(groupId));
+        }
+      });
+
+      affectedSlots.forEach((slot) => {
+        const matchIds = groupMatchIdsByTeam.get(slot);
+        if (!matchIds) {
+          return;
+        }
+        matchIds.forEach((matchId) => {
+          delete nextGroupScores[matchId];
+          delete nextAutoGroupScores[matchId];
+        });
+      });
+
+      if (affectedGroups.size > 0) {
+        affectedGroups.forEach((groupId) => {
+          const rootMatches = knockoutRootsByGroup.get(groupId);
+          if (!rootMatches) {
+            return;
+          }
+          rootMatches.forEach((matchId) => {
+            nextKnockoutWinners[matchId] = null;
+            nextKnockoutWinners = clearDependentSelections(
+              nextKnockoutWinners,
+              matchId,
+              knockoutDependents
+            );
+          });
+        });
+        const clearedIds = Object.keys(knockoutWinners).filter(
+          (matchId) => knockoutWinners[matchId] && nextKnockoutWinners[matchId] === null
+        );
+        clearedIds.forEach((matchId) => {
+          delete nextAutoKnockoutWinners[matchId];
+        });
+      }
+    }
+
+    if (!changed && changedQualifiers.size === 0) {
+      return;
+    }
+    setQualifierWinners(nextQualifierWinners);
+    setAutoQualifierWinners(nextAutoQualifierWinners);
+    setGroupScores(nextGroupScores);
+    setAutoGroupScores(nextAutoGroupScores);
+    setKnockoutWinners(nextKnockoutWinners);
+    setAutoKnockoutWinners(nextAutoKnockoutWinners);
+  }, [
+    autoGroupScores,
+    autoKnockoutWinners,
+    autoQualifierWinners,
+    data.qualifiers,
+    data.winProbabilities,
+    groupIdsBySlot,
+    groupMatchIdsByTeam,
+    groupScores,
+    knockoutDependents,
+    knockoutRootsByGroup,
+    knockoutWinners,
+    qualifierDependents,
+    qualifierSlotsByMatch,
+    qualifierWinners,
+  ]);
+
+  const handleSectionQualifiersReset = React.useCallback(() => {
+    if (!data.qualifiers.length) {
+      return;
+    }
+    const nextQualifierWinners: Record<string, WinnerSelection> = {};
+    const nextAutoQualifierWinners: Record<string, boolean> = {};
+    const affectedSlots = new Set<string>();
+    data.qualifiers.forEach((match) => {
+      const slots = qualifierSlotsByMatch.get(String(match.id));
+      if (slots) {
+        slots.forEach((slot) => affectedSlots.add(slot));
+      }
+    });
+    const affectedGroups = new Set<string>();
+    affectedSlots.forEach((slot) => {
+      const groups = groupIdsBySlot.get(slot);
+      if (groups) {
+        groups.forEach((groupId) => affectedGroups.add(groupId));
+      }
+    });
+    const nextGroupScores = { ...groupScores };
+    const nextAutoGroupScores = { ...autoGroupScores };
+    affectedSlots.forEach((slot) => {
+      const matchIds = groupMatchIdsByTeam.get(slot);
+      if (!matchIds) {
+        return;
+      }
+      matchIds.forEach((matchId) => {
+        delete nextGroupScores[matchId];
+        delete nextAutoGroupScores[matchId];
+      });
+    });
+    let nextKnockoutWinners = { ...knockoutWinners };
+    let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+    if (affectedGroups.size > 0) {
+      affectedGroups.forEach((groupId) => {
+        const rootMatches = knockoutRootsByGroup.get(groupId);
+        if (!rootMatches) {
+          return;
+        }
+        rootMatches.forEach((matchId) => {
+          nextKnockoutWinners[matchId] = null;
+          nextKnockoutWinners = clearDependentSelections(
+            nextKnockoutWinners,
+            matchId,
+            knockoutDependents
+          );
+        });
+      });
+      const clearedIds = Object.keys(knockoutWinners).filter(
+        (matchId) => knockoutWinners[matchId] && nextKnockoutWinners[matchId] === null
+      );
+      clearedIds.forEach((matchId) => {
+        delete nextAutoKnockoutWinners[matchId];
+      });
+    }
+    setQualifierWinners(nextQualifierWinners);
+    setAutoQualifierWinners(nextAutoQualifierWinners);
+    setGroupScores(nextGroupScores);
+    setAutoGroupScores(nextAutoGroupScores);
+    setKnockoutWinners(nextKnockoutWinners);
+    setAutoKnockoutWinners(nextAutoKnockoutWinners);
+  }, [
+    autoGroupScores,
+    autoKnockoutWinners,
+    data.qualifiers,
+    groupIdsBySlot,
+    groupMatchIdsByTeam,
+    groupScores,
+    knockoutDependents,
+    knockoutRootsByGroup,
+    knockoutWinners,
+    qualifierSlotsByMatch,
+  ]);
+
+  const handleSectionGroupsAutopredict = React.useCallback(() => {
+    let changed = false;
+    const nextScores = { ...groupScores };
+    const nextAutoScores = { ...autoGroupScores };
+    resolvedGroupMatches.forEach((match) => {
+      const key = String(match.id);
+      const existing = nextScores[key];
+      const hasScore =
+        existing && existing.home !== null && existing.away !== null;
+      if (hasScore) {
+        return;
+      }
+      const matrix = resolveMatchScoreMatrix({
+        probabilities: data.winProbabilities,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        country: match.country,
+      });
+      if (!matrix) {
+        return;
+      }
+      const sample = sampleScoreMatrix(matrix);
+      if (!sample) {
+        return;
+      }
+      nextScores[key] = { home: sample.home, away: sample.away };
+      nextAutoScores[key] = true;
+      changed = true;
+    });
+    if (!changed) {
+      return;
+    }
+    setGroupScores(nextScores);
+    setAutoGroupScores(nextAutoScores);
+    clearKnockoutOnGroupChange(nextScores);
+  }, [
+    autoGroupScores,
+    clearKnockoutOnGroupChange,
+    data.winProbabilities,
+    groupScores,
+    resolvedGroupMatches,
+  ]);
+
+  const handleSectionGroupsReset = React.useCallback(() => {
+    if (!Object.keys(groupScores).length) {
+      return;
+    }
+    setGroupScores({});
+    setAutoGroupScores({});
+    clearKnockoutOnGroupChange({});
+  }, [clearKnockoutOnGroupChange, groupScores]);
+
+  const handleSectionKnockoutsAutopredict = React.useCallback(() => {
+    let nextKnockoutWinners = { ...knockoutWinners };
+    let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+
+    const applyKnockoutSelection = (matchId: string, selection: WinnerSelection) => {
+      const prevSelection = nextKnockoutWinners[matchId] ?? null;
+      if (prevSelection === selection) {
+        return false;
+      }
+      const updated = { ...nextKnockoutWinners, [matchId]: selection };
+      const cleared = clearDependentSelections(updated, matchId, knockoutDependents);
+      const clearedIds = Object.keys(updated).filter(
+        (id) => updated[id] && cleared[id] === null
+      );
+      nextKnockoutWinners = cleared;
+      if (selection) {
+        nextAutoKnockoutWinners[matchId] = true;
+      }
+      clearedIds.forEach((id) => {
+        delete nextAutoKnockoutWinners[id];
+      });
+      return true;
+    };
+
+    const context = computeKnockoutContext(groupScores, slotWinners);
+    const winners = new Map<number, string>();
+    const losers = new Map<number, string>();
+    const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
+
+    sorted.forEach((match) => {
+      const key = String(match.id);
+      const homeResolved = resolveKnockoutLabel({
+        label: match.homeLabel,
+        opponentLabel: match.awayLabel,
+        groupRankings: context.groupRankings,
+        thirdPlaceByGroup: context.thirdPlaceByGroup,
+        thirdPlaceAssignments: context.thirdPlaceAssignments,
+        knockoutWinners: winners,
+        knockoutLosers: losers,
+        groupCompletion: context.groupCompletion,
+        allowThirdPlaceResolve: context.allGroupMatchesComplete,
+        qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
+        matchStageById,
+      });
+      const awayResolved = resolveKnockoutLabel({
+        label: match.awayLabel,
+        opponentLabel: match.homeLabel,
+        groupRankings: context.groupRankings,
+        thirdPlaceByGroup: context.thirdPlaceByGroup,
+        thirdPlaceAssignments: context.thirdPlaceAssignments,
+        knockoutWinners: winners,
+        knockoutLosers: losers,
+        groupCompletion: context.groupCompletion,
+        allowThirdPlaceResolve: context.allGroupMatchesComplete,
+        qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
+        matchStageById,
+      });
+
+      const existingSelection = nextKnockoutWinners[key] ?? null;
+      const isManual = existingSelection && !nextAutoKnockoutWinners[key];
+      if (!isManual && !existingSelection) {
+        if (!isPlaceholderLabel(homeResolved) && !isPlaceholderLabel(awayResolved)) {
+          const values = resolveMatchProbabilities({
+            probabilities: data.winProbabilities,
+            homeTeam: homeResolved,
+            awayTeam: awayResolved,
+            allowDraw: false,
+            country: match.country,
+          });
+          const selection = sampleWinner(values);
+          if (selection) {
+            applyKnockoutSelection(key, selection);
+          }
+        }
+      }
+
+      const winner = resolveWinner(
+        match.id,
+        homeResolved,
+        awayResolved,
+        {},
+        false,
+        nextKnockoutWinners
+      );
+      if (winner) {
+        winners.set(match.id, winner);
+        const loser = winner === homeResolved ? awayResolved : homeResolved;
+        losers.set(match.id, loser);
+      }
+    });
+
+    setKnockoutWinners(nextKnockoutWinners);
+    setAutoKnockoutWinners(nextAutoKnockoutWinners);
+  }, [
+    autoKnockoutWinners,
+    computeKnockoutContext,
+    data.knockoutMatches,
+    data.winProbabilities,
+    groupScores,
+    knockoutDependents,
+    knockoutWinners,
+    matchStageById,
+    slotWinners,
+  ]);
+
+  const handleSectionKnockoutsReset = React.useCallback(() => {
+    if (!Object.keys(knockoutWinners).length) {
+      return;
+    }
+    setKnockoutWinners({});
+    setAutoKnockoutWinners({});
+  }, [knockoutWinners]);
+
   return (
     <div className="flex flex-col gap-12">
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-start gap-3">
         <button
           type="button"
           onClick={handleAutopredict}
-          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
+          className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
         >
-          Autopredict
-        </button>
-        <button
-          type="button"
-          onClick={handleResetAutopredictions}
-          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
-        >
-          Reset autopredictions
+          Auto-predict tournament
         </button>
         <button
           type="button"
           onClick={handleResetAll}
-          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
+          className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
         >
-          Reset all
+          Reset
         </button>
       </div>
       <section className="space-y-6">
@@ -5142,10 +5978,22 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               Qualifier playoffs
             </h2>
           </div>
-          <p className="text-sm text-ink-400">
-            Resolve UEFA and intercontinental playoff paths to fill the final
-            group stage slots.
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSectionQualifiersAutopredict}
+              className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Auto-predict qualifiers
+            </button>
+            <button
+              type="button"
+              onClick={handleSectionQualifiersReset}
+              className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Reset
+            </button>
+          </div>
         </div>
         <div className="space-y-6">
           {(() => {
@@ -5174,7 +6022,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               return a.localeCompare(b);
             });
             return (
-              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,432px))] justify-start">
+              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,432px))] justify-center">
                 {entries.map(([path, matches]) => (
                   <QualifierPathBracket
                     key={path}
@@ -5182,6 +6030,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     matches={matches}
                     winnerSelections={qualifierWinners}
                     onWinnerSelect={updateQualifierWinner}
+                    onAutoPredict={handleQualifierAutopredict}
+                    onReset={handleQualifierReset}
                     flags={data.flags}
                     getMatchProbabilityLabels={getMatchProbabilityLabels}
                   />
@@ -5197,9 +6047,22 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-semibold text-ebony">Group stage</h2>
           </div>
-          <p className="text-sm text-ink-400">
-            Select group match outcomes and see standings update instantly.
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSectionGroupsAutopredict}
+              className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Auto-predict groups
+            </button>
+            <button
+              type="button"
+              onClick={handleSectionGroupsReset}
+              className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Reset
+            </button>
+          </div>
         </div>
         <div className="grid gap-6 lg:gap-8 lg:grid-cols-2 2xl:grid-cols-3 justify-items-center">
           {groupTables.map(({ group, rows }) => {
@@ -5209,8 +6072,24 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 key={group.id}
                 className="relative flex flex-col gap-4 overflow-hidden max-w-[520px] rounded-xl bg-slate-50 p-4 lg:max-w-none"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
+                  <div className="flex items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleGroupAutopredict(group.id)}
+                      className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      Auto-predict
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleGroupReset(group.id)}
+                      className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-4">
                   <div className="flex w-full flex-col gap-3 px-0.5">
@@ -5292,9 +6171,22 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               Compact mode
             </label>
           </div>
-          <p className="text-sm text-ink-400">
-            Winners advance automatically through the bracket.
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSectionKnockoutsAutopredict}
+              className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Auto-predict knockouts
+            </button>
+            <button
+              type="button"
+              onClick={handleSectionKnockoutsReset}
+              className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Reset
+            </button>
+          </div>
         </div>
         <div className={cn(
           "overflow-x-scroll overflow-y-visible pb-2 knockout-scroll",
@@ -5854,35 +6746,23 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-start gap-3">
         <button
           type="button"
           onClick={handleAutopredict}
-          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
+          className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
         >
-          Autopredict
-        </button>
-        <button
-          type="button"
-          onClick={handleResetAutopredictions}
-          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
-        >
-          Reset autopredictions
+          Auto-predict tournament
         </button>
         <button
           type="button"
           onClick={handleResetAll}
-          className="rounded-[3px] border border-ink-900 px-3 py-1 text-xs font-semibold uppercase text-ink-400 hover:text-ebony"
+          className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
         >
-          Reset all
+          Reset
         </button>
       </div>
 
-      <div className="text-xs text-ink-400">
-        Tie-breakers follow the tournament model (points, goal difference, goals
-        for, head-to-head). Exact ties are randomized here; FIFA would use Fair
-        Play Points.
-      </div>
     </div>
   );
 }
