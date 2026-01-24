@@ -1784,7 +1784,7 @@ function MatchCard({
           onClick={() => handleTeamSelect(side)}
           disabled={!isPickableMatch}
           className={cn(
-            "group flex items-center gap-3 px-2 py-2 transition-all duration-200 w-full relative",
+            "group flex items-center gap-3 px-1.5 py-2 transition-all duration-200 w-full relative",
             side === "home" ? "justify-end" : "justify-start",
             isPickableMatch && "cursor-pointer",
             !isPickableMatch && "cursor-default"
@@ -1918,7 +1918,7 @@ function MatchCard({
           </div>
 
           {/* Score area */}
-          <div className="relative flex items-center gap-1 px-2">
+          <div className="relative flex items-center gap-1 px-1.5">
             {renderScoreInput("home", homeInputRef)}
             <button
               type="button"
@@ -2679,7 +2679,7 @@ function QualifierPathBracket({
   return (
     <div
       ref={containerRef}
-      className="relative flex w-full min-w-[432px] max-w-[432px] flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
+      className="relative flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
@@ -3155,6 +3155,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   );
   const [compactKnockout, setCompactKnockout] = React.useState(false);
   const hasUserSetCompactKnockout = React.useRef(false);
+  const pendingGroupsAfterQualifiers = React.useRef(false);
 
   React.useEffect(() => {
     if (hasUserSetCompactKnockout.current) {
@@ -3168,6 +3169,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
       setCompactKnockout(true);
     }
   }, []);
+
 
   React.useEffect(() => {
     return () => {
@@ -3511,6 +3513,16 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   );
 
   const slotWinners = qualifierState.slotWinners;
+
+  const hasUnpredictedQualifiers = React.useCallback(() => {
+    return qualifierState.matches.some((match) => {
+      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+        return false;
+      }
+      const key = String(match.id);
+      return (qualifierWinners[key] ?? null) === null;
+    });
+  }, [qualifierState.matches, qualifierWinners]);
 
   const unpickableQualifierIds = React.useMemo(() => {
     return qualifierState.matches
@@ -3941,6 +3953,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     }));
   }, [data.groupMatches, slotWinners]);
 
+  const hasUnpredictedGroups = React.useCallback(() => {
+    return resolvedGroupMatches.some((match) => {
+      const score = groupScores[String(match.id)];
+      return !score || score.home === null || score.away === null;
+    });
+  }, [groupScores, resolvedGroupMatches]);
+
   const groupTables = React.useMemo(() => {
     return resolvedGroups.map((group) => {
       const matches = groupMatchesFor(group.id, resolvedGroupMatches);
@@ -3961,6 +3980,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     });
     return completion;
   }, [data.groups, resolvedGroupMatches, groupScores]);
+
 
   const groupRankings = React.useMemo(() => {
     const rankings: Record<string, string[]> = {};
@@ -5992,6 +6012,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     resolvedGroupMatches,
   ]);
 
+  React.useEffect(() => {
+    if (!pendingGroupsAfterQualifiers.current) {
+      return;
+    }
+    if (hasUnpredictedQualifiers()) {
+      return;
+    }
+    pendingGroupsAfterQualifiers.current = false;
+    if (hasUnpredictedGroups()) {
+      handleSectionGroupsAutopredict();
+    }
+  }, [handleSectionGroupsAutopredict, hasUnpredictedGroups, hasUnpredictedQualifiers]);
+
   const handleSectionGroupsReset = React.useCallback(() => {
     if (!Object.keys(groupScores).length) {
       return;
@@ -6212,7 +6245,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               return a.localeCompare(b);
             });
             return (
-              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,432px))] justify-start">
+              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,1fr))]">
                 {entries.map(([path, matches]) => (
                   <QualifierPathBracket
                     key={path}
@@ -6265,13 +6298,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </button>
           </div>
         </div>
-        <div className="grid gap-6 lg:gap-8 lg:grid-cols-2 2xl:grid-cols-3 justify-items-start">
+        <div className="grid gap-6 lg:gap-8 grid-cols-[repeat(auto-fit,minmax(460px,1fr))]">
           {groupTables.map(({ group, rows }) => {
             const matches = groupMatchesFor(group.id, resolvedGroupMatches);
             return (
               <div
                 key={group.id}
-                className="relative flex w-full max-w-[520px] flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
+                className="relative flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
               >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
@@ -6395,8 +6428,25 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </div>
           </div>
           {!isKnockoutBracketReady && (
-            <div className="mt-3 inline-flex w-fit max-w-full rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              All qualifier and group stage matches must be predicted.
+            <div className="mt-3 inline-flex w-fit max-w-full items-center gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <span>All qualifier and group stage matches must be predicted.</span>
+              <LoadingButton
+                loading={Boolean(loadingKeys["knockout:resolve"])}
+                onClick={() =>
+                  runAutopredictWithDelay("knockout:resolve", () => {
+                    if (hasUnpredictedQualifiers()) {
+                      pendingGroupsAfterQualifiers.current = true;
+                      handleSectionQualifiersAutopredict();
+                    }
+                    if (!hasUnpredictedQualifiers() && hasUnpredictedGroups()) {
+                      handleSectionGroupsAutopredict();
+                    }
+                  })
+                }
+                className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-700 ring-1 ring-red-200 hover:bg-red-100"
+              >
+                Auto-predict
+              </LoadingButton>
             </div>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
