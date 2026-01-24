@@ -2679,7 +2679,7 @@ function QualifierPathBracket({
   return (
     <div
       ref={containerRef}
-      className="relative flex w-full min-w-[432px] max-w-[432px] flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 p-4"
+      className="relative flex w-full min-w-[432px] max-w-[432px] flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
@@ -4491,8 +4491,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           if (fromIsRight) {
             // Right side: exit from LEFT edge, enter RIGHT edge of destination
             if (isRound32ToRound16) {
-              // R32 → R16: Right side spawns from actual left edge (no inset), left side uses inset
-              const startX = fromRect.left - rect.left;
+              // R32 → R16: match left-side inset for symmetry
+              const startX = fromRect.left - rect.left + connectorInset;
               const endX = toRect.right - rect.left - connectorInset;
               // Only draw if we have valid coordinates (both elements are found and positioned)
               if (isFinite(startX) && isFinite(endX) && isFinite(startY) && isFinite(endY)) {
@@ -4728,7 +4728,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         const semisAvg = centers.reduce((sum, value) => sum + value, 0) / centers.length;
         const listOffset = listRect.top - containerRect.top;
         // Position third place lower than semis, with same offset as final is above (symmetric)
-        const finalOffset = 80; // Distance above/below semis average
+        const finalOffset = 72; // Distance above/below semis average
         // In compact mode, move third place up by one match height
         const compactAdjustment = compactKnockout ? (knockoutCardHeight ?? 64) : 0;
         const nextTop = semisAvg - listOffset + finalOffset - compactAdjustment;
@@ -4788,7 +4788,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         
         // Position Final equidistant from semis as Third Place (symmetric)
         // Final CENTER = sfAvg - listOffset - 80 - cardHeight/2
-        const finalOffset = 80; // Same offset used for Third Place
+        const finalOffset = 72; // Same offset used for Third Place
         // In compact mode, move final down by one match height
         const compactAdjustment = compactKnockout ? (knockoutCardHeight ?? 64) : 0;
         const nextCenter = sfAvg - listOffset - finalOffset - cardHeight / 2 + compactAdjustment;
@@ -6126,6 +6126,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     setAutoKnockoutWinners({});
   }, [knockoutWinners]);
 
+  const knockoutBaseColumnWidth = compactKnockout ? 48 : 200;
+  const knockoutBaseGap = compactKnockout ? 8 : 24;
+  const knockoutSfPosition = compactKnockout ? 3 : 2.8;
+  const knockoutLeftBlockWidth =
+    (knockoutSfPosition - 1) * (knockoutBaseColumnWidth + knockoutBaseGap) +
+    knockoutBaseColumnWidth;
+  const knockoutMinGapBetweenSFs = compactKnockout
+    ? knockoutBaseColumnWidth * 1.5
+    : knockoutBaseColumnWidth;
+  const knockoutMinBracketWidth =
+    knockoutLeftBlockWidth * 2 + knockoutMinGapBetweenSFs;
+
   return (
     <div className="flex flex-col gap-12">
       <div className="flex flex-wrap items-center justify-start gap-3">
@@ -6259,7 +6271,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             return (
               <div
                 key={group.id}
-                className="relative flex flex-col gap-4 overflow-hidden max-w-[520px] rounded-xl bg-slate-50 p-4 lg:max-w-none"
+                className="relative flex flex-col gap-4 overflow-hidden max-w-[520px] rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 lg:max-w-none"
               >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
@@ -6417,7 +6429,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             ref={knockoutContainerRef}
             className="relative px-0.5 lg:px-2"
             style={{ 
-              minWidth: compactKnockout ? "392px" : "1596px",
+              minWidth: `${knockoutMinBracketWidth}px`,
               maxWidth: compactKnockout ? "520px" : undefined,
               marginLeft: compactKnockout ? "auto" : undefined,
               marginRight: compactKnockout ? "auto" : undefined,
@@ -6443,20 +6455,11 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             <div className="z-10">
               {(() => {
                 // In compact mode, cards are 40px wide with tighter spacing
-                const baseColumnWidth = compactKnockout ? 48 : 200;
-                const baseGap = compactKnockout ? 8 : 24;
-                // Calculate preferred width for left/right blocks (R32 to Semis)
-                const leftBlockWidth = (3 - 1) * (baseColumnWidth + baseGap) + baseColumnWidth; // Position 1 to 3
-                // Minimum width calculation:
-                // In compact mode: Left SF right edge = (3-1) * (48+8) + 48 = 160px
-                // Min gap between SFs = 1.5 * 48 = 72px
-                // Right SF left edge = 160px from right
-                // Total = 160 + 72 + 160 = 392px
-                // In full mode: Left SF right edge = 648px from left, Right SF = 648px from right
-                // Need larger gap to accommodate champion block (approximately 200px wide)
-                // Min gap between SFs = 300px (was 48px) to ensure champion doesn't intersect
-                // Total = 648 + 300 + 648 = 1596px
-                const minBracketWidth = compactKnockout ? 392 : 1596;
+                const baseColumnWidth = knockoutBaseColumnWidth;
+                const baseGap = knockoutBaseGap;
+                const sfPosition = knockoutSfPosition;
+                const leftBlockWidth = knockoutLeftBlockWidth;
+                const minBracketWidth = knockoutMinBracketWidth;
                 
                 // Column positions within each block
                 const getLeftPosition = (pos: number) => {
@@ -6465,9 +6468,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 
                 return (
                   <div 
-                    className="relative" 
+                    className="relative w-full" 
                     style={{ 
-                      minWidth: `${minBracketWidth}px`, 
+                      minWidth: `${minBracketWidth}px`,
                       minHeight: knockoutListHeight ? `${knockoutListHeight + 40}px` : undefined,
                       maxWidth: compactKnockout ? '520px' : undefined,
                       marginLeft: compactKnockout ? 'auto' : undefined,
@@ -6492,7 +6495,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             'Round of 32': 1,       // 0px from left (at left edge of page)
                             'Round of 16': 2,       // 224px from left
                             'Quarterfinal': 2.5,    // 336px from left
-                            'Semifinal': 3,         // 448px from left (closest to center)
+                            'Semifinal': 2.8,       // Slightly further from center
                           };
                           const pos = leftPositions[stage];
                           if (pos === undefined) {
@@ -6872,7 +6875,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             'Round of 32': 1,       // At right edge
                             'Round of 16': 2,       // One step in
                             'Quarterfinal': 2.5,    // Interleaved
-                            'Semifinal': 3,         // Closest to center
+                            'Semifinal': 2.8,       // Slightly further from center
                           };
                           const pos = rightPositions[stage];
                           if (pos === undefined) {

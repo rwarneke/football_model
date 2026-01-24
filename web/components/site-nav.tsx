@@ -27,7 +27,7 @@ const navGroups: Array<
     label: "FIFA World Cup 2026",
     icon: "🏆",
     children: [
-      { label: "Progression changes", href: "/world-cup-2026/probabilities", icon: "％" },
+      { label: "Progression chances", href: "/world-cup-2026/probabilities", icon: "％" },
       { label: "Tournament predictor", href: "/world-cup-2026/predictor", icon: "🔀" },
     ],
   },
