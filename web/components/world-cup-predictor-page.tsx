@@ -6212,7 +6212,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               return a.localeCompare(b);
             });
             return (
-              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,432px))] justify-center">
+              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,432px))] justify-start">
                 {entries.map(([path, matches]) => (
                   <QualifierPathBracket
                     key={path}
@@ -6265,13 +6265,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </button>
           </div>
         </div>
-        <div className="grid gap-6 lg:gap-8 lg:grid-cols-2 2xl:grid-cols-3 justify-items-center">
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-2 2xl:grid-cols-3 justify-items-start">
           {groupTables.map(({ group, rows }) => {
             const matches = groupMatchesFor(group.id, resolvedGroupMatches);
             return (
               <div
                 key={group.id}
-                className="relative flex flex-col gap-4 overflow-hidden max-w-[520px] rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 lg:max-w-none"
+                className="relative flex w-full max-w-[520px] flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
               >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
@@ -6341,7 +6341,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             );
           })}
           {thirdPlaceRankingRows.length > 0 && (
-            <div className="space-y-4 rounded-xl bg-slate-50 p-4">
+            <div className="space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-slate-900">Ranking of 3rd place teams</h3>
               </div>
