@@ -2148,6 +2148,7 @@ function KnockoutMatchCard({
   compact,
   isFinal,
   centerPlaceholders,
+  cardWidthClass = "w-[192px]",
   containerRef,
   homeRowRef,
   awayRowRef,
@@ -2165,6 +2166,7 @@ function KnockoutMatchCard({
   compact?: boolean;
   isFinal?: boolean;
   centerPlaceholders?: boolean;
+  cardWidthClass?: string;
   containerRef?: React.Ref<HTMLDivElement>;
   homeRowRef?: React.Ref<HTMLButtonElement>;
   awayRowRef?: React.Ref<HTMLButtonElement>;
@@ -2462,7 +2464,8 @@ function KnockoutMatchCard({
     <div
       ref={containerRef}
       className={cn(
-        "w-[192px] overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
+        cardWidthClass,
+        "overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
         needsPick
           ? "bg-white ring-2 ring-[#ffb4a1]"
           : "bg-white ring-2 ring-slate-200"
@@ -2511,15 +2514,29 @@ function QualifierPathBracket({
 }) {
   const semis = matches.filter((match) => match.round.startsWith("semi"));
   const final = matches.find((match) => match.round === "final");
+  const finalHome = final?.homeResolved ?? final?.homeTeam ?? "";
+  const finalAway = final?.awayResolved ?? final?.awayTeam ?? "";
   const finalId = final?.id ?? null;
   const finalProbabilities = final
     ? getMatchProbabilityLabels({
-        homeTeam: final.homeResolved ?? final.homeTeam,
-        awayTeam: final.awayResolved ?? final.awayTeam,
+        homeTeam: finalHome,
+        awayTeam: finalAway,
         allowDraw: false,
         neutralOverride: final.neutral,
       })
     : null;
+  const isFinalPickable =
+    Boolean(final) && isConcreteTeam(finalHome) && isConcreteTeam(finalAway);
+  const finalWinnerSelection = final ? winnerSelections[String(final.id)] ?? null : null;
+  const qualifiedTeam = isFinalPickable
+    ? finalWinnerSelection === "home"
+      ? finalHome
+      : finalWinnerSelection === "away"
+        ? finalAway
+        : null
+    : null;
+  const topSemi = semis.length > 1 ? semis[0] : null;
+  const bottomSemi = semis.length > 1 ? semis[1] : semis[0] ?? null;
   const semisKey = React.useMemo(
     () => semis.map((match) => String(match.id)).join("|"),
     [semis]
@@ -2567,26 +2584,7 @@ function QualifierPathBracket({
           const awayRect = finalAwayBox.getBoundingClientRect();
           endY = (homeRect.bottom + awayRect.top) / 2 - rect.top;
         }
-        if (isIcPath && semis.length === 1) {
-          const semiEl = matchRefs.current.get(semis[0].id);
-          if (semiEl) {
-            const semiRect = semiEl.getBoundingClientRect();
-            let startY = semiRect.top - rect.top + semiRect.height / 2;
-            const semiHomeBox = matchHomeRefs.current.get(semis[0].id);
-            const semiAwayBox = matchAwayRefs.current.get(semis[0].id);
-            if (semiHomeBox && semiAwayBox) {
-              const homeRect = semiHomeBox.getBoundingClientRect();
-              const awayRect = semiAwayBox.getBoundingClientRect();
-              const dividerY = (homeRect.bottom + awayRect.top) / 2;
-              startY = dividerY - rect.top;
-            }
-            const baseCenter = startY - semisOffset;
-            const desiredOffset = endY - baseCenter;
-            setSemisOffset((prev) =>
-              Math.abs(prev - desiredOffset) < 0.5 ? prev : desiredOffset
-            );
-          }
-        } else if (semisOffset !== 0) {
+        if (isIcPath && semisOffset !== 0) {
           setSemisOffset(0);
         }
         semis.forEach((match) => {
@@ -2604,8 +2602,7 @@ function QualifierPathBracket({
             const awayRect = semiAwayBox.getBoundingClientRect();
             startY = (homeRect.bottom + awayRect.top) / 2 - rect.top;
           }
-          // For IC Path with one semi, use endY directly to ensure straight line
-          const drawStartY = isIcPath && semis.length === 1 ? endY : startY;
+          const drawStartY = startY;
           const midX = Math.round(startX + (endX - startX) * 0.5);
           const roundedEndY = Math.round(endY);
           const roundedStartY = Math.round(drawStartY);
@@ -2633,13 +2630,13 @@ function QualifierPathBracket({
   return (
     <div
       ref={containerRef}
-      className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm"
+      className="relative flex w-full min-w-[432px] max-w-[432px] flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 p-4"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
         <span className="text-xs text-slate-500">{matches[0]?.stage}</span>
       </div>
-      <div ref={bracketRef} className="relative w-fit max-w-full">
+      <div ref={bracketRef} className="relative w-full">
         <svg
           className="absolute inset-0 z-0 h-full w-full pointer-events-none"
           aria-hidden="true"
@@ -2656,88 +2653,161 @@ function QualifierPathBracket({
             />
           ))}
         </svg>
-        <div className="relative z-10 flex max-w-full items-center gap-6">
+        <div className="relative z-10 grid w-full grid-cols-[max-content_max-content] gap-4">
           <div
-            className="flex flex-col gap-3"
+            className="grid w-fit grid-rows-[72px_72px] gap-4"
             style={semisOffset ? { marginTop: semisOffset } : undefined}
           >
-            {semis.map((match) => {
-              const probabilities = getMatchProbabilityLabels({
-                homeTeam: match.homeResolved ?? match.homeTeam,
-                awayTeam: match.awayResolved ?? match.awayTeam,
-                allowDraw: false,
-                neutralOverride: match.neutral,
-              });
-              return (
-                <KnockoutMatchCard
-                  homeTeam={match.homeResolved ?? match.homeTeam}
-                  awayTeam={match.awayResolved ?? match.awayTeam}
-                  winnerSelection={winnerSelections[String(match.id)] ?? null}
-                  onWinnerSelect={(selection) => onWinnerSelect(match.id, selection)}
-                  flags={flags}
-                  homeWinProb={probabilities.homeWinProb}
-                  awayWinProb={probabilities.awayWinProb}
-                  drawProb={probabilities.drawProb}
-                  compact
-                  containerRef={(el) => {
-                    if (el) {
-                      matchRefs.current.set(match.id, el);
-                    } else {
-                      matchRefs.current.delete(match.id);
-                    }
-                  }}
-                  homeRowRef={(el) => {
-                    if (el) {
-                      matchHomeRefs.current.set(match.id, el);
-                    } else {
-                      matchHomeRefs.current.delete(match.id);
-                    }
-                  }}
-                  awayRowRef={(el) => {
-                    if (el) {
-                      matchAwayRefs.current.set(match.id, el);
-                    } else {
-                      matchAwayRefs.current.delete(match.id);
-                    }
-                  }}
-                />
-              );
-            })}
+            {topSemi ? (
+              (() => {
+                const probabilities = getMatchProbabilityLabels({
+                  homeTeam: topSemi.homeResolved ?? topSemi.homeTeam,
+                  awayTeam: topSemi.awayResolved ?? topSemi.awayTeam,
+                  allowDraw: false,
+                  neutralOverride: topSemi.neutral,
+                });
+                return (
+                  <KnockoutMatchCard
+                    homeTeam={topSemi.homeResolved ?? topSemi.homeTeam}
+                    awayTeam={topSemi.awayResolved ?? topSemi.awayTeam}
+                    winnerSelection={winnerSelections[String(topSemi.id)] ?? null}
+                    onWinnerSelect={(selection) => onWinnerSelect(topSemi.id, selection)}
+                    flags={flags}
+                    homeWinProb={probabilities.homeWinProb}
+                    awayWinProb={probabilities.awayWinProb}
+                    drawProb={probabilities.drawProb}
+                    compact
+                    containerRef={(el) => {
+                      if (el) {
+                        matchRefs.current.set(topSemi.id, el);
+                      } else {
+                        matchRefs.current.delete(topSemi.id);
+                      }
+                    }}
+                    homeRowRef={(el) => {
+                      if (el) {
+                        matchHomeRefs.current.set(topSemi.id, el);
+                      } else {
+                        matchHomeRefs.current.delete(topSemi.id);
+                      }
+                    }}
+                    awayRowRef={(el) => {
+                      if (el) {
+                        matchAwayRefs.current.set(topSemi.id, el);
+                      } else {
+                        matchAwayRefs.current.delete(topSemi.id);
+                      }
+                    }}
+                  />
+                );
+              })()
+            ) : (
+              <div className="h-[72px]" />
+            )}
+            {bottomSemi ? (
+              (() => {
+                const probabilities = getMatchProbabilityLabels({
+                  homeTeam: bottomSemi.homeResolved ?? bottomSemi.homeTeam,
+                  awayTeam: bottomSemi.awayResolved ?? bottomSemi.awayTeam,
+                  allowDraw: false,
+                  neutralOverride: bottomSemi.neutral,
+                });
+                return (
+                  <KnockoutMatchCard
+                    homeTeam={bottomSemi.homeResolved ?? bottomSemi.homeTeam}
+                    awayTeam={bottomSemi.awayResolved ?? bottomSemi.awayTeam}
+                    winnerSelection={winnerSelections[String(bottomSemi.id)] ?? null}
+                    onWinnerSelect={(selection) => onWinnerSelect(bottomSemi.id, selection)}
+                    flags={flags}
+                    homeWinProb={probabilities.homeWinProb}
+                    awayWinProb={probabilities.awayWinProb}
+                    drawProb={probabilities.drawProb}
+                    compact
+                    containerRef={(el) => {
+                      if (el) {
+                        matchRefs.current.set(bottomSemi.id, el);
+                      } else {
+                        matchRefs.current.delete(bottomSemi.id);
+                      }
+                    }}
+                    homeRowRef={(el) => {
+                      if (el) {
+                        matchHomeRefs.current.set(bottomSemi.id, el);
+                      } else {
+                        matchHomeRefs.current.delete(bottomSemi.id);
+                      }
+                    }}
+                    awayRowRef={(el) => {
+                      if (el) {
+                        matchAwayRefs.current.set(bottomSemi.id, el);
+                      } else {
+                        matchAwayRefs.current.delete(bottomSemi.id);
+                      }
+                    }}
+                  />
+                );
+              })()
+            ) : (
+              <div className="h-[72px]" />
+            )}
           </div>
-          {final && (
-            <KnockoutMatchCard
-              homeTeam={final.homeResolved ?? final.homeTeam}
-              awayTeam={final.awayResolved ?? final.awayTeam}
-              winnerSelection={winnerSelections[String(final.id)] ?? null}
-              onWinnerSelect={(selection) => onWinnerSelect(final.id, selection)}
-              flags={flags}
-              homeWinProb={finalProbabilities?.homeWinProb}
-              awayWinProb={finalProbabilities?.awayWinProb}
-              drawProb={finalProbabilities?.drawProb ?? null}
-              compact={false}
-              containerRef={(el) => {
-                if (el) {
-                  matchRefs.current.set(final.id, el);
-                } else {
-                  matchRefs.current.delete(final.id);
-                }
-              }}
-              homeRowRef={(el) => {
-                if (el) {
-                  matchHomeRefs.current.set(final.id, el);
-                } else {
-                  matchHomeRefs.current.delete(final.id);
-                }
-              }}
-              awayRowRef={(el) => {
-                if (el) {
-                  matchAwayRefs.current.set(final.id, el);
-                } else {
-                  matchAwayRefs.current.delete(final.id);
-                }
-              }}
-            />
-          )}
+          <div className="grid w-fit grid-rows-[72px_auto] gap-4">
+            {final && (
+              <KnockoutMatchCard
+                homeTeam={finalHome}
+                awayTeam={finalAway}
+                winnerSelection={finalWinnerSelection}
+                onWinnerSelect={(selection) => onWinnerSelect(final.id, selection)}
+                flags={flags}
+                homeWinProb={finalProbabilities?.homeWinProb}
+                awayWinProb={finalProbabilities?.awayWinProb}
+                drawProb={finalProbabilities?.drawProb ?? null}
+                compact={false}
+                containerRef={(el) => {
+                  if (el) {
+                    matchRefs.current.set(final.id, el);
+                  } else {
+                    matchRefs.current.delete(final.id);
+                  }
+                }}
+                homeRowRef={(el) => {
+                  if (el) {
+                    matchHomeRefs.current.set(final.id, el);
+                  } else {
+                    matchHomeRefs.current.delete(final.id);
+                  }
+                }}
+                awayRowRef={(el) => {
+                  if (el) {
+                    matchAwayRefs.current.set(final.id, el);
+                  } else {
+                    matchAwayRefs.current.delete(final.id);
+                  }
+                }}
+              />
+            )}
+            <div className="flex items-center justify-center">
+            {qualifiedTeam && (
+              <div className="rounded-lg px-3 py-2 bg-[radial-gradient(ellipse_at_center,rgba(219,234,254,0.7)_0%,rgba(219,234,254,0.35)_45%,rgba(219,234,254,0.15)_65%,transparent_100%)]">
+                <div className="flex flex-col items-center gap-2 text-slate-600">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                    Qualified
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TeamFlag
+                      team={qualifiedTeam}
+                      flags={flags}
+                      className="h-5 w-7 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                    />
+                    <span className="text-[15px] font-semibold text-slate-900">
+                      {formatDisplayLabel(qualifiedTeam)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -5073,17 +5143,17 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             group stage slots.
           </p>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Array.from(
-            qualifierState.matches.reduce((map, match) => {
-              if (!map.has(match.path)) {
-                map.set(match.path, []);
-              }
-              map.get(match.path)?.push(match);
-              return map;
-            }, new Map<string, ResolvedQualifierMatch[]>())
-          )
-            .sort(([a], [b]) => {
+        <div className="space-y-6">
+          {(() => {
+            const entries = Array.from(
+              qualifierState.matches.reduce((map, match) => {
+                if (!map.has(match.path)) {
+                  map.set(match.path, []);
+                }
+                map.get(match.path)?.push(match);
+                return map;
+              }, new Map<string, ResolvedQualifierMatch[]>())
+            ).sort(([a], [b]) => {
               const order = [
                 "IC Path 1",
                 "IC Path 2",
@@ -5098,20 +5168,23 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
               }
               return a.localeCompare(b);
-            })
-            .map(([path, matches]) => {
+            });
             return (
-              <QualifierPathBracket
-                key={path}
-                path={path}
-                matches={matches}
-                winnerSelections={qualifierWinners}
-                onWinnerSelect={updateQualifierWinner}
-                flags={data.flags}
-                getMatchProbabilityLabels={getMatchProbabilityLabels}
-              />
+              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,432px))] justify-start">
+                {entries.map(([path, matches]) => (
+                  <QualifierPathBracket
+                    key={path}
+                    path={path}
+                    matches={matches}
+                    winnerSelections={qualifierWinners}
+                    onWinnerSelect={updateQualifierWinner}
+                    flags={data.flags}
+                    getMatchProbabilityLabels={getMatchProbabilityLabels}
+                  />
+                ))}
+              </div>
             );
-          })}
+          })()}
         </div>
       </section>
 
@@ -5179,7 +5252,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             );
           })}
           {thirdPlaceRankingRows.length > 0 && (
-            <div className="space-y-4 pt-8">
+            <div className="space-y-4 rounded-xl bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-slate-900">Ranking of 3rd place teams</h3>
               </div>
