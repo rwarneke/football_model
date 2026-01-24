@@ -202,6 +202,44 @@ function teamInitials(team: string) {
   return letters || team.slice(0, 2).toUpperCase();
 }
 
+type LoadingButtonProps = {
+  loading: boolean;
+  onClick: () => void;
+  className?: string;
+  children: React.ReactNode;
+};
+
+const LoadingButton: React.FC<LoadingButtonProps> = ({
+  loading,
+  onClick,
+  className,
+  children,
+}) => {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      aria-busy={loading}
+      className={cn(
+        "relative overflow-hidden transition-colors",
+        loading && "cursor-wait",
+        className
+      )}
+    >
+      <span
+        className="absolute inset-0 bg-slate-200/70 origin-left"
+        style={{
+          transform: loading ? "scaleX(1)" : "scaleX(0)",
+          transition: loading ? "transform 300ms linear" : "none",
+        }}
+        aria-hidden="true"
+      />
+      <span className="relative z-10">{children}</span>
+    </button>
+  );
+};
+
 function isPlaceholderLabel(name: string) {
   if (!name) {
     return true;
@@ -238,6 +276,7 @@ function formatDisplayLabel(label: string) {
     return label;
   }
   return label
+    .replace(/^Bosnia and Herzegovina$/i, "Bosnia and Herz.")
     .replace(/^Winner\s+UEFA Path\s+/i, "UEFA Path ")
     .replace(/^Winner\s+IC Path\s+/i, "IC Path ")
     .replace(/^UEFA Path\s+(.+)\s+Winner$/i, "UEFA Path $1")
@@ -2502,6 +2541,7 @@ function QualifierPathBracket({
   onWinnerSelect,
   onAutoPredict,
   onReset,
+  autoPredictLoading,
   flags,
   getMatchProbabilityLabels,
 }: {
@@ -2511,6 +2551,7 @@ function QualifierPathBracket({
   onWinnerSelect: (id: string | number, selection: WinnerSelection) => void;
   onAutoPredict: (path: string) => void;
   onReset: (path: string) => void;
+  autoPredictLoading: boolean;
   flags: Record<string, string | null>;
   getMatchProbabilityLabels: (params: {
     homeTeam: string;
@@ -2643,13 +2684,13 @@ function QualifierPathBracket({
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
         <div className="flex items-center gap-2 text-xs">
-          <button
-            type="button"
+          <LoadingButton
+            loading={autoPredictLoading}
             onClick={() => onAutoPredict(path)}
             className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
           >
             Auto-predict
-          </button>
+          </LoadingButton>
           <button
             type="button"
             onClick={() => onReset(path)}
@@ -3093,6 +3134,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const [autoKnockoutWinners, setAutoKnockoutWinners] = React.useState<
     Record<string, boolean>
   >({});
+  const [loadingKeys, setLoadingKeys] = React.useState<Record<string, boolean>>({});
+  const loadingTimers = React.useRef<Record<string, number>>({});
   const isNarrow = false;
   const knockoutContainerRef = React.useRef<HTMLDivElement | null>(null);
   const knockoutRefs = React.useRef(new Map<number, HTMLDivElement>());
@@ -3111,6 +3154,42 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     null
   );
   const [compactKnockout, setCompactKnockout] = React.useState(false);
+
+  React.useEffect(() => {
+    return () => {
+      Object.values(loadingTimers.current).forEach((timerId) => {
+        clearTimeout(timerId);
+      });
+      loadingTimers.current = {};
+    };
+  }, []);
+
+  const runAutopredictWithDelay = React.useCallback(
+    (key: string, action: () => void) => {
+      setLoadingKeys((prev) => {
+        if (prev[key]) {
+          return prev;
+        }
+        return { ...prev, [key]: true };
+      });
+      if (loadingTimers.current[key]) {
+        return;
+      }
+      loadingTimers.current[key] = window.setTimeout(() => {
+        action();
+        setLoadingKeys((prev) => {
+          if (!prev[key]) {
+            return prev;
+          }
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        delete loadingTimers.current[key];
+      }, 300);
+    },
+    []
+  );
   const matchStageById = React.useMemo(() => {
     const mapping: Record<number, string> = {};
     for (const match of data.knockoutMatches) {
@@ -4714,6 +4793,32 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     let nextAutoGroupScores = { ...autoGroupScores };
     let nextKnockoutWinners = { ...knockoutWinners };
     let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+    const allQualifiersPredicted = qualifierState.matches.every((match) => {
+      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+        return true;
+      }
+      const key = String(match.id);
+      return (qualifierWinners[key] ?? null) !== null;
+    });
+    const allGroupsPredicted = resolvedGroupMatches.every((match) => {
+      const score = groupScores[String(match.id)];
+      return score && score.home !== null && score.away !== null;
+    });
+    const allKnockoutsPredicted = knockoutState.matches.every((match) => {
+      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+        return true;
+      }
+      const key = String(match.id);
+      return (knockoutWinners[key] ?? null) !== null;
+    });
+    if (allQualifiersPredicted && allGroupsPredicted && allKnockoutsPredicted) {
+      nextQualifierWinners = {};
+      nextAutoQualifierWinners = {};
+      nextGroupScores = {};
+      nextAutoGroupScores = {};
+      nextKnockoutWinners = {};
+      nextAutoKnockoutWinners = {};
+    }
 
     const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
       const prevSelection = nextQualifierWinners[matchId] ?? null;
@@ -5024,11 +5129,15 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     groupScores,
     knockoutDependents,
     knockoutRootsByGroup,
+    knockoutState.matches,
     knockoutWinners,
     matchStageById,
     qualifierDependents,
     qualifierSlotsByMatch,
+    qualifierState.matches,
     qualifierWinners,
+    resolvedGroupMatches,
+    slotWinners,
   ]);
 
   const handleResetAll = React.useCallback(() => {
@@ -5565,6 +5674,21 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     let nextAutoGroupScores = { ...autoGroupScores };
     let nextKnockoutWinners = { ...knockoutWinners };
     let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+    const qualifierStateLocal = resolveQualifierState(
+      data.qualifiers,
+      nextQualifierWinners
+    );
+    const allPredicted = qualifierStateLocal.matches.every((match) => {
+      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+        return true;
+      }
+      const key = String(match.id);
+      return (nextQualifierWinners[key] ?? null) !== null;
+    });
+    if (allPredicted) {
+      nextQualifierWinners = {};
+      nextAutoQualifierWinners = {};
+    }
 
     const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
       const prevSelection = nextQualifierWinners[matchId] ?? null;
@@ -5792,6 +5916,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     let changed = false;
     const nextScores = { ...groupScores };
     const nextAutoScores = { ...autoGroupScores };
+    const allPredicted = resolvedGroupMatches.every((match) => {
+      const score = nextScores[String(match.id)];
+      return score && score.home !== null && score.away !== null;
+    });
+    if (allPredicted) {
+      Object.keys(nextScores).forEach((key) => {
+        delete nextScores[key];
+        changed = true;
+      });
+      Object.keys(nextAutoScores).forEach((key) => {
+        delete nextAutoScores[key];
+      });
+    }
     resolvedGroupMatches.forEach((match) => {
       const key = String(match.id);
       const existing = nextScores[key];
@@ -5843,6 +5980,17 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const handleSectionKnockoutsAutopredict = React.useCallback(() => {
     let nextKnockoutWinners = { ...knockoutWinners };
     let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
+    const allPredicted = knockoutState.matches.every((match) => {
+      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+        return true;
+      }
+      const key = String(match.id);
+      return (nextKnockoutWinners[key] ?? null) !== null;
+    });
+    if (allPredicted) {
+      nextKnockoutWinners = {};
+      nextAutoKnockoutWinners = {};
+    }
 
     const applyKnockoutSelection = (matchId: string, selection: WinnerSelection) => {
       const prevSelection = nextKnockoutWinners[matchId] ?? null;
@@ -5940,6 +6088,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     data.winProbabilities,
     groupScores,
     knockoutDependents,
+    knockoutState.matches,
     knockoutWinners,
     matchStageById,
     slotWinners,
@@ -5956,13 +6105,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   return (
     <div className="flex flex-col gap-12">
       <div className="flex flex-wrap items-center justify-start gap-3">
-        <button
-          type="button"
-          onClick={handleAutopredict}
+        <LoadingButton
+          loading={Boolean(loadingKeys.tournament)}
+          onClick={() => runAutopredictWithDelay("tournament", handleAutopredict)}
           className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
         >
           Auto-predict tournament
-        </button>
+        </LoadingButton>
         <button
           type="button"
           onClick={handleResetAll}
@@ -5979,13 +6128,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </h2>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSectionQualifiersAutopredict}
+            <LoadingButton
+              loading={Boolean(loadingKeys["section:qualifiers"])}
+              onClick={() =>
+                runAutopredictWithDelay(
+                  "section:qualifiers",
+                  handleSectionQualifiersAutopredict
+                )
+              }
               className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
             >
               Auto-predict qualifiers
-            </button>
+            </LoadingButton>
             <button
               type="button"
               onClick={handleSectionQualifiersReset}
@@ -6030,8 +6184,14 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     matches={matches}
                     winnerSelections={qualifierWinners}
                     onWinnerSelect={updateQualifierWinner}
-                    onAutoPredict={handleQualifierAutopredict}
+                    onAutoPredict={(pathId) =>
+                      runAutopredictWithDelay(
+                        `qual:${pathId}`,
+                        () => handleQualifierAutopredict(pathId)
+                      )
+                    }
                     onReset={handleQualifierReset}
+                    autoPredictLoading={Boolean(loadingKeys[`qual:${path}`])}
                     flags={data.flags}
                     getMatchProbabilityLabels={getMatchProbabilityLabels}
                   />
@@ -6048,13 +6208,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             <h2 className="text-2xl font-semibold text-ebony">Group stage</h2>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSectionGroupsAutopredict}
+            <LoadingButton
+              loading={Boolean(loadingKeys["section:groups"])}
+              onClick={() =>
+                runAutopredictWithDelay(
+                  "section:groups",
+                  handleSectionGroupsAutopredict
+                )
+              }
               className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
             >
               Auto-predict groups
-            </button>
+            </LoadingButton>
             <button
               type="button"
               onClick={handleSectionGroupsReset}
@@ -6072,19 +6237,24 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 key={group.id}
                 className="relative flex flex-col gap-4 overflow-hidden max-w-[520px] rounded-xl bg-slate-50 p-4 lg:max-w-none"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
-                  <div className="flex items-center gap-2 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => handleGroupAutopredict(group.id)}
-                      className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
-                    >
-                      Auto-predict
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleGroupReset(group.id)}
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
+                    <div className="flex items-center gap-2 text-xs">
+                      <LoadingButton
+                        loading={Boolean(loadingKeys[`group:${group.id}`])}
+                        onClick={() =>
+                          runAutopredictWithDelay(
+                            `group:${group.id}`,
+                            () => handleGroupAutopredict(group.id)
+                          )
+                        }
+                        className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+                      >
+                        Auto-predict
+                      </LoadingButton>
+                      <button
+                        type="button"
+                        onClick={() => handleGroupReset(group.id)}
                       className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
                     >
                       Reset
@@ -6172,13 +6342,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </label>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSectionKnockoutsAutopredict}
+            <LoadingButton
+              loading={Boolean(loadingKeys["section:knockouts"])}
+              onClick={() =>
+                runAutopredictWithDelay(
+                  "section:knockouts",
+                  handleSectionKnockoutsAutopredict
+                )
+              }
               className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
             >
               Auto-predict knockouts
-            </button>
+            </LoadingButton>
             <button
               type="button"
               onClick={handleSectionKnockoutsReset}
@@ -6516,7 +6691,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                     {champion && <ConfettiAnimation key={champion} duration={2000} champion={champion} />}
                                   </div>
                                   <div className="text-base font-bold text-slate-900 text-center break-words w-full" style={{ paddingLeft: '8px', paddingRight: '8px', boxSizing: 'border-box' }}>
-                                    {formatDisplayLabel(champion)}
+                                    {champion}
                                   </div>
                                 </div>
                               </div>
@@ -6747,13 +6922,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
       </section>
 
       <div className="flex flex-wrap items-center justify-start gap-3">
-        <button
-          type="button"
-          onClick={handleAutopredict}
+        <LoadingButton
+          loading={Boolean(loadingKeys.tournament)}
+          onClick={() => runAutopredictWithDelay("tournament", handleAutopredict)}
           className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
         >
           Auto-predict tournament
-        </button>
+        </LoadingButton>
         <button
           type="button"
           onClick={handleResetAll}
