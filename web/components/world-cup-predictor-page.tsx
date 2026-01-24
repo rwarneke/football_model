@@ -6466,6 +6466,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                   return `${(pos - 1) * (baseColumnWidth + baseGap)}px`;
                 };
                 
+                const semifinalPosition = compactKnockout ? 3 : 2.8;
+
                 return (
                   <div 
                     className="relative w-full" 
@@ -6495,7 +6497,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             'Round of 32': 1,       // 0px from left (at left edge of page)
                             'Round of 16': 2,       // 224px from left
                             'Quarterfinal': 2.5,    // 336px from left
-                            'Semifinal': 2.8,       // Slightly further from center
+                            'Semifinal': semifinalPosition, // Slightly further from center
                           };
                           const pos = leftPositions[stage];
                           if (pos === undefined) {
@@ -6875,7 +6877,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             'Round of 32': 1,       // At right edge
                             'Round of 16': 2,       // One step in
                             'Quarterfinal': 2.5,    // Interleaved
-                            'Semifinal': 2.8,       // Slightly further from center
+                            'Semifinal': semifinalPosition, // Slightly further from center
                           };
                           const pos = rightPositions[stage];
                           if (pos === undefined) {
