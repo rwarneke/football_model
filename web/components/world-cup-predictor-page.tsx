@@ -1755,10 +1755,10 @@ function MatchCard({
           {isPickableMatch && (
             <div
               className={cn(
-                "absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+                "absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-0",
                 side === "home"
-                  ? "bg-[linear-gradient(to_right,rgba(219,234,254,0.5)_0%,rgba(219,234,254,0.5)_50%,transparent_100%)]"
-                  : "bg-[linear-gradient(to_left,rgba(219,234,254,0.5)_0%,rgba(219,234,254,0.5)_50%,transparent_100%)]"
+                  ? "bg-[linear-gradient(to_right,rgb(219,234,254)_0%,rgb(219,234,254)_50%,transparent_100%)]"
+                  : "bg-[linear-gradient(to_left,rgb(219,234,254)_0%,rgb(219,234,254)_50%,transparent_100%)]"
               )}
             />
           )}
@@ -1766,12 +1766,12 @@ function MatchCard({
             <TeamFlag
               team={team}
               flags={flags}
-              className="h-4 w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+              className="h-4 w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] relative z-10"
             />
           )}
           <span
             className={cn(
-              "min-w-0 truncate text-sm leading-5",
+              "min-w-0 truncate text-sm leading-5 relative z-10",
               side === "home" && "text-right",
               !isPickableMatch && "text-slate-400",
               !isScoreSet && isPickableMatch && "font-medium text-slate-900",
@@ -1786,7 +1786,7 @@ function MatchCard({
             <TeamFlag
               team={team}
               flags={flags}
-              className="h-4 w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+              className="h-4 w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] relative z-10"
             />
           )}
         </button>
@@ -1805,20 +1805,20 @@ function MatchCard({
           background: `linear-gradient(to right, 
             transparent 0%, 
             transparent 38%, 
-            rgba(219, 234, 254, 0.5) 40%, 
-            rgba(219, 234, 254, 0.5) 45%, 
-            rgba(219, 234, 254, 0.5) 55%, 
-            rgba(219, 234, 254, 0.5) 60%, 
-            transparent 62%, 
+            rgb(219, 234, 254) 44%, 
+            rgb(219, 234, 254) 47%, 
+            rgb(219, 234, 254) 53%, 
+            rgb(219, 234, 254) 56%, 
+            transparent 58%, 
             transparent 100%)`
         };
       } else if (homeIsWinner) {
         // For home wins: gradient starts from left edge, fades to white around home score (~40% from left)
         return {
           background: `linear-gradient(to right, 
-            rgba(219, 234, 254, 0.5) 0%, 
-            rgba(219, 234, 254, 0.5) 35%, 
-            rgba(219, 234, 254, 0.5) 38%, 
+            rgb(219, 234, 254) 0%, 
+            rgb(219, 234, 254) 35%, 
+            rgb(219, 234, 254) 38%, 
             rgba(255, 255, 255, 0) 42%, 
             transparent 45%, 
             transparent 100%)`
@@ -1830,9 +1830,9 @@ function MatchCard({
             transparent 0%, 
             transparent 55%, 
             rgba(255, 255, 255, 0) 58%, 
-            rgba(219, 234, 254, 0.5) 62%, 
-            rgba(219, 234, 254, 0.5) 65%, 
-            rgba(219, 234, 254, 0.5) 100%)`
+            rgb(219, 234, 254) 62%, 
+            rgb(219, 234, 254) 65%, 
+            rgb(219, 234, 254) 100%)`
         };
       }
       return {};
@@ -1843,7 +1843,8 @@ function MatchCard({
         className={cn(
           "relative overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow",
           isPickableMatch && !isScoreSet && "bg-white ring-2 ring-[#ffb4a1]",
-          (isScoreSet || !isPickableMatch) && "bg-white ring-2 ring-slate-200"
+          isScoreSet && "bg-white ring-2 ring-slate-500",
+          !isScoreSet && !isPickableMatch && "bg-white ring-2 ring-slate-200"
         )}
       >
         {/* Blue gradient highlight background */}
@@ -1864,9 +1865,9 @@ function MatchCard({
               background: `linear-gradient(to right, 
                 transparent 0%, 
                 transparent 38%, 
-                rgba(219, 234, 254, 0.5) 40%, 
-                rgba(219, 234, 254, 0.5) 60%, 
-                transparent 62%, 
+                rgb(219, 234, 254) 44%, 
+                rgb(219, 234, 254) 56%, 
+                transparent 58%, 
                 transparent 100%)`
             }}
           />
@@ -2245,8 +2246,8 @@ function KnockoutMatchCard({
     const isChampionRow = isFinalResolved && isWinner;
     
     // Gradient directions for winner highlight
-    const normalGradient = "bg-[linear-gradient(90deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]";
-    const mirroredGradient = "bg-[linear-gradient(270deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]";
+    const normalGradient = "bg-[linear-gradient(90deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]";
+    const mirroredGradient = "bg-[linear-gradient(270deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]";
     const normalChampionGradient = "bg-[linear-gradient(90deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]";
     const mirroredChampionGradient = "bg-[linear-gradient(270deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]";
     
@@ -2284,8 +2285,8 @@ function KnockoutMatchCard({
             className={cn(
               "absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200",
               mirrored 
-                ? "bg-[linear-gradient(270deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]"
-                : "bg-[linear-gradient(90deg,rgba(219,234,254,0)_0%,rgba(219,234,254,0.5)_10%,rgba(219,234,254,0.5)_100%)]"
+                ? "bg-[linear-gradient(270deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]"
+                : "bg-[linear-gradient(90deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]"
             )}
           />
         )}
@@ -2309,7 +2310,7 @@ function KnockoutMatchCard({
                   isResolved && isWinner
                     ? isChampionRow
                       ? "bg-amber-300"
-                      : "bg-blue-400/80"
+                      : "bg-blue-200"
                     : "bg-transparent"
                 )}
                 aria-hidden="true"
@@ -2339,7 +2340,7 @@ function KnockoutMatchCard({
                   isResolved && isWinner
                     ? isChampionRow
                       ? "bg-amber-300"
-                      : "bg-blue-400/80"
+                      : "bg-blue-200"
                     : "bg-transparent"
                 )}
                 aria-hidden="true"
@@ -2800,8 +2801,8 @@ function GroupTable({
               className={cn(
                 "absolute left-0 w-full",
                 isTopTwo || (highlightThird && isThird)
-                  ? "bg-blue-500/50"
-                  : "bg-slate-200"
+                  ? "bg-blue-300"
+                  : "bg-emerald-300"
               )}
               style={{
                 top: `${rowTop}px`,
@@ -2825,7 +2826,7 @@ function GroupTable({
             <col style={{ width: "36px" }} />
             <col style={{ width: "44px" }} />
           </colgroup>
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-slate-200 border-b border-slate-200">
             <tr>
               <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pos
@@ -5123,13 +5124,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             Select group match outcomes and see standings update instantly.
           </p>
         </div>
-        <div className="grid gap-4 lg:gap-6 lg:grid-cols-2 2xl:grid-cols-3 justify-items-center">
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-2 2xl:grid-cols-3 justify-items-center">
           {groupTables.map(({ group, rows }) => {
             const matches = groupMatchesFor(group.id, resolvedGroupMatches);
             return (
               <div
                 key={group.id}
-                className="relative flex flex-col gap-4 overflow-hidden max-w-[520px] lg:max-w-none lg:rounded-xl lg:bg-white lg:p-4 lg:ring-1 lg:ring-slate-200 lg:shadow-sm"
+                className="relative flex flex-col gap-4 overflow-hidden max-w-[520px] rounded-xl bg-slate-50 p-4 lg:max-w-none"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
