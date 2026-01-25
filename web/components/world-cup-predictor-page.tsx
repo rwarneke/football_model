@@ -3154,6 +3154,50 @@ function QualifierPathBracket({
     return () => cancelAnimationFrame(frame);
   }, [hintPosition, showHint]);
 
+  // Auto-scroll to show final when a semi is selected
+  React.useEffect(() => {
+    const bracket = bracketRef.current;
+    const finalEl = final ? matchRefs.current.get(final.id) : null;
+    if (!bracket || !final || !finalEl) {
+      return;
+    }
+    
+    // Check if semis are selected
+    // For UEFA (2 semis): both must be selected
+    // For IC (1 semi): that one must be selected
+    const allSemisSelected = semis.length > 0 && semis.every(
+      (semi) => winnerSelections[String(semi.id)] !== null && winnerSelections[String(semi.id)] !== undefined
+    );
+    
+    if (allSemisSelected) {
+      // Check if final is visible in viewport
+      const checkAndScroll = () => {
+        const bracketRect = bracket.getBoundingClientRect();
+        const finalRect = finalEl.getBoundingClientRect();
+        
+        // Check if final is outside the visible area (to the right)
+        const isFinalVisible = 
+          finalRect.left >= bracketRect.left && 
+          finalRect.right <= bracketRect.right;
+        
+        if (!isFinalVisible) {
+          // Scroll to show the final
+          bracket.scrollTo({
+            left: bracket.scrollWidth - bracket.clientWidth,
+            behavior: 'smooth',
+          });
+        }
+      };
+      
+      // Use requestAnimationFrame to ensure layout is complete
+      const frame = requestAnimationFrame(() => {
+        requestAnimationFrame(checkAndScroll);
+      });
+      
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [semis, final, winnerSelections]);
+
   const content = (
     <div className="flex w-full flex-col gap-4">
       <div
@@ -3182,7 +3226,7 @@ function QualifierPathBracket({
           </button>
         </div>
       </div>
-      <div ref={bracketRef} className="relative w-full">
+      <div ref={bracketRef} className="relative w-full overflow-x-auto pl-4 pr-8 py-2 sm:pr-6">
         {showHint && hintPosition && (
           <div
             className={cn(
@@ -3271,7 +3315,8 @@ function QualifierPathBracket({
             />
           ))}
         </svg>
-        <div className="relative z-10 grid w-full grid-cols-[max-content_max-content] gap-4">
+        <div className="relative z-10">
+          <div className="grid min-w-max grid-cols-[max-content_max-content] gap-4 pr-2 sm:pr-1">
           <div
             className="grid w-fit grid-rows-[72px_72px] gap-4"
             style={semisOffset ? { marginTop: semisOffset } : undefined}
@@ -3430,6 +3475,7 @@ function QualifierPathBracket({
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -3993,6 +4039,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const hasUserSetCompactKnockout = React.useRef(false);
   const pendingGroupsAfterQualifiers = React.useRef(false);
   const groupCardsContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const qualifierPathTabsRef = React.useRef<HTMLDivElement | null>(null);
   const isGroupTabbed = true;
   const [activeQualifierPath, setActiveQualifierPath] = React.useState<string | null>(
     null
@@ -7368,6 +7415,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 <div className="border-b border-slate-200 pb-3">
                 <div className="overflow-visible pl-1 pr-2">
                   <div
+                    ref={qualifierPathTabsRef}
                     role="tablist"
                     aria-label="Qualifier playoff tabs"
                     className="flex items-center gap-2 overflow-x-auto pb-2 pt-2 pl-1 pr-2"
@@ -7392,7 +7440,30 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                                   isHighlighted ? "border-[color:var(--cta-color)]" : "border-slate-200"
                                 )
                           )}
-                          onClick={() => setActiveQualifierPath(path)}
+                          onClick={(e) => {
+                            setActiveQualifierPath(path);
+                            // Scroll button into view if partially visible
+                            const container = qualifierPathTabsRef.current;
+                            const button = e.currentTarget;
+                            if (container) {
+                              const containerRect = container.getBoundingClientRect();
+                              const buttonRect = button.getBoundingClientRect();
+                              
+                              // Check if button is partially or fully outside the visible area
+                              const isFullyVisible = 
+                                buttonRect.left >= containerRect.left &&
+                                buttonRect.right <= containerRect.right;
+                              
+                              if (!isFullyVisible) {
+                                // Scroll the button into view
+                                button.scrollIntoView({
+                                  behavior: 'smooth',
+                                  block: 'nearest',
+                                  inline: 'center',
+                                });
+                              }
+                            }
+                          }}
                         >
                           {path}
                         </button>
