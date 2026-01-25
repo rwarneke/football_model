@@ -35,53 +35,94 @@ def color_distance(rgb1, rgb2):
     
     return distance
 
-def group_similar_colors(color_counts, threshold=40):
+def merge_closest_colors(color_counts, merge_threshold=60):
     """
-    Group colors that are perceptually similar together.
-    Returns a list of color groups, where each group contains similar colors.
-    Uses a more aggressive threshold for very light or very dark colors.
+    Iteratively merge the closest pair of colors until the minimum distance
+    between any two colors is >= merge_threshold.
+    Uses a priority queue with lazy invalidation for efficiency.
     """
-    # Sort colors by frequency (most common first)
-    sorted_colors = sorted(color_counts.items(), key=lambda x: x[1], reverse=True)
-    
-    groups = []
-    used_colors = set()
-    
-    for (r, g, b), count in sorted_colors:
-        # Skip if this color is already in a group
-        if (r, g, b) in used_colors:
-            continue
-        
-        # Start a new group with this color
-        current_group = [((r, g, b), count)]
-        used_colors.add((r, g, b))
-        
-        # Use more aggressive threshold for very light or very dark colors
-        is_light = is_very_light_color(r, g, b)
-        is_dark = is_very_dark_color(r, g, b)
-        current_threshold = threshold * 1.5 if (is_light or is_dark) else threshold
-        
-        # Find all similar colors
-        for (r2, g2, b2), count2 in sorted_colors:
-            if (r2, g2, b2) in used_colors:
-                continue
-            
-            # Check if colors are similar
-            dist = color_distance((r, g, b), (r2, g2, b2))
-            if dist < current_threshold:
-                current_group.append(((r2, g2, b2), count2))
-                used_colors.add((r2, g2, b2))
-        
-        groups.append(current_group)
-    
-    return groups
+    import heapq
 
-def get_representative_color(group):
-    """
-    Get the most frequent color from a group of similar colors.
-    """
-    # Return the color with the highest frequency
-    return max(group, key=lambda x: x[1])[0]
+    # Start with each unique color as its own cluster centroid
+    clusters = {}
+    for idx, ((r, g, b), count) in enumerate(color_counts.items()):
+        clusters[idx] = {
+            "color": (r, g, b),
+            "count": count,
+            "version": 0,
+            "active": True,
+        }
+
+    active_ids = set(clusters.keys())
+    if len(active_ids) <= 1:
+        return [clusters[i] for i in active_ids]
+
+    # Build initial heap of all pair distances
+    heap = []
+    ids = list(active_ids)
+    for i in range(len(ids)):
+        ci = clusters[ids[i]]["color"]
+        for j in range(i + 1, len(ids)):
+            cj = clusters[ids[j]]["color"]
+            dist = color_distance(ci, cj)
+            heapq.heappush(
+                heap,
+                (dist, ids[i], ids[j], clusters[ids[i]]["version"], clusters[ids[j]]["version"]),
+            )
+
+    next_id = max(active_ids) + 1
+
+    while heap:
+        dist, a, b, ver_a, ver_b = heapq.heappop(heap)
+        ca = clusters.get(a)
+        cb = clusters.get(b)
+
+        if (
+            ca is None
+            or cb is None
+            or not ca["active"]
+            or not cb["active"]
+            or ca["version"] != ver_a
+            or cb["version"] != ver_b
+        ):
+            continue
+
+        if dist >= merge_threshold:
+            break
+
+        total = ca["count"] + cb["count"]
+        r_val = round((ca["color"][0] * ca["count"] + cb["color"][0] * cb["count"]) / total)
+        g_val = round((ca["color"][1] * ca["count"] + cb["color"][1] * cb["count"]) / total)
+        b_val = round((ca["color"][2] * ca["count"] + cb["color"][2] * cb["count"]) / total)
+
+        ca["active"] = False
+        cb["active"] = False
+        active_ids.discard(a)
+        active_ids.discard(b)
+
+        clusters[next_id] = {
+            "color": (r_val, g_val, b_val),
+            "count": total,
+            "version": 0,
+            "active": True,
+        }
+        new_id = next_id
+        next_id += 1
+        active_ids.add(new_id)
+
+        # Push distances from new cluster to all active clusters
+        new_color = clusters[new_id]["color"]
+        for other_id in active_ids:
+            if other_id == new_id:
+                continue
+            other = clusters[other_id]
+            dist = color_distance(new_color, other["color"])
+            heapq.heappush(
+                heap,
+                (dist, new_id, other_id, clusters[new_id]["version"], other["version"]),
+            )
+
+    return [clusters[i] for i in active_ids]
 
 def is_very_light_color(r, g, b, threshold=240):
     """
@@ -95,10 +136,15 @@ def is_very_dark_color(r, g, b, threshold=15):
     """
     return r < threshold and g < threshold and b < threshold
 
-def get_dominant_colors(image_path, max_colors=3, similarity_threshold=40):
+def get_dominant_colors(
+    image_path,
+    similarity_threshold=220,
+    sample_size=120,
+):
     """
-    Extract up to max_colors distinct dominant colors from an image.
-    Uses color clustering to avoid selecting similar shades.
+    Extract colors from an image by merging the closest colors until the
+    minimum distance between any two colors meets the threshold.
+    The threshold is the only tuning parameter.
     """
     try:
         img = Image.open(image_path)
@@ -107,64 +153,23 @@ def get_dominant_colors(image_path, max_colors=3, similarity_threshold=40):
             img = img.convert('RGB')
         
         # Resize for faster processing while maintaining aspect ratio
-        img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+        img.thumbnail((sample_size, sample_size), Image.Resampling.LANCZOS)
         
-        # Get all pixels
-        pixels = list(img.getdata())
+        # Get all pixels (pre-quantize to reduce unique colors for speed)
+        pixels = []
+        for (r, g, b) in img.getdata():
+            qr = (r // 4) * 4
+            qg = (g // 4) * 4
+            qb = (b // 4) * 4
+            pixels.append((qr, qg, qb))
         
         # Count color frequencies
         color_counts = Counter(pixels)
         
-        # Group similar colors together
-        color_groups = group_similar_colors(color_counts, similarity_threshold)
-        
-        # Get representative color from each group, sorted by total frequency
-        # (sum of frequencies of all colors in the group)
-        group_representatives = []
-        for group in color_groups:
-            total_freq = sum(count for _, count in group)
-            rep_color = get_representative_color(group)
-            group_representatives.append((rep_color, total_freq))
-        
-        # Sort by total frequency (most dominant groups first)
-        group_representatives.sort(key=lambda x: x[1], reverse=True)
-        
-        # Select distinct colors, ensuring minimum distance between them
-        selected_colors = []
-        selected_frequencies = []
-        min_color_distance = 50  # Minimum distance between selected colors
-        
-        for (r, g, b), freq in group_representatives:
-            # Check if this color is sufficiently different from already selected colors
-            is_distinct = True
-            for (r2, g2, b2) in selected_colors:
-                dist = color_distance((r, g, b), (r2, g2, b2))
-                if dist < min_color_distance:
-                    is_distinct = False
-                    break
-            
-            if is_distinct:
-                selected_colors.append((r, g, b))
-                selected_frequencies.append(freq)
-                
-                if len(selected_colors) >= max_colors:
-                    break
-        
-        # Post-process: If we have 3 colors, check if the third is significantly less frequent
-        # Only drop it if it's truly insignificant (less than 10% of total)
-        if len(selected_colors) == 3:
-            total_freq = sum(selected_frequencies)
-            if total_freq > 0:
-                third_ratio = selected_frequencies[2] / total_freq
-                # Only drop third color if it represents less than 10% of pixels
-                # and the first two colors are both significant
-                if third_ratio < 0.10 and selected_frequencies[0] > 0 and selected_frequencies[1] > 0:
-                    first_ratio = selected_frequencies[0] / total_freq
-                    second_ratio = selected_frequencies[1] / total_freq
-                    # Only drop if first two are both substantial (at least 30% each)
-                    if first_ratio >= 0.30 and second_ratio >= 0.30:
-                        selected_colors = selected_colors[:2]
-        
+        clusters = merge_closest_colors(color_counts, similarity_threshold)
+        clusters.sort(key=lambda x: x["count"], reverse=True)
+        selected_colors = [c["color"] for c in clusters]
+
         # Convert to hex
         colors = []
         for (r, g, b) in selected_colors:
@@ -192,7 +197,7 @@ def main():
     # Process each flag file
     for flag_file in sorted(flags_dir.glob("*.png")):
         team_name = flag_file.stem  # filename without extension
-        colors = get_dominant_colors(flag_file, max_colors=3)
+        colors = get_dominant_colors(flag_file)
         team_colors[team_name] = colors
         print(f"{team_name}: {colors}")
     

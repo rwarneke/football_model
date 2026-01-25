@@ -2544,6 +2544,8 @@ function QualifierPathBracket({
   autoPredictLoading,
   flags,
   getMatchProbabilityLabels,
+  showTitle = true,
+  embedded = false,
 }: {
   path: string;
   matches: ResolvedQualifierMatch[];
@@ -2560,6 +2562,8 @@ function QualifierPathBracket({
     country?: string | null;
     neutralOverride?: boolean | null;
   }) => MatchProbabilityLabels;
+  showTitle?: boolean;
+  embedded?: boolean;
 }) {
   const semis = matches.filter((match) => match.round.startsWith("semi"));
   const final = matches.find((match) => match.round === "final");
@@ -2676,13 +2680,17 @@ function QualifierPathBracket({
     };
   }, [finalId, semisKey, path, semisOffset]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="relative flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
+  const content = (
+    <div className="flex w-full flex-col gap-4">
+        <div
+          className={cn(
+            "flex items-center gap-3",
+            showTitle ? "justify-between" : "justify-start flex-wrap mb-4"
+          )}
+        >
+        {showTitle && (
+          <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
+        )}
         <div className="flex items-center gap-2 text-xs">
           <LoadingButton
             loading={autoPredictLoading}
@@ -2781,7 +2789,9 @@ function QualifierPathBracket({
                     homeTeam={bottomSemi.homeResolved ?? bottomSemi.homeTeam}
                     awayTeam={bottomSemi.awayResolved ?? bottomSemi.awayTeam}
                     winnerSelection={winnerSelections[String(bottomSemi.id)] ?? null}
-                    onWinnerSelect={(selection) => onWinnerSelect(bottomSemi.id, selection)}
+                    onWinnerSelect={(selection) =>
+                      onWinnerSelect(bottomSemi.id, selection)
+                    }
                     flags={flags}
                     homeWinProb={probabilities.homeWinProb}
                     awayWinProb={probabilities.awayWinProb}
@@ -2851,29 +2861,46 @@ function QualifierPathBracket({
               />
             )}
             <div className="flex items-center justify-center">
-            {qualifiedTeam && (
-              <div className="rounded-lg px-3 py-2 bg-[radial-gradient(ellipse_at_center,rgba(219,234,254,0.7)_0%,rgba(219,234,254,0.35)_45%,rgba(219,234,254,0.15)_65%,transparent_100%)]">
-                <div className="flex flex-col items-center gap-2 text-slate-600">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
-                    Qualified
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <TeamFlag
-                      team={qualifiedTeam}
-                      flags={flags}
-                      className="h-5 w-7 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
-                    />
-                    <span className="text-[15px] font-semibold text-slate-900">
-                      {formatDisplayLabel(qualifiedTeam)}
-                    </span>
+              {qualifiedTeam && (
+                <div className="rounded-lg px-3 py-2 bg-[radial-gradient(ellipse_at_center,rgba(219,234,254,0.7)_0%,rgba(219,234,254,0.35)_45%,rgba(219,234,254,0.15)_65%,transparent_100%)]">
+                  <div className="flex flex-col items-center gap-2 text-slate-600">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                      Qualified
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <TeamFlag
+                        team={qualifiedTeam}
+                        flags={flags}
+                        className="h-5 w-7 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                      />
+                      <span className="text-[15px] font-semibold text-slate-900">
+                        {formatDisplayLabel(qualifiedTeam)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div ref={containerRef} className="w-full">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
+    >
+      {content}
     </div>
   );
 }
@@ -3081,6 +3108,208 @@ function groupMatchesFor(
     .sort((a, b) => a.id - b.id);
 }
 
+type GroupStageCardsProps = {
+  groupTables: Array<{ group: GroupDefinition; rows: GroupTableRow[] }>;
+  resolvedGroupMatches: GroupMatch[];
+  groupScores: Record<string, MatchScore>;
+  updateGroupScore: (id: string | number, side: "home" | "away", value: number | null) => void;
+  updateGroupScorePair: (id: string | number, home: number | null, away: number | null) => void;
+  getMatchProbabilityLabels: (params: {
+    homeTeam: string;
+    awayTeam: string;
+    allowDraw: boolean;
+    country?: string | null;
+    neutralOverride?: boolean | null;
+  }) => MatchProbabilityLabels;
+  loadingKeys: Record<string, boolean>;
+  runAutopredictWithDelay: (key: string, action: () => void) => void;
+  handleGroupAutopredict: (groupId: string) => void;
+  handleGroupReset: (groupId: string) => void;
+  groupCompletion: Record<string, boolean>;
+  qualifiedThirdGroups: Set<string>;
+  allGroupMatchesComplete: boolean;
+  flags: Record<string, string | null>;
+  isTabbed: boolean;
+};
+
+function GroupStageCards({
+  groupTables,
+  resolvedGroupMatches,
+  groupScores,
+  updateGroupScore,
+  updateGroupScorePair,
+  getMatchProbabilityLabels,
+  loadingKeys,
+  runAutopredictWithDelay,
+  handleGroupAutopredict,
+  handleGroupReset,
+  groupCompletion,
+  qualifiedThirdGroups,
+  allGroupMatchesComplete,
+  flags,
+  isTabbed,
+}: GroupStageCardsProps) {
+  const [activeGroupId, setActiveGroupId] = React.useState<string>(
+    groupTables[0]?.group.id ?? ""
+  );
+
+  React.useEffect(() => {
+    if (!groupTables.length) {
+      return;
+    }
+    const hasActive = groupTables.some((entry) => entry.group.id === activeGroupId);
+    if (!hasActive) {
+      setActiveGroupId(groupTables[0].group.id);
+    }
+  }, [groupTables, activeGroupId]);
+
+  const renderGroupContent = (
+    entry: { group: GroupDefinition; rows: GroupTableRow[] },
+    showTitle: boolean
+  ) => {
+    const matches = groupMatchesFor(entry.group.id, resolvedGroupMatches);
+    return (
+      <>
+        <div
+          className={cn(
+            "flex items-center gap-3",
+            showTitle ? "justify-between" : "justify-start flex-wrap mb-4"
+          )}
+        >
+          {showTitle && (
+            <h3 className="text-lg font-semibold text-slate-900">
+              Group {entry.group.id}
+            </h3>
+          )}
+          <div className="flex items-center gap-2 text-xs">
+            <LoadingButton
+              loading={Boolean(loadingKeys[`group:${entry.group.id}`])}
+              onClick={() =>
+                runAutopredictWithDelay(
+                  `group:${entry.group.id}`,
+                  () => handleGroupAutopredict(entry.group.id)
+                )
+              }
+              className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Auto-predict
+            </LoadingButton>
+            <button
+              type="button"
+              onClick={() => handleGroupReset(entry.group.id)}
+              className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-4">
+          <div className="flex w-full flex-col gap-3 px-0.5">
+            {matches.map((match) => {
+              const probabilities = getMatchProbabilityLabels({
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                allowDraw: true,
+                country: match.country,
+              });
+              return (
+                <MatchCard
+                  key={match.id}
+                  id={match.id}
+                  homeTeam={match.homeTeam}
+                  awayTeam={match.awayTeam}
+                  scores={groupScores}
+                  onScoreChange={updateGroupScore}
+                  onScoreChangePair={updateGroupScorePair}
+                  allowDraw
+                  orientation="horizontal"
+                  flags={flags}
+                  homeWinProb={probabilities.homeWinProb}
+                  awayWinProb={probabilities.awayWinProb}
+                  drawProb={probabilities.drawProb}
+                  showDivider={false}
+                />
+              );
+            })}
+          </div>
+          <div className="flex w-full px-0.5">
+            <GroupTable
+              group={entry.group}
+              rows={entry.rows}
+              highlightThird={
+                allGroupMatchesComplete && qualifiedThirdGroups.has(entry.group.id)
+              }
+              highlightWeakThird={!allGroupMatchesComplete}
+              showTieInfo={groupCompletion[entry.group.id]}
+              flags={flags}
+            />
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  const renderGroupCard = (
+    entry: { group: GroupDefinition; rows: GroupTableRow[] },
+    showTitle: boolean
+  ) => {
+    return (
+      <div
+        key={entry.group.id}
+        className="relative flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
+      >
+        {renderGroupContent(entry, showTitle)}
+      </div>
+    );
+  };
+
+  if (isTabbed) {
+    const activeEntry =
+      groupTables.find((entry) => entry.group.id === activeGroupId) ?? groupTables[0];
+    if (!activeEntry) {
+      return null;
+    }
+    return (
+      <div className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+        <div className="border-b border-slate-200 pb-3">
+          <div
+            role="tablist"
+            aria-label="Group tabs"
+            className="flex items-center gap-2 overflow-x-auto pb-1"
+          >
+            {groupTables.map((entry) => {
+              const isActive = entry.group.id === activeGroupId;
+              return (
+                <button
+                  key={entry.group.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`group-panel-${entry.group.id}`}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors",
+                    isActive
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                  )}
+                  onClick={() => setActiveGroupId(entry.group.id)}
+                >
+                  Group {entry.group.id}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div id={`group-panel-${activeEntry.group.id}`} role="tabpanel" className="pt-4">
+          {renderGroupContent(activeEntry, false)}
+        </div>
+      </div>
+    );
+  }
+
+  return <>{groupTables.map((entry) => renderGroupCard(entry, true))}</>;
+}
+
 function matchesByStage<T extends KnockoutMatch>(matches: T[]) {
   const map = new Map<string, T[]>();
   for (const match of matches) {
@@ -3113,6 +3342,46 @@ function sortQualifiers(matches: QualifierMatch[]) {
     const orderB = roundOrder[b.round] ?? 99;
     return orderA - orderB;
   });
+}
+
+function useGroupCardsTabbedMode(minCardWidth: number) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [isTabbed, setIsTabbed] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    let frame = 0;
+    const update = () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      frame = requestAnimationFrame(() => {
+        const width = container.getBoundingClientRect().width;
+        const gap = window.matchMedia("(min-width: 1024px)").matches ? 32 : 24;
+        const shouldTab = width < minCardWidth * 2 + gap;
+        setIsTabbed(shouldTab);
+      });
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(container);
+    update();
+    window.addEventListener("resize", update);
+    return () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [minCardWidth]);
+
+  return { containerRef, isTabbed };
 }
 
 export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData }) {
@@ -3156,6 +3425,11 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const [compactKnockout, setCompactKnockout] = React.useState(false);
   const hasUserSetCompactKnockout = React.useRef(false);
   const pendingGroupsAfterQualifiers = React.useRef(false);
+  const { containerRef: groupCardsContainerRef, isTabbed: isGroupTabbed } =
+    useGroupCardsTabbedMode(460);
+  const [activeQualifierPath, setActiveQualifierPath] = React.useState<string | null>(
+    null
+  );
 
   React.useEffect(() => {
     if (hasUserSetCompactKnockout.current) {
@@ -3513,6 +3787,42 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   );
 
   const slotWinners = qualifierState.slotWinners;
+  const qualifierEntries = React.useMemo(() => {
+    return Array.from(
+      qualifierState.matches.reduce((map, match) => {
+        if (!map.has(match.path)) {
+          map.set(match.path, []);
+        }
+        map.get(match.path)?.push(match);
+        return map;
+      }, new Map<string, ResolvedQualifierMatch[]>())
+    ).sort(([a], [b]) => {
+      const order = [
+        "IC Path 1",
+        "IC Path 2",
+        "UEFA Path A",
+        "UEFA Path B",
+        "UEFA Path C",
+        "UEFA Path D",
+      ];
+      const indexA = order.indexOf(a);
+      const indexB = order.indexOf(b);
+      if (indexA !== -1 || indexB !== -1) {
+        return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+      }
+      return a.localeCompare(b);
+    });
+  }, [qualifierState.matches]);
+
+  React.useEffect(() => {
+    if (!qualifierEntries.length) {
+      return;
+    }
+    const hasActive = qualifierEntries.some(([path]) => path === activeQualifierPath);
+    if (!hasActive) {
+      setActiveQualifierPath(qualifierEntries[0][0]);
+    }
+  }, [activeQualifierPath, qualifierEntries]);
 
   const hasUnpredictedQualifiers = React.useCallback(() => {
     return qualifierState.matches.some((match) => {
@@ -6170,6 +6480,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     : knockoutBaseColumnWidth;
   const knockoutMinBracketWidth =
     knockoutLeftBlockWidth * 2 + knockoutMinGapBetweenSFs;
+  const activeQualifierEntry =
+    qualifierEntries.find(([path]) => path === activeQualifierPath) ??
+    qualifierEntries[0];
+  const activeQualifierPathValue =
+    activeQualifierPath ?? activeQualifierEntry?.[0] ?? null;
+  const qualifierPanelId = (path: string) =>
+    `qualifier-panel-${path.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   return (
     <div className="flex flex-col gap-12">
@@ -6219,38 +6536,47 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           </div>
         </div>
         <div className="space-y-6">
-          {(() => {
-            const entries = Array.from(
-              qualifierState.matches.reduce((map, match) => {
-                if (!map.has(match.path)) {
-                  map.set(match.path, []);
-                }
-                map.get(match.path)?.push(match);
-                return map;
-              }, new Map<string, ResolvedQualifierMatch[]>())
-            ).sort(([a], [b]) => {
-              const order = [
-                "IC Path 1",
-                "IC Path 2",
-                "UEFA Path A",
-                "UEFA Path B",
-                "UEFA Path C",
-                "UEFA Path D",
-              ];
-              const indexA = order.indexOf(a);
-              const indexB = order.indexOf(b);
-              if (indexA !== -1 || indexB !== -1) {
-                return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
-              }
-              return a.localeCompare(b);
-            });
-            return (
-              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,1fr))]">
-                {entries.map(([path, matches]) => (
+          {isGroupTabbed ? (
+            <div className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+              <div className="border-b border-slate-200 pb-3">
+                <div
+                  role="tablist"
+                  aria-label="Qualifier playoff tabs"
+                  className="flex items-center gap-2 overflow-x-auto pb-1"
+                >
+                  {qualifierEntries.map(([path]) => {
+                    const isActive = path === activeQualifierPathValue;
+                    return (
+                      <button
+                        key={path}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        aria-controls={qualifierPanelId(path)}
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors",
+                          isActive
+                            ? "border-slate-900 bg-slate-900 text-white"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                        )}
+                        onClick={() => setActiveQualifierPath(path)}
+                      >
+                        {path}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {activeQualifierEntry && (
+                <div
+                  id={qualifierPanelId(activeQualifierEntry[0])}
+                  role="tabpanel"
+                  className="pt-4"
+                >
                   <QualifierPathBracket
-                    key={path}
-                    path={path}
-                    matches={matches}
+                    key={activeQualifierEntry[0]}
+                    path={activeQualifierEntry[0]}
+                    matches={activeQualifierEntry[1]}
                     winnerSelections={qualifierWinners}
                     onWinnerSelect={updateQualifierWinner}
                     onAutoPredict={(pathId) =>
@@ -6260,14 +6586,40 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       )
                     }
                     onReset={handleQualifierReset}
-                    autoPredictLoading={Boolean(loadingKeys[`qual:${path}`])}
+                    autoPredictLoading={Boolean(
+                      loadingKeys[`qual:${activeQualifierEntry[0]}`]
+                    )}
                     flags={data.flags}
                     getMatchProbabilityLabels={getMatchProbabilityLabels}
+                    showTitle={false}
+                    embedded
                   />
-                ))}
-              </div>
-            );
-          })()}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,1fr))]">
+              {qualifierEntries.map(([path, matches]) => (
+                <QualifierPathBracket
+                  key={path}
+                  path={path}
+                  matches={matches}
+                  winnerSelections={qualifierWinners}
+                  onWinnerSelect={updateQualifierWinner}
+                  onAutoPredict={(pathId) =>
+                    runAutopredictWithDelay(
+                      `qual:${pathId}`,
+                      () => handleQualifierAutopredict(pathId)
+                    )
+                  }
+                  onReset={handleQualifierReset}
+                  autoPredictLoading={Boolean(loadingKeys[`qual:${path}`])}
+                  flags={data.flags}
+                  getMatchProbabilityLabels={getMatchProbabilityLabels}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -6298,85 +6650,38 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </button>
           </div>
         </div>
-        <div className="grid gap-6 lg:gap-8 grid-cols-[repeat(auto-fit,minmax(460px,1fr))]">
-          {groupTables.map(({ group, rows }) => {
-            const matches = groupMatchesFor(group.id, resolvedGroupMatches);
-            return (
-              <div
-                key={group.id}
-                className="relative flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
-              >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-lg font-semibold text-slate-900">Group {group.id}</h3>
-                    <div className="flex items-center gap-2 text-xs">
-                      <LoadingButton
-                        loading={Boolean(loadingKeys[`group:${group.id}`])}
-                        onClick={() =>
-                          runAutopredictWithDelay(
-                            `group:${group.id}`,
-                            () => handleGroupAutopredict(group.id)
-                          )
-                        }
-                        className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
-                      >
-                        Auto-predict
-                      </LoadingButton>
-                      <button
-                        type="button"
-                        onClick={() => handleGroupReset(group.id)}
-                      className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-700"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-4">
-                  <div className="flex w-full flex-col gap-3 px-0.5">
-                    {matches.map((match, index) => {
-                      const probabilities = getMatchProbabilityLabels({
-                        homeTeam: match.homeTeam,
-                        awayTeam: match.awayTeam,
-                        allowDraw: true,
-                        country: match.country,
-                      });
-                      return (
-                        <MatchCard
-                          key={match.id}
-                          id={match.id}
-                          homeTeam={match.homeTeam}
-                          awayTeam={match.awayTeam}
-                          scores={groupScores}
-                          onScoreChange={updateGroupScore}
-                          onScoreChangePair={updateGroupScorePair}
-                          allowDraw
-                          orientation="horizontal"
-                          flags={data.flags}
-                          homeWinProb={probabilities.homeWinProb}
-                          awayWinProb={probabilities.awayWinProb}
-                          drawProb={probabilities.drawProb}
-                          showDivider={false}
-                        />
-                      );
-                    })}
-                  </div>
-                  <div className="flex w-full px-0.5">
-                    <GroupTable
-                      group={group}
-                      rows={rows}
-                      highlightThird={allGroupMatchesComplete && qualifiedThirdGroups.has(group.id)}
-                      highlightWeakThird={!allGroupMatchesComplete}
-                      showTieInfo={groupCompletion[group.id]}
-                      flags={data.flags}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div
+          ref={groupCardsContainerRef}
+          className={cn(
+            "w-full",
+            isGroupTabbed
+              ? "space-y-6"
+              : "grid gap-6 lg:gap-8 grid-cols-[repeat(auto-fit,minmax(460px,1fr))]"
+          )}
+        >
+          <GroupStageCards
+            groupTables={groupTables}
+            resolvedGroupMatches={resolvedGroupMatches}
+            groupScores={groupScores}
+            updateGroupScore={updateGroupScore}
+            updateGroupScorePair={updateGroupScorePair}
+            getMatchProbabilityLabels={getMatchProbabilityLabels}
+            loadingKeys={loadingKeys}
+            runAutopredictWithDelay={runAutopredictWithDelay}
+            handleGroupAutopredict={handleGroupAutopredict}
+            handleGroupReset={handleGroupReset}
+            groupCompletion={groupCompletion}
+            qualifiedThirdGroups={qualifiedThirdGroups}
+            allGroupMatchesComplete={allGroupMatchesComplete}
+            flags={data.flags}
+            isTabbed={isGroupTabbed}
+          />
           {thirdPlaceRankingRows.length > 0 && (
             <div className="space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">Ranking of 3rd place teams</h3>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Ranking of 3rd place teams
+                </h3>
               </div>
               <div className="flex flex-wrap justify-center gap-4 lg:flex-nowrap lg:items-start lg:justify-between">
                 <div className="flex w-full max-w-[520px] lg:max-w-none lg:flex-1">

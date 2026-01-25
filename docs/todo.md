@@ -5,6 +5,10 @@
 
 ## Design
 
+* More recent stuff!
+    * playoff lines on mobile spacing
+    * more responsive group title positinoning on click
+
 * Hlines between groups
 * Team alignment
 * Predictor page
