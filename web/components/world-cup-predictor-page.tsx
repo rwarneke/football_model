@@ -3275,7 +3275,7 @@ function GroupStageCards({
           <div
             role="tablist"
             aria-label="Group tabs"
-            className="flex items-center gap-2 overflow-x-auto pb-1"
+            className="flex w-full min-w-0 items-center gap-2 overflow-x-auto pb-1"
           >
             {groupTables.map((entry) => {
               const isActive = entry.group.id === activeGroupId;
@@ -3344,46 +3344,6 @@ function sortQualifiers(matches: QualifierMatch[]) {
   });
 }
 
-function useGroupCardsTabbedMode(minCardWidth: number) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const [isTabbed, setIsTabbed] = React.useState(false);
-
-  React.useLayoutEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    let frame = 0;
-    const update = () => {
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-      frame = requestAnimationFrame(() => {
-        const width = container.getBoundingClientRect().width;
-        const gap = window.matchMedia("(min-width: 1024px)").matches ? 32 : 24;
-        const shouldTab = width < minCardWidth * 2 + gap;
-        setIsTabbed(shouldTab);
-      });
-    };
-    const observer = new ResizeObserver(update);
-    observer.observe(container);
-    update();
-    window.addEventListener("resize", update);
-    return () => {
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-      observer.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [minCardWidth]);
-
-  return { containerRef, isTabbed };
-}
-
 export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData }) {
   const [groupScores, setGroupScores] = React.useState<
     Record<string, MatchScore>
@@ -3425,8 +3385,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const [compactKnockout, setCompactKnockout] = React.useState(false);
   const hasUserSetCompactKnockout = React.useRef(false);
   const pendingGroupsAfterQualifiers = React.useRef(false);
-  const { containerRef: groupCardsContainerRef, isTabbed: isGroupTabbed } =
-    useGroupCardsTabbedMode(460);
+  const groupCardsContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const isGroupTabbed = true;
   const [activeQualifierPath, setActiveQualifierPath] = React.useState<string | null>(
     null
   );
@@ -6653,29 +6613,31 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div
           ref={groupCardsContainerRef}
           className={cn(
-            "w-full",
-            isGroupTabbed
-              ? "space-y-6"
-              : "grid gap-6 lg:gap-8 grid-cols-[repeat(auto-fit,minmax(460px,1fr))]"
+            "grid gap-6",
+            thirdPlaceRankingRows.length > 0
+              ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)] lg:items-start"
+              : "grid-cols-1"
           )}
         >
-          <GroupStageCards
-            groupTables={groupTables}
-            resolvedGroupMatches={resolvedGroupMatches}
-            groupScores={groupScores}
-            updateGroupScore={updateGroupScore}
-            updateGroupScorePair={updateGroupScorePair}
-            getMatchProbabilityLabels={getMatchProbabilityLabels}
-            loadingKeys={loadingKeys}
-            runAutopredictWithDelay={runAutopredictWithDelay}
-            handleGroupAutopredict={handleGroupAutopredict}
-            handleGroupReset={handleGroupReset}
-            groupCompletion={groupCompletion}
-            qualifiedThirdGroups={qualifiedThirdGroups}
-            allGroupMatchesComplete={allGroupMatchesComplete}
-            flags={data.flags}
-            isTabbed={isGroupTabbed}
-          />
+          <div className="min-w-0 space-y-6">
+            <GroupStageCards
+              groupTables={groupTables}
+              resolvedGroupMatches={resolvedGroupMatches}
+              groupScores={groupScores}
+              updateGroupScore={updateGroupScore}
+              updateGroupScorePair={updateGroupScorePair}
+              getMatchProbabilityLabels={getMatchProbabilityLabels}
+              loadingKeys={loadingKeys}
+              runAutopredictWithDelay={runAutopredictWithDelay}
+              handleGroupAutopredict={handleGroupAutopredict}
+              handleGroupReset={handleGroupReset}
+              groupCompletion={groupCompletion}
+              qualifiedThirdGroups={qualifiedThirdGroups}
+              allGroupMatchesComplete={allGroupMatchesComplete}
+              flags={data.flags}
+              isTabbed={isGroupTabbed}
+            />
+          </div>
           {thirdPlaceRankingRows.length > 0 && (
             <div className="space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
               <div className="flex items-center justify-between">
