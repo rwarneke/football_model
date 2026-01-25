@@ -35,24 +35,10 @@ const navGroups: Array<
 
 export function SiteNav() {
   const pathname = usePathname();
-  const [open, setOpen] = React.useState(true);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    setOpen(!isMobile);
-  }, []);
+  const [open, setOpen] = React.useState(false);
 
   const handleNavSelect = React.useCallback(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    if (isMobile) {
-      setOpen(false);
-    }
+    setOpen(false);
   }, []);
 
   const isActive = (href: string) =>

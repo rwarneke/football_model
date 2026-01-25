@@ -20,8 +20,7 @@ export default function WorldCupPredictorRoute() {
             Tournament Predictor
           </h1>
           <p className="text-base text-ink-200">
-            Select match results to watch group standings, qualification slots, and
-            the knockout bracket update in real time.
+            Lorem ipsum
           </p>
           <div className="flex items-center gap-4 text-sm text-ink-400">
             <span>Updated {lastUpdated}</span>
