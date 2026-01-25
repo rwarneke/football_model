@@ -1105,6 +1105,77 @@ function useMediaQuery(query: string) {
   return matches;
 }
 
+// FIFA three-letter country codes mapping
+const FIFA_CODES: Record<string, string> = {
+  "Algeria": "ALG",
+  "Argentina": "ARG",
+  "Australia": "AUS",
+  "Austria": "AUT",
+  "Belgium": "BEL",
+  "Bolivia": "BOL",
+  "Bosnia and Herzegovina": "BIH",
+  "Brazil": "BRA",
+  "Canada": "CAN",
+  "Cape Verde": "CPV",
+  "Colombia": "COL",
+  "Croatia": "CRO",
+  "Curacao": "CUW",
+  "Czech Republic": "CZE",
+  "Czechia": "CZE",
+  "Denmark": "DEN",
+  "DR Congo": "COD",
+  "Ecuador": "ECU",
+  "Egypt": "EGY",
+  "England": "ENG",
+  "France": "FRA",
+  "Germany": "GER",
+  "Ghana": "GHA",
+  "Haiti": "HTI",
+  "Iran": "IRN",
+  "Iraq": "IRQ",
+  "Italy": "ITA",
+  "Ivory Coast": "CIV",
+  "Jamaica": "JAM",
+  "Japan": "JPN",
+  "Jordan": "JOR",
+  "Kosovo": "KOS",
+  "Mexico": "MEX",
+  "Morocco": "MAR",
+  "Netherlands": "NED",
+  "New Caledonia": "NCL",
+  "New Zealand": "NZL",
+  "North Macedonia": "MKD",
+  "Northern Ireland": "NIR",
+  "Norway": "NOR",
+  "Panama": "PAN",
+  "Paraguay": "PAR",
+  "Poland": "POL",
+  "Portugal": "POR",
+  "Qatar": "QAT",
+  "Republic of Ireland": "IRL",
+  "Romania": "ROU",
+  "Saudi Arabia": "KSA",
+  "Scotland": "SCO",
+  "Senegal": "SEN",
+  "Slovakia": "SVK",
+  "South Africa": "RSA",
+  "South Korea": "KOR",
+  "Spain": "ESP",
+  "Suriname": "SUR",
+  "Sweden": "SWE",
+  "Switzerland": "SUI",
+  "Tunisia": "TUN",
+  "Turkey": "TUR",
+  "USA": "USA",
+  "Uruguay": "URU",
+  "Uzbekistan": "UZB",
+  "Wales": "WAL",
+};
+
+function getFifaCode(team: string): string | null {
+  return FIFA_CODES[team] ?? null;
+}
+
 function resolveWinner(
   matchId: string | number,
   homeTeam: string,
@@ -1909,6 +1980,7 @@ function MatchCard({
   }, [showHintRow]);
 
   if (orientation === "horizontal" && showScore) {
+    const isMobile = useMediaQuery("(max-width: 768px)");
     const isScoreSet = score.home !== null && score.away !== null;
     const segments = normalizeProbabilitySegments({
       home: parseProbabilityLabel(homeProb),
@@ -1917,8 +1989,17 @@ function MatchCard({
     });
     const formattedHome = formatDisplayLabel(homeTeam);
     const formattedAway = formatDisplayLabel(awayTeam);
-    const displayHome = formattedHome;
-    const displayAway = formattedAway;
+    // Use FIFA codes on mobile for group stage matches, or "Qualifier" for qualifier placeholders
+    const displayHome = isMobile && placeholderHome
+      ? "Qualifier"
+      : isMobile && !placeholderHome
+        ? (getFifaCode(homeTeam) ?? formattedHome)
+        : formattedHome;
+    const displayAway = isMobile && placeholderAway
+      ? "Qualifier"
+      : isMobile && !placeholderAway
+        ? (getFifaCode(awayTeam) ?? formattedAway)
+        : formattedAway;
 
     const updateSideScore = (side: "home" | "away", value: number | null) => {
       if (side === "home") {
@@ -2097,39 +2178,37 @@ function MatchCard({
       if (!isScoreSet) return {};
       
       if (isDraw) {
-        // For draws: gradient spans from home score to away score
-        // Scores are roughly centered, so gradient should span the score area
-        // Assuming score area is roughly 20% of width (scores + draw button)
+        // For draws: gradient spans symmetrically around the center score area
+        // Making it symmetric and wider to account for varying team name lengths
         return {
           background: `linear-gradient(to right, 
             transparent 0%, 
-            transparent 38%, 
-            rgb(219, 234, 254) 44%, 
-            rgb(219, 234, 254) 47%, 
-            rgb(219, 234, 254) 53%, 
-            rgb(219, 234, 254) 56%, 
-            transparent 58%, 
+            transparent 35%, 
+            rgb(219, 234, 254) 40%, 
+            rgb(219, 234, 254) 50%, 
+            rgb(219, 234, 254) 60%, 
+            transparent 65%, 
             transparent 100%)`
         };
       } else if (homeIsWinner) {
-        // For home wins: gradient starts from left edge, fades to white around home score (~40% from left)
+        // For home wins: gradient starts from left edge, fades to white around home score, extending to cover score area
         return {
           background: `linear-gradient(to right, 
             rgb(219, 234, 254) 0%, 
             rgb(219, 234, 254) 35%, 
-            rgb(219, 234, 254) 38%, 
-            rgba(255, 255, 255, 0) 42%, 
-            transparent 45%, 
+            rgb(219, 234, 254) 42%, 
+            rgba(255, 255, 255, 0) 48%, 
+            transparent 52%, 
             transparent 100%)`
         };
       } else if (awayIsWinner) {
-        // For away wins: gradient starts from right edge, fades to white around away score (~60% from left)
+        // For away wins: gradient starts from right edge, fades to white around away score, extending to cover score area
         return {
           background: `linear-gradient(to right, 
             transparent 0%, 
-            transparent 55%, 
-            rgba(255, 255, 255, 0) 58%, 
-            rgb(219, 234, 254) 62%, 
+            transparent 48%, 
+            rgba(255, 255, 255, 0) 52%, 
+            rgb(219, 234, 254) 58%, 
             rgb(219, 234, 254) 65%, 
             rgb(219, 234, 254) 100%)`
         };
@@ -2147,102 +2226,27 @@ function MatchCard({
         )}
       >
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-1">
-          <div className="flex flex-col items-center gap-1">
-            <svg className="h-6 w-10" viewBox="0 0 40 24" aria-hidden="true">
-              <path
-                d="M 20 20 Q 20 8 20 4"
-                fill="none"
-                stroke="rgb(15 23 42)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 20 4 L 15 10 M 20 4 L 25 10"
-                fill="none"
-                stroke="rgb(15 23 42)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
+          <div className="flex flex-col items-center gap-0">
+            <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
+              <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
             <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm text-center">
-              <svg
-                className="h-3 w-3 text-white/90"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                aria-hidden="true"
-              >
-                <circle cx="10" cy="10" r="8.25" />
-                <circle cx="10" cy="6.8" r="0.75" fill="currentColor" stroke="none" />
-                <path d="M10 9.2v4.6" strokeLinecap="round" />
-              </svg>
               <span>{hintTextHome}</span>
             </div>
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <svg className="h-6 w-10" viewBox="0 0 40 24" aria-hidden="true">
-              <path
-                d="M 20 20 Q 20 8 20 4"
-                fill="none"
-                stroke="rgb(15 23 42)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 20 4 L 15 10 M 20 4 L 25 10"
-                fill="none"
-                stroke="rgb(15 23 42)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
+          <div className="flex flex-col items-center gap-0">
+            <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
+              <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
             <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm text-center">
-              <svg
-                className="h-3 w-3 text-white/90"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                aria-hidden="true"
-              >
-                <circle cx="10" cy="10" r="8.25" />
-                <circle cx="10" cy="6.8" r="0.75" fill="currentColor" stroke="none" />
-                <path d="M10 9.2v4.6" strokeLinecap="round" />
-              </svg>
-              <span>Click to predict a draw</span>
+              <span>Click the probability bar to predict a draw</span>
             </div>
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <svg className="h-6 w-10" viewBox="0 0 40 24" aria-hidden="true">
-              <path
-                d="M 20 20 Q 20 8 20 4"
-                fill="none"
-                stroke="rgb(15 23 42)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 20 4 L 15 10 M 20 4 L 25 10"
-                fill="none"
-                stroke="rgb(15 23 42)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
+          <div className="flex flex-col items-center gap-0">
+            <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
+              <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
             <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm text-center">
-              <svg
-                className="h-3 w-3 text-white/90"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                aria-hidden="true"
-              >
-                <circle cx="10" cy="10" r="8.25" />
-                <circle cx="10" cy="6.8" r="0.75" fill="currentColor" stroke="none" />
-                <path d="M10 9.2v4.6" strokeLinecap="round" />
-              </svg>
               <span>{hintTextAway}</span>
             </div>
           </div>
@@ -3239,63 +3243,20 @@ function QualifierPathBracket({
               className="absolute flex w-44 items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm text-center"
               style={{ left: hintPosition.textX, top: hintPosition.textY }}
             >
-              <svg
-                className="h-3 w-3 text-white/90"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                aria-hidden="true"
-              >
-                <circle cx="10" cy="10" r="8.25" />
-                <circle cx="10" cy="6.8" r="0.75" fill="currentColor" stroke="none" />
-                <path d="M10 9.2v4.6" strokeLinecap="round" />
-              </svg>
               <span>Click to predict a winner</span>
             </div>
             <svg
-              className="absolute inset-0 h-full w-full"
+              className="absolute h-2 w-4"
+              style={{
+                left: `${hintPosition.textX + 88}px`,
+                top: `${hintPosition.textY + (hintBox?.height ?? 44)}px`,
+                transform: "translateX(-50%)",
+              }}
+              viewBox="0 0 20 8"
+              fill="none"
               aria-hidden="true"
             >
-              {(() => {
-                  const boxHeight = hintBox?.height ?? 44;
-                const arrowGap = 8;
-                const startX = hintPosition.targetX;
-                const startY = hintPosition.textY + boxHeight + arrowGap;
-                const endX = startX;
-                const endY = hintPosition.targetY;
-                if (endY <= startY) {
-                  return null;
-                }
-                const headOffset = 5;
-                const headHeight = 6;
-                return (
-                  <>
-                    <path
-                      d={`M ${startX} ${startY} L ${endX} ${endY}`}
-                      fill="none"
-                      stroke="rgb(15 23 42)"
-                      strokeWidth={2.5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d={`M ${endX} ${endY} L ${endX - headOffset} ${endY - headHeight}`}
-                      fill="none"
-                      stroke="rgb(15 23 42)"
-                      strokeWidth={2.5}
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d={`M ${endX} ${endY} L ${endX + headOffset} ${endY - headHeight}`}
-                      fill="none"
-                      stroke="rgb(15 23 42)"
-                      strokeWidth={2.5}
-                      strokeLinecap="round"
-                    />
-                  </>
-                );
-              })()}
+              <path d="M0 0 L10 8 L20 0" fill="rgb(15 23 42)" />
             </svg>
           </div>
         )}
@@ -3536,6 +3497,17 @@ function GroupTable({
 
   return (
     <div className="w-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm overflow-visible relative">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 1023px) {
+          .group-table-mobile col:nth-child(1) { width: 36px !important; }
+          .group-table-mobile col:nth-child(3) { width: 32px !important; }
+          .group-table-mobile col:nth-child(4) { width: 28px !important; }
+          .group-table-mobile col:nth-child(5) { width: 28px !important; }
+          .group-table-mobile col:nth-child(6) { width: 28px !important; }
+          .group-table-mobile col:nth-child(9) { width: 32px !important; }
+          .group-table-mobile col:nth-child(10) { width: 40px !important; }
+        }
+      `}} />
       {/* Qualifier markers overlay - positioned relative to table container */}
       <div className="absolute left-0 top-0 bottom-0 w-1 pointer-events-none z-10">
         {rows.map((row, index) => {
@@ -3568,7 +3540,7 @@ function GroupTable({
         })}
       </div>
       <div className="overflow-x-auto lg:overflow-visible pb-px">
-        <table className="w-full table-fixed text-sm">
+        <table className="w-full table-fixed text-sm group-table-mobile">
           <colgroup>
             <col style={{ width: "40px" }} />
             <col />
@@ -3583,22 +3555,22 @@ function GroupTable({
           </colgroup>
           <thead className="bg-slate-200 border-b border-slate-200">
             <tr>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1.5 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pos
               </th>
               <th className="px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Team
               </th>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pld
               </th>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 W
               </th>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 D
               </th>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 L
               </th>
               <th className="hidden lg:table-cell px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
@@ -3607,10 +3579,10 @@ function GroupTable({
               <th className="hidden lg:table-cell px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GA
               </th>
-              <th className="px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-0.5 lg:px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GD
               </th>
-              <th className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1.5 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pts
               </th>
             </tr>
@@ -3632,7 +3604,7 @@ function GroupTable({
                     isLastRow && "border-b-0"
                   )}
                 >
-                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-600">
+                  <td className="px-1.5 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-600">
                     {row.position}
                   </td>
                   <td className="px-2 py-2.5">
@@ -3659,16 +3631,16 @@ function GroupTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.played}
                   </td>
-                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.wins}
                   </td>
-                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.draws}
                   </td>
-                  <td className="px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.losses}
                   </td>
                   <td className="hidden lg:table-cell px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
@@ -3677,10 +3649,10 @@ function GroupTable({
                   <td className="hidden lg:table-cell px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.ga}
                   </td>
-                  <td className="px-1 py-2.5 text-center text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-0.5 lg:px-1 py-2.5 text-center text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
                     {row.gd > 0 ? `+${row.gd}` : row.gd}
                   </td>
-                  <td className="px-2 py-2.5 text-center text-sm font-semibold tabular-nums text-slate-900 whitespace-nowrap">
+                  <td className="px-1.5 lg:px-2 py-2.5 text-center text-sm font-semibold tabular-nums text-slate-900 whitespace-nowrap">
                     {row.points}
                   </td>
                 </tr>
@@ -3759,6 +3731,7 @@ function GroupStageCards({
     groupTables[0]?.group.id ?? ""
   );
   const firstGroupId = groupTables[0]?.group.id ?? null;
+  const groupTabsRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     if (!groupTables.length) {
@@ -3920,13 +3893,16 @@ function GroupStageCards({
         <div className="border-b border-slate-200 pb-3">
           <div className="overflow-visible pl-1 pr-2">
             <div
+              ref={groupTabsRef}
               role="tablist"
               aria-label="Group tabs"
               className="flex w-full min-w-0 items-center gap-2 overflow-x-auto pb-2 pt-2 pl-1 pr-2"
             >
-              {groupTables.map((entry) => {
+              {groupTables.map((entry, index) => {
                 const isActive = entry.group.id === activeGroupId;
                 const isHighlighted = groupsWithCtaMatches.has(entry.group.id);
+                const hasLeftNeighbor = index > 0;
+                const hasRightNeighbor = index < groupTables.length - 1;
                 return (
                   <button
                     key={entry.group.id}
@@ -3935,7 +3911,7 @@ function GroupStageCards({
                     aria-selected={isActive}
                     aria-controls={`group-panel-${entry.group.id}`}
                     className={cn(
-                      "inline-flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold uppercase tracking-wide transition-colors",
+                      "inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border text-xs font-semibold uppercase tracking-wide transition-colors",
                       isHighlighted && "ring-2 ring-[color:var(--cta-color)]",
                       isActive
                         ? "border-slate-900 bg-slate-900 text-white"
@@ -3944,7 +3920,40 @@ function GroupStageCards({
                             isHighlighted ? "border-[color:var(--cta-color)]" : "border-slate-200"
                           )
                     )}
-                    onClick={() => setActiveGroupId(entry.group.id)}
+                    onClick={(e) => {
+                      setActiveGroupId(entry.group.id);
+                      // Scroll button into view, showing both neighbors if they exist
+                      const container = groupTabsRef.current;
+                      const button = e.currentTarget;
+                      if (container) {
+                        const containerRect = container.getBoundingClientRect();
+                        const buttonRect = button.getBoundingClientRect();
+                        
+                        // Check if button is fully visible
+                        const isFullyVisible = 
+                          buttonRect.left >= containerRect.left &&
+                          buttonRect.right <= containerRect.right;
+                        
+                        if (!isFullyVisible || (hasLeftNeighbor && hasRightNeighbor)) {
+                          // If it has both neighbors, scroll to center it so both are visible
+                          if (hasLeftNeighbor && hasRightNeighbor) {
+                            // Center the button in the viewport
+                            const scrollLeft = button.offsetLeft - (container.clientWidth / 2) + (button.clientWidth / 2);
+                            container.scrollTo({
+                              left: Math.max(0, scrollLeft),
+                              behavior: 'smooth',
+                            });
+                          } else {
+                            // Just scroll the button into view
+                            button.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'nearest',
+                              inline: 'center',
+                            });
+                          }
+                        }
+                      }
+                    }}
                   >
                     {entry.group.id}
                   </button>
@@ -4046,6 +4055,16 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   );
   const [showQualifierHint, setShowQualifierHint] = React.useState(true);
   const [showGroupHint, setShowGroupHint] = React.useState(true);
+  const [showCompactModeHint, setShowCompactModeHint] = React.useState(false);
+  const compactModeToggleRef = React.useRef<HTMLButtonElement | null>(null);
+  const compactModeHintBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const compactModeHintPositionAdjustedRef = React.useRef(false);
+  const [compactModeHintVisible, setCompactModeHintVisible] = React.useState(false);
+  const [compactModeHintPosition, setCompactModeHintPosition] = React.useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [compactModeHintArrowLeft, setCompactModeHintArrowLeft] = React.useState<number | null>(null);
   const [shareStatus, setShareStatus] = React.useState<"idle" | "copied" | "error">(
     "idle"
   );
@@ -4079,6 +4098,102 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
       setCompactKnockout(true);
     }
   }, []);
+
+  // Initialize compact mode hint - only show if compact mode is on and hasn't been dismissed this session
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    // Show on every reload when compact mode is enabled (after mobile check)
+    if (compactKnockout && !hasUserSetCompactKnockout.current) {
+      setShowCompactModeHint(true);
+    }
+  }, [compactKnockout]);
+
+  // Auto-dismiss compact mode hint when any knockout team is selected (manually or automatically)
+  React.useEffect(() => {
+    if (!showCompactModeHint) {
+      return;
+    }
+    const hasAnySelection = Object.values(knockoutWinners).some(
+      (selection) => selection !== null && selection !== undefined
+    );
+    const hasAnyAutoSelection = Object.keys(autoKnockoutWinners).length > 0;
+    if (hasAnySelection || hasAnyAutoSelection) {
+      setShowCompactModeHint(false);
+    }
+  }, [knockoutWinners, autoKnockoutWinners, showCompactModeHint]);
+
+  // Calculate compact mode hint position
+  React.useLayoutEffect(() => {
+    if (!showCompactModeHint || !compactModeToggleRef.current) {
+      setCompactModeHintPosition(null);
+      return;
+    }
+    const toggle = compactModeToggleRef.current;
+    const section = toggle.closest("section");
+    if (!section) {
+      return;
+    }
+    const toggleRect = toggle.getBoundingClientRect();
+    const sectionRect = section.getBoundingClientRect();
+    const sectionWidth = sectionRect.width;
+    const toggleRightX = toggleRect.left - sectionRect.left + toggleRect.width;
+    // Position box so its right edge aligns with toggle's right edge
+    // We'll measure the actual box width after render, but estimate for initial positioning
+    const estimatedBoxWidth = 280;
+    const boxX = toggleRightX - estimatedBoxWidth;
+    // Ensure it doesn't go off the left edge
+    setCompactModeHintPosition({
+      x: Math.max(16, boxX),
+      y: toggleRect.top - sectionRect.top - 4,
+    });
+    compactModeHintPositionAdjustedRef.current = false;
+  }, [showCompactModeHint, compactKnockout]);
+
+  // Calculate arrow position and adjust box position based on actual box width
+  React.useLayoutEffect(() => {
+    if (!showCompactModeHint || !compactModeHintBoxRef.current || !compactModeToggleRef.current || !compactModeHintPosition) {
+      setCompactModeHintArrowLeft(null);
+      return;
+    }
+    // Only adjust position once to avoid infinite loop
+    if (compactModeHintPositionAdjustedRef.current) {
+      const boxWidth = compactModeHintBoxRef.current.offsetWidth;
+      setCompactModeHintArrowLeft(boxWidth * 0.75);
+      return;
+    }
+    const box = compactModeHintBoxRef.current;
+    const toggle = compactModeToggleRef.current;
+    const section = toggle.closest("section");
+    if (!section) {
+      return;
+    }
+    const boxWidth = box.offsetWidth;
+    const toggleRect = toggle.getBoundingClientRect();
+    const sectionRect = section.getBoundingClientRect();
+    const toggleRightX = toggleRect.left - sectionRect.left + toggleRect.width;
+    // Reposition box so its right edge aligns with toggle's right edge
+    const boxX = toggleRightX - boxWidth;
+    const newX = Math.max(16, boxX);
+    setCompactModeHintPosition({
+      x: newX,
+      y: compactModeHintPosition.y,
+    });
+    compactModeHintPositionAdjustedRef.current = true;
+    setCompactModeHintArrowLeft(boxWidth * 0.75);
+  }, [showCompactModeHint, compactModeHintPosition]);
+
+  // Show/hide compact mode hint with animation
+  React.useEffect(() => {
+    if (!showCompactModeHint || !compactModeHintPosition) {
+      setCompactModeHintVisible(false);
+      return;
+    }
+    setCompactModeHintVisible(false);
+    const frame = requestAnimationFrame(() => setCompactModeHintVisible(true));
+    return () => cancelAnimationFrame(frame);
+  }, [compactModeHintPosition, showCompactModeHint]);
 
   React.useEffect(() => {
     if (hasLoadedShare.current) {
@@ -7683,7 +7798,64 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
 
       <div className="h-px w-full bg-slate-200/80" />
 
-      <section className="space-y-6">
+      <section className="relative space-y-6">
+        {showCompactModeHint && compactModeHintPosition && (
+          <div
+            className={cn(
+              "pointer-events-none absolute z-30 transition-opacity duration-200 ease-out",
+              compactModeHintVisible ? "opacity-100" : "opacity-0"
+            )}
+            style={{
+              left: `${compactModeHintPosition.x}px`,
+              top: `${compactModeHintPosition.y}px`,
+              transform: "translateY(-100%)",
+            }}
+          >
+            <div 
+              ref={compactModeHintBoxRef}
+              className="flex items-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm max-w-[240px] sm:max-w-none"
+            >
+              <span className="sm:whitespace-nowrap">Toggle compact mode to see team names and probabilities.</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCompactModeHint(false);
+                  if (typeof window !== "undefined") {
+                    sessionStorage.setItem("compactModeHintDismissed", "true");
+                  }
+                }}
+                className="ml-1 flex h-4 w-4 items-center justify-center rounded hover:bg-slate-700 transition-colors pointer-events-auto"
+                aria-label="Dismiss hint"
+              >
+                <svg
+                  className="h-3 w-3"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15 5L5 15M5 5l10 10" />
+                </svg>
+              </button>
+            </div>
+            {compactModeHintArrowLeft !== null && (
+              <svg
+                className="absolute top-full h-2 w-4 text-slate-900"
+                style={{
+                  left: `${compactModeHintArrowLeft}px`,
+                  transform: "translateX(-50%)",
+                }}
+                viewBox="0 0 20 8"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path d="M0 0 L10 8 L20 0" fill="currentColor" />
+              </svg>
+            )}
+          </div>
+        )}
         <div>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -7700,6 +7872,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                   Compact mode
                 </span>
                 <button
+                  ref={compactModeToggleRef}
                   type="button"
                   onClick={() => {
                     hasUserSetCompactKnockout.current = true;
