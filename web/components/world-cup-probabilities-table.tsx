@@ -43,7 +43,7 @@ const ratingFormatter = new Intl.NumberFormat("en", {
   maximumFractionDigits: 1,
 });
 
-const ACCENT_DARK_RGB = "9, 71, 111";
+const ACCENT_DARK_RGB = "16, 185, 129";
 
 const SKIP_INITIALS = new Set(["and", "of", "the"]);
 
@@ -77,17 +77,22 @@ function probabilityBackground(value: number) {
   }
   const clamped = Math.max(0, Math.min(value, 1));
   let alpha = 0;
-  if (clamped <= 0.1) {
-    alpha = (clamped / 0.1) * 0.2;
-  } else if (clamped <= 0.9) {
-    alpha = 0.2 + ((clamped - 0.1) / 0.8) * 0.4;
+  if (clamped <= 0.9) {
+    if (clamped <= 0.1) {
+      const scaled = clamped / 0.1;
+      alpha = 0.08 + Math.pow(scaled, 1.2) * 0.08;
+    } else {
+      const scaled = (clamped - 0.1) / 0.8;
+      alpha = 0.16 + Math.pow(scaled, 1.35) * 0.54;
+    }
   } else {
-    alpha = 0.6 + ((clamped - 0.9) / 0.1) * 0.2;
+    const scaled = (clamped - 0.9) / 0.1;
+    alpha = 0.8 + Math.pow(scaled, 1.25) * 0.18;
   }
   return { backgroundColor: `rgba(${ACCENT_LIGHT_RGB}, ${alpha})` };
 }
 
-const ACCENT_LIGHT_RGB = "189, 110, 109";
+const ACCENT_LIGHT_RGB = "147, 197, 253";
 
 function ratingBackground(value: number) {
   if (!Number.isFinite(value)) {
@@ -96,11 +101,12 @@ function ratingBackground(value: number) {
   const clamped = Math.max(0, Math.min(value, 100));
   let alpha = 0;
   if (clamped <= 50) {
-    alpha = (clamped / 50) * 0.1;
+    alpha = (clamped / 50) * 0.05;
   } else if (clamped <= 90) {
-    alpha = 0.1 + ((clamped - 50) / 40) * 0.2;
+    alpha = 0.05 + ((clamped - 50) / 40) * 0.18;
   } else {
-    alpha = 0.3 + ((clamped - 90) / 10) * 0.3;
+    const scaled = (clamped - 90) / 10;
+    alpha = 0.3 + Math.pow(scaled, 1.4) * 0.25;
   }
   return { backgroundColor: `rgba(${ACCENT_DARK_RGB}, ${alpha})` };
 }
@@ -201,9 +207,9 @@ export function WorldCupProbabilitiesTable({
         id: "flag",
         header: "",
         accessorFn: (row) => row.flagPath ?? "",
-        meta: { minWidthCh: 4, isFlag: true },
+        meta: { minWidthCh: 3, isFlag: true },
         cell: ({ row }) => (
-          <div className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+          <div className="relative ml-auto h-4 w-6 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
             {row.original.flagPath ? (
               <Image
                 src={row.original.flagPath}
@@ -338,20 +344,22 @@ export function WorldCupProbabilitiesTable({
   const lastProbabilityId = columns[columns.length - 1];
 
   return (
-    <div className="min-w-0 w-full overflow-hidden lg:rounded-xl lg:bg-white lg:ring-1 lg:ring-slate-200 lg:shadow-sm">
+    <div className="min-w-0 w-full overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
         <Table className="w-full table-auto lg:table-fixed text-sm [--group-col-width:4ch] sm:[--group-col-width:6ch] [--prob-col-width:clamp(4ch,6vw,8ch)] sm:[--prob-col-width:clamp(6ch,6vw,9ch)]">
-          <TableHeader>
+          <TableHeader className="border-b border-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-slate-50 border-b border-slate-200">
-                {headerGroup.headers.map((header) => (
+              <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">
+                {headerGroup.headers.map((header, index) => {
+                  const isLastHeader = index === headerGroup.headers.length - 1;
+                  return (
                   <TableHead
                     key={header.id}
                     className={`relative cursor-pointer select-none hover:text-slate-900 ${
                       header.id === "flag"
-                        ? "text-center min-w-[4ch]"
+                        ? "text-right min-w-[3ch]"
                         : header.id === "team"
-                        ? "text-left w-[8ch] md:w-[10ch] lg:w-[14ch] xl:w-[18ch]"
+                        ? "text-left w-[12ch] md:w-[16ch] lg:w-[20ch] xl:w-[24ch]"
                         : header.column.columnDef.meta?.isGroup
                         ? "text-center whitespace-nowrap min-w-[4ch] sm:min-w-[6ch]"
                         : header.id === "overall" ||
@@ -361,15 +369,11 @@ export function WorldCupProbabilitiesTable({
                         : "text-right"
                     } px-2 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
                       header.id === "group"
-                        ? "sticky left-0 z-40 bg-slate-50 rounded-tl-xl border-l-4 border-transparent"
+                        ? "sticky left-0 z-40 bg-slate-200 rounded-tl-xl"
                         : header.id === "flag"
-                        ? "sticky left-[var(--group-col-width)] z-40 bg-slate-50"
+                        ? "sticky left-[var(--group-col-width)] z-40 bg-slate-200"
                         : ""
-                    } ${
-                      header.id === lastProbabilityId
-                        ? "rounded-tr-xl"
-                        : ""
-                    }`}
+                    } ${isLastHeader ? "rounded-tr-xl" : ""}`}
                     onClick={() => handleSortToggle(header.id)}
                     style={
                       header.column.columnDef.meta?.minWidthCh
@@ -391,7 +395,8 @@ export function WorldCupProbabilitiesTable({
                       )}
                     </span>
                   </TableHead>
-                ))}
+                );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -404,21 +409,24 @@ export function WorldCupProbabilitiesTable({
                 groupBase(row.original.group) !==
                   groupBase(allRows[index + 1]?.original.group);
               return (
-                <TableRow key={row.id} className="transition-colors hover:bg-slate-50/70">
+                <TableRow
+                  key={row.id}
+                  className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
+                >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
                     className={`px-2 py-2.5 ${
                       cell.column.id === "flag"
-                        ? "text-center min-w-[4ch]"
+                        ? "text-right min-w-[3ch] px-1"
                         : cell.column.id === "team"
-                        ? "text-left w-[8ch] md:w-[10ch] lg:w-[14ch] xl:w-[18ch] min-w-0"
+                        ? "text-left w-[12ch] md:w-[16ch] lg:w-[20ch] xl:w-[24ch] min-w-0 pl-1"
                         : cell.column.columnDef.meta?.isGroup
                         ? "text-center min-w-[4ch] sm:min-w-[6ch]"
                         : "text-right"
                     } ${
                       cell.column.id === "group"
-                        ? "sticky left-0 z-30 bg-white border-l-4 border-transparent"
+                        ? "sticky left-0 z-30 bg-white"
                         : cell.column.id === "flag"
                         ? "sticky left-[var(--group-col-width)] z-30 bg-white"
                         : ""

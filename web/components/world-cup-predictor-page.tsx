@@ -3453,7 +3453,7 @@ function QualifierPathBracket({
   return (
     <div
       ref={containerRef}
-      className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
+      className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 h-full"
     >
       {content}
     </div>
@@ -3498,7 +3498,18 @@ function GroupTable({
   return (
     <div className="w-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm overflow-visible relative">
       <style dangerouslySetInnerHTML={{ __html: `
-        @media (max-width: 1023px) {
+        @media (max-width: 639px) {
+          .group-table-mobile col:nth-child(1) { width: 34px !important; }
+          .group-table-mobile col:nth-child(3) { width: 30px !important; }
+          .group-table-mobile col:nth-child(4) { width: 26px !important; }
+          .group-table-mobile col:nth-child(5) { width: 26px !important; }
+          .group-table-mobile col:nth-child(6) { width: 26px !important; }
+          .group-table-mobile col:nth-child(7) { width: 32px !important; }
+          .group-table-mobile col:nth-child(8) { width: 32px !important; }
+          .group-table-mobile col:nth-child(9) { width: 30px !important; }
+          .group-table-mobile col:nth-child(10) { width: 38px !important; }
+        }
+        @media (max-width: 479px) {
           .group-table-mobile col:nth-child(1) { width: 36px !important; }
           .group-table-mobile col:nth-child(3) { width: 32px !important; }
           .group-table-mobile col:nth-child(4) { width: 28px !important; }
@@ -3506,6 +3517,7 @@ function GroupTable({
           .group-table-mobile col:nth-child(6) { width: 28px !important; }
           .group-table-mobile col:nth-child(9) { width: 32px !important; }
           .group-table-mobile col:nth-child(10) { width: 40px !important; }
+          .group-table-mobile .group-table-gfga { display: none !important; }
         }
       `}} />
       {/* Qualifier markers overlay - positioned relative to table container */}
@@ -3548,8 +3560,8 @@ function GroupTable({
             <col style={{ width: "32px" }} />
             <col style={{ width: "32px" }} />
             <col style={{ width: "32px" }} />
-            <col className="hidden lg:table-column" style={{ width: "36px" }} />
-            <col className="hidden lg:table-column" style={{ width: "36px" }} />
+            <col className="group-table-gfga" style={{ width: "36px" }} />
+            <col className="group-table-gfga" style={{ width: "36px" }} />
             <col style={{ width: "36px" }} />
             <col style={{ width: "44px" }} />
           </colgroup>
@@ -3573,10 +3585,10 @@ function GroupTable({
               <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 L
               </th>
-              <th className="hidden lg:table-cell px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="group-table-gfga px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GF
               </th>
-              <th className="hidden lg:table-cell px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="group-table-gfga px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GA
               </th>
               <th className="px-0.5 lg:px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
@@ -3643,10 +3655,10 @@ function GroupTable({
                   <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.losses}
                   </td>
-                  <td className="hidden lg:table-cell px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="group-table-gfga px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.gf}
                   </td>
-                  <td className="hidden lg:table-cell px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="group-table-gfga px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.ga}
                   </td>
                   <td className="px-0.5 lg:px-1 py-2.5 text-center text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
@@ -3875,7 +3887,7 @@ function GroupStageCards({
     return (
       <div
         key={entry.group.id}
-        className="relative flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4"
+        className="relative flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 h-full"
       >
         {renderGroupContent(entry, showTitle)}
       </div>
@@ -3889,7 +3901,7 @@ function GroupStageCards({
       return null;
     }
     return (
-      <div className="relative flex w-full min-w-0 max-w-[920px] flex-col overflow-visible rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+      <div className="relative flex w-full min-w-0 max-w-[var(--supergroup-max)] flex-col overflow-visible rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 flex-1">
         <div className="border-b border-slate-200 pb-3">
           <div className="overflow-visible pl-1 pr-2">
             <div
@@ -3962,14 +3974,18 @@ function GroupStageCards({
             </div>
           </div>
         </div>
-        <div id={`group-panel-${activeEntry.group.id}`} role="tabpanel" className="pt-4">
+        <div id={`group-panel-${activeEntry.group.id}`} role="tabpanel" className="pt-4 flex-1 flex flex-col min-h-0">
           {renderGroupContent(activeEntry, false)}
         </div>
       </div>
     );
   }
 
-  return <>{groupTables.map((entry) => renderGroupCard(entry, true))}</>;
+  return (
+    <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 items-stretch">
+      {groupTables.map((entry) => renderGroupCard(entry, true))}
+    </div>
+  );
 }
 
 function matchesByStage<T extends KnockoutMatch>(matches: T[]) {
@@ -4124,8 +4140,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     }
   }, [knockoutWinners, autoKnockoutWinners, showCompactModeHint]);
 
-  // Calculate compact mode hint position
-  React.useLayoutEffect(() => {
+  const computeCompactModeHintPosition = React.useCallback(() => {
     if (!showCompactModeHint || !compactModeToggleRef.current) {
       setCompactModeHintPosition(null);
       return;
@@ -4137,7 +4152,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     }
     const toggleRect = toggle.getBoundingClientRect();
     const sectionRect = section.getBoundingClientRect();
-    const sectionWidth = sectionRect.width;
     const toggleRightX = toggleRect.left - sectionRect.left + toggleRect.width;
     // Position box so its right edge aligns with toggle's right edge
     // We'll measure the actual box width after render, but estimate for initial positioning
@@ -4149,7 +4163,25 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
       y: toggleRect.top - sectionRect.top - 4,
     });
     compactModeHintPositionAdjustedRef.current = false;
-  }, [showCompactModeHint, compactKnockout]);
+  }, [showCompactModeHint]);
+
+  // Calculate compact mode hint position
+  React.useLayoutEffect(() => {
+    computeCompactModeHintPosition();
+  }, [computeCompactModeHintPosition, compactKnockout]);
+
+  // Recalculate hint position on resize so it stays anchored to the toggle
+  React.useEffect(() => {
+    if (!showCompactModeHint) {
+      return;
+    }
+    const handleResize = () => {
+      compactModeHintPositionAdjustedRef.current = false;
+      computeCompactModeHintPosition();
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [showCompactModeHint, computeCompactModeHintPosition]);
 
   // Calculate arrow position and adjust box position based on actual box width
   React.useLayoutEffect(() => {
@@ -7461,6 +7493,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     activeQualifierPathValue === firstQualifierPath;
   const qualifierPanelId = (path: string) =>
     `qualifier-panel-${path.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  const supergroupMaxWidth = 690;
+  const supergroupMinWidth = 520;
 
   return (
     <div
@@ -7523,10 +7557,18 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-start lg:justify-start">
-          <div className="min-w-0 w-full lg:w-[690px] lg:flex-none">
+        <div
+          className="flex flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-stretch lg:justify-start"
+          style={
+            {
+              "--supergroup-max": `${supergroupMaxWidth}px`,
+              "--supergroup-min": `${supergroupMinWidth}px`,
+            } as React.CSSProperties
+          }
+        >
+          <div className="flex min-w-0 w-full max-w-full flex-col lg:flex-[0_0_var(--supergroup-max)] lg:max-w-[var(--supergroup-max)]">
             {isGroupTabbed ? (
-              <div className="relative flex w-full min-w-0 max-w-[690px] flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+              <div className="relative flex w-full min-w-0 max-w-[690px] flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 flex-1">
                 <div className="border-b border-slate-200 pb-3">
                 <div className="overflow-visible pl-1 pr-2">
                   <div
@@ -7591,7 +7633,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                   <div
                     id={qualifierPanelId(activeQualifierEntry[0])}
                     role="tabpanel"
-                    className="pt-4"
+                    className="pt-4 flex-1 flex flex-col min-h-0"
                   >
                     <QualifierPathBracket
                       key={activeQualifierEntry[0]}
@@ -7619,7 +7661,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 )}
               </div>
             ) : (
-              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,1fr))]">
+              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,1fr))] items-stretch">
                 {qualifierEntries.map(([path, matches]) => (
                   <QualifierPathBracket
                     key={path}
@@ -7642,13 +7684,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               </div>
             )}
           </div>
-          <div className="w-full lg:w-[420px] lg:flex-none space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+          <div className="flex min-w-0 w-full flex-col lg:flex-[1_1_0] lg:min-w-[var(--supergroup-min)] lg:max-w-[var(--supergroup-max)] max-w-[var(--supergroup-max)] space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">
                 Qualified through playoffs
               </h3>
             </div>
-            <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
+            <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm flex-1">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
                   <col />
@@ -7740,13 +7782,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div
           ref={groupCardsContainerRef}
           className={cn(
-            "flex flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-start lg:justify-start",
+            "flex flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-stretch lg:justify-start",
             thirdPlaceRankingRows.length > 0
               ? "lg:gap-6"
               : ""
           )}
+          style={
+            {
+              "--supergroup-max": `${supergroupMaxWidth}px`,
+              "--supergroup-min": `${supergroupMinWidth}px`,
+            } as React.CSSProperties
+          }
         >
-          <div className="min-w-0 w-full space-y-6 lg:flex-[0_1_auto] lg:max-w-[690px]">
+          <div className="flex min-w-0 w-full flex-col lg:flex-[0_0_var(--supergroup-max)] lg:max-w-[var(--supergroup-max)]">
             <GroupStageCards
               groupTables={groupTables}
               resolvedGroupMatches={resolvedGroupMatches}
@@ -7772,24 +7820,22 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             />
           </div>
           {thirdPlaceRankingRows.length > 0 && (
-            <div className="w-full lg:w-[520px] lg:flex-none space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+            <div className="flex min-w-0 w-full flex-col lg:flex-[1_1_0] lg:min-w-[var(--supergroup-min)] lg:max-w-[var(--supergroup-max)] max-w-[var(--supergroup-max)] space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-slate-900">
                   Ranking of 3rd place teams
                 </h3>
               </div>
-              <div className="flex flex-wrap justify-center gap-4 lg:flex-nowrap lg:items-start lg:justify-between">
-                <div className="flex w-full max-w-[520px] lg:max-w-none lg:flex-1">
-                  <GroupTable
-                    group={{ id: "Third place", teams: [] }}
-                    rows={thirdPlaceRankingRows}
-                    highlightThird={false}
-                    highlightWeakThird={false}
-                    highlightTop={8}
-                    showTieInfo={allGroupMatchesComplete}
-                    flags={data.flags}
-                  />
-                </div>
+              <div className="flex w-full px-0.5 flex-1">
+                <GroupTable
+                  group={{ id: "Third place", teams: [] }}
+                  rows={thirdPlaceRankingRows}
+                  highlightThird={false}
+                  highlightWeakThird={false}
+                  highlightTop={8}
+                  showTieInfo={allGroupMatchesComplete}
+                  flags={data.flags}
+                />
               </div>
             </div>
           )}
