@@ -5,6 +5,9 @@
 
 ## Design
 
+* Even more recent
+    * It's hard to click in compact mode - you have to hit the flag
+
 * More recent stuff!
     * playoff lines on mobile spacing
     * more responsive group title positinoning on click

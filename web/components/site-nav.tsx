@@ -19,7 +19,7 @@ const navGroups: Array<
     label: "World Football Ratings",
     icon: "⚽",
     children: [
-      { label: "Current ratings", href: "/", icon: "↕️" },
+      { label: "Current ratings", href: "/current-ratings", icon: "↕️" },
       { label: "Historical ratings", href: "/history", icon: "🕒" },
     ],
   },

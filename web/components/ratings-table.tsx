@@ -19,15 +19,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import type { RatingRow } from "@/lib/ratings";
 
-const numberFormatter = new Intl.NumberFormat("en", {
+const ratingFormatter = new Intl.NumberFormat("en", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
 
-const ACCENT_DARK_RGB = "189, 110, 109";
+const ACCENT_DARK_RGB = "16, 185, 129";
 
 function ratingBackground(value: number) {
   if (!Number.isFinite(value)) {
@@ -35,10 +34,13 @@ function ratingBackground(value: number) {
   }
   const clamped = Math.max(0, Math.min(value, 100));
   let alpha = 0;
-  if (clamped <= 90) {
-    alpha = (clamped / 90) * 0.3;
+  if (clamped <= 50) {
+    alpha = (clamped / 50) * 0.05;
+  } else if (clamped <= 90) {
+    alpha = 0.05 + ((clamped - 50) / 40) * 0.18;
   } else {
-    alpha = 0.3 + ((clamped - 90) / 10) * 0.1;
+    const scaled = (clamped - 90) / 10;
+    alpha = 0.3 + Math.pow(scaled, 1.4) * 0.25;
   }
   return { backgroundColor: `rgba(${ACCENT_DARK_RGB}, ${alpha})` };
 }
@@ -65,72 +67,101 @@ export function RatingsTable({ data }: RatingsTableProps) {
     { id: "rating", desc: true },
   ]);
 
-  const columns = React.useMemo<ColumnDef<RatingRow>[]>(
+  const columns = React.useMemo<
+    ColumnDef<RatingRow & { rank?: number }>[]
+  >(
     () => [
       {
-        id: "rank",
-        header: "Rank",
-        accessorFn: (row) => row.rank ?? row.rating_rank,
-        sortingFn: (a, b, id) => (b.getValue(id) ?? 0) - (a.getValue(id) ?? 0),
+        id: "flag",
+        header: "",
+        accessorFn: (row) => row.flagPath ?? "",
+        enableSorting: false,
+        meta: { minWidthCh: 2.5, isFlag: true, width: "2.5rem" },
         cell: ({ row }) => (
-          <span className="text-ink-200/80">
-            {row.original.rank ?? row.index + 1}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "team",
-        header: () => (
-          <div className="flex items-center gap-3">
-            <span className="inline-block h-5 w-7" aria-hidden="true" />
-            <span>Team</span>
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="flex items-center gap-3">
-            <div className="relative h-5 w-7 shrink-0 overflow-hidden rounded-[1px] border border-ink-700 bg-ink-800">
+          <div className="flex pl-2 w-full">
+            <div className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
               {row.original.flagPath ? (
                 <Image
                   src={row.original.flagPath}
                   alt={`${row.original.team} flag`}
                   fill
                   className="object-cover"
-                  sizes="28px"
+                  sizes="24px"
                 />
               ) : (
-                <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-ink-300">
+                <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold uppercase text-slate-500">
                   {teamInitials(row.original.team)}
                 </span>
               )}
             </div>
-            <span className="text-ebony">{row.original.team}</span>
           </div>
         ),
       },
       {
-        accessorKey: "rating",
+        id: "rank",
+        header: "Rank",
+        accessorFn: (row) => row.rank ?? row.rating_rank,
+        sortingFn: (a, b, id) => (b.getValue(id) ?? 0) - (a.getValue(id) ?? 0),
+        cell: ({ row }) => (
+          <span className="text-sm font-mono tabular-nums text-slate-700">
+            {row.original.rank ?? row.index + 1}
+          </span>
+        ),
+      },
+      {
+        id: "team",
+        header: "Team",
+        accessorFn: (row) => row.team,
+        sortingFn: (a, b, id) => {
+          const teamA = String(a.getValue(id) ?? "").toLowerCase();
+          const teamB = String(b.getValue(id) ?? "").toLowerCase();
+          return teamA.localeCompare(teamB);
+        },
+        cell: ({ row }) => (
+          <span className="min-w-0 truncate text-sm font-medium text-slate-900">
+            {row.original.team}
+          </span>
+        ),
+      },
+      {
+        id: "rating",
         header: "Overall",
-        cell: ({ getValue }) => (
-          <span className="font-mono">
-            {numberFormatter.format(getValue<number>())}
+        accessorFn: (row) => row.rating ?? Number.NaN,
+        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        meta: { isRating: true },
+        cell: ({ row }) => (
+          <span className="text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
+            {Number.isFinite(row.original.rating)
+              ? ratingFormatter.format(row.original.rating ?? 0)
+              : ""}
           </span>
         ),
       },
       {
-        accessorKey: "rating_attack",
+        id: "rating_attack",
         header: "Attack",
-        cell: ({ getValue }) => (
-          <span className="font-mono">
-            {numberFormatter.format(getValue<number>())}
+        accessorFn: (row) => row.rating_attack ?? Number.NaN,
+        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        meta: { isRating: true },
+        cell: ({ row }) => (
+          <span className="text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
+            {Number.isFinite(row.original.rating_attack)
+              ? ratingFormatter.format(row.original.rating_attack ?? 0)
+              : ""}
           </span>
         ),
       },
       {
-        accessorKey: "rating_defense",
+        id: "rating_defense",
         header: "Defense",
-        cell: ({ getValue }) => (
-          <span className="font-mono">
-            {numberFormatter.format(getValue<number>())}
+        accessorFn: (row) => row.rating_defense ?? Number.NaN,
+        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        meta: { isRating: true },
+        cell: ({ row }) => (
+          <span className="text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
+            {Number.isFinite(row.original.rating_defense)
+              ? ratingFormatter.format(row.original.rating_defense ?? 0)
+              : ""}
           </span>
         ),
       },
@@ -145,60 +176,100 @@ export function RatingsTable({ data }: RatingsTableProps) {
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    enableMultiSort: true,
   });
 
   return (
-    <div className="min-w-0 w-full overflow-hidden lg:rounded-xl lg:bg-white lg:ring-1 lg:ring-slate-200 lg:shadow-sm">
+    <div className="min-w-0 w-full overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <Table className="table-fixed w-full">
-          <TableHeader>
+        <Table className="w-full table-auto xl:table-fixed text-sm [--rating-col-width:clamp(5ch,7vw,9ch)] sm:[--rating-col-width:clamp(6ch,7vw,10ch)]">
+          <TableHeader className="border-b border-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+              <TableRow
+                key={headerGroup.id}
+                className="bg-slate-200 border-b border-slate-200"
+              >
+                {headerGroup.headers.map((header, index) => {
+                  const isLastHeader = index === headerGroup.headers.length - 1;
+                  return (
                   <TableHead
                     key={header.id}
-                    className={cn(
-                      "h-9 cursor-pointer select-none py-1.5",
-                      header.column.getCanSort() && "hover:text-ebony",
-                      "px-2",
-                      header.id === "rank" && "w-10 sm:w-12 md:w-16",
-                      header.id === "team" && "w-40 sm:w-56 md:w-80",
-                      (header.id === "rating" ||
-                        header.id === "rating_attack" ||
-                        header.id === "rating_defense") &&
-                        "w-16 sm:w-20 md:w-24 text-right px-1.5"
-                    )}
+                    className={`relative select-none ${
+                      header.column.getCanSort()
+                        ? "cursor-pointer hover:text-slate-900"
+                        : "cursor-default"
+                    } ${
+                      header.id === "flag"
+                        ? "text-left w-[3rem] min-w-[3rem] pl-1 pr-3"
+                        : header.id === "team"
+                        ? "text-left w-[12rem] min-w-[12rem] shrink-0"
+                        : header.id === "rank"
+                        ? "text-right whitespace-nowrap min-w-[4ch]"
+                        : "text-right"
+                    } px-2 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
+                      header.id === "flag"
+                        ? "sticky left-0 z-50 bg-slate-200 rounded-tl-xl"
+                        : ""
+                    } ${isLastHeader ? "rounded-tr-xl" : ""}`}
                     onClick={header.column.getToggleSortingHandler()}
+                    style={
+                      header.column.columnDef.meta?.minWidthCh
+                        ? {
+                            minWidth: `${header.column.columnDef.meta.minWidthCh}ch`,
+                          }
+                        : header.column.columnDef.meta?.isRating
+                        ? {
+                            minWidth: "var(--rating-col-width)",
+                          }
+                        : undefined
+                    }
                   >
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
                     )}
                   </TableHead>
-                ))}
+                );
+                })}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className="divide-y divide-slate-100">
             {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} className="h-9">
+              <TableRow
+                key={row.id}
+                className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
+              >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className={cn(
-                      "px-2 py-1.5",
-                      (cell.column.id === "rating" ||
-                        cell.column.id === "rating_attack" ||
-                        cell.column.id === "rating_defense") &&
-                        "text-right px-1.5"
-                    )}
-                    style={
-                      cell.column.id === "rating" ||
-                      cell.column.id === "rating_attack" ||
-                      cell.column.id === "rating_defense"
+                    className={`px-2 py-2.5 ${
+                      cell.column.id === "flag"
+                        ? "text-left w-[3rem] min-w-[3rem] pl-1 pr-3 py-2.5 overflow-hidden"
+                        : cell.column.id === "team"
+                        ? "text-left w-[12rem] min-w-[12rem] shrink-0 pl-2"
+                        : cell.column.id === "rank"
+                        ? "text-right"
+                        : "text-right"
+                    } ${
+                      cell.column.id === "flag"
+                        ? "sticky left-0 z-40 bg-white"
+                        : ""
+                    }`}
+                    style={{
+                      ...(cell.column.columnDef.meta?.isRating
                         ? ratingBackground(cell.getValue<number>())
-                        : undefined
-                    }
+                        : {}),
+                      ...(cell.column.columnDef.meta?.minWidthCh
+                        ? {
+                            minWidth: `${cell.column.columnDef.meta.minWidthCh}ch`,
+                          }
+                        : cell.column.columnDef.meta?.isRating
+                        ? {
+                            minWidth: "var(--rating-col-width)",
+                          }
+                        : {}),
+                    }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
