@@ -161,6 +161,46 @@ export function WorldCupProbabilitiesTable({
   const tableColumns = React.useMemo<ColumnDef<TableRowData>[]>(
     () => [
       {
+        id: "flag",
+        header: "",
+        accessorFn: (row) => row.flagPath ?? "",
+        meta: { minWidthCh: 2.5, isFlag: true, width: "2.5rem" },
+        cell: ({ row }) => (
+          <div className="flex pl-2 w-full">
+            <div className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+              {row.original.flagPath ? (
+                <Image
+                  src={row.original.flagPath}
+                  alt={`${row.original.team} flag`}
+                  fill
+                  className="object-cover"
+                  sizes="24px"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold uppercase text-slate-500">
+                  {teamInitials(row.original.team)}
+                </span>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "team",
+        header: "Team",
+        accessorFn: (row) => row.team,
+        sortingFn: (a, b, id) => {
+          const teamA = String(a.getValue(id) ?? "").toLowerCase();
+          const teamB = String(b.getValue(id) ?? "").toLowerCase();
+          return teamA.localeCompare(teamB);
+        },
+        cell: ({ row }) => (
+          <span className="min-w-0 truncate text-sm font-medium text-slate-900">
+            {row.original.team}
+          </span>
+        ),
+      },
+      {
         id: "group",
         header: () => (
           <span className="whitespace-nowrap">
@@ -203,44 +243,6 @@ export function WorldCupProbabilitiesTable({
           );
         },
       },
-      {
-        id: "flag",
-        header: "",
-        accessorFn: (row) => row.flagPath ?? "",
-        meta: { minWidthCh: 3, isFlag: true },
-        cell: ({ row }) => (
-          <div className="relative ml-auto h-4 w-6 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
-            {row.original.flagPath ? (
-              <Image
-                src={row.original.flagPath}
-                alt={`${row.original.team} flag`}
-                fill
-                className="object-cover"
-                sizes="24px"
-              />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold uppercase text-slate-500">
-                {teamInitials(row.original.team)}
-              </span>
-            )}
-          </div>
-        ),
-      },
-      {
-        id: "team",
-        header: "Team",
-        accessorFn: (row) => row.team,
-        sortingFn: (a, b, id) => {
-          const teamA = String(a.getValue(id) ?? "").toLowerCase();
-          const teamB = String(b.getValue(id) ?? "").toLowerCase();
-          return teamA.localeCompare(teamB);
-        },
-        cell: ({ row }) => (
-          <span className="min-w-0 truncate text-sm font-medium text-slate-900">
-            {row.original.team}
-          </span>
-        ),
-      },
       ...columns.map((column) => ({
         id: column,
         header:
@@ -248,6 +250,16 @@ export function WorldCupProbabilitiesTable({
             <span className="whitespace-nowrap">
               <span className="md:hidden">Champ.</span>
               <span className="hidden md:inline">Champion</span>
+            </span>
+          ) : column === "Win round of 16" ? (
+            <span className="whitespace-nowrap">
+              <span className="md:hidden">R16</span>
+              <span className="hidden md:inline">Win round of 16</span>
+            </span>
+          ) : column === "Win round of 32" ? (
+            <span className="whitespace-nowrap">
+              <span className="md:hidden">R32</span>
+              <span className="hidden md:inline">Win round of 32</span>
             </span>
           ) : (
             column
@@ -272,7 +284,7 @@ export function WorldCupProbabilitiesTable({
         id: "overall",
         header: () => (
           <span className="whitespace-nowrap">
-            <span className="md:hidden">Ovl.</span>
+            <span className="md:hidden">OVR.</span>
             <span className="hidden md:inline">Overall</span>
           </span>
         ),
@@ -346,7 +358,7 @@ export function WorldCupProbabilitiesTable({
   return (
     <div className="min-w-0 w-full overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <Table className="w-full table-auto lg:table-fixed text-sm [--group-col-width:4ch] sm:[--group-col-width:6ch] [--prob-col-width:clamp(4ch,6vw,8ch)] sm:[--prob-col-width:clamp(6ch,6vw,9ch)]">
+        <Table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] sm:[--prob-col-width:clamp(6ch,6vw,9ch)]">
           <TableHeader className="border-b border-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">
@@ -357,21 +369,19 @@ export function WorldCupProbabilitiesTable({
                     key={header.id}
                     className={`relative cursor-pointer select-none hover:text-slate-900 ${
                       header.id === "flag"
-                        ? "text-right min-w-[3ch]"
+                        ? "text-left w-[3rem] min-w-[3rem] pl-1 pr-3"
                         : header.id === "team"
-                        ? "text-left w-[12ch] md:w-[16ch] lg:w-[20ch] xl:w-[24ch]"
+                        ? "text-left w-[10rem] min-w-[10rem] shrink-0"
                         : header.column.columnDef.meta?.isGroup
-                        ? "text-center whitespace-nowrap min-w-[4ch] sm:min-w-[6ch]"
+                        ? "text-center whitespace-nowrap min-w-[3ch] sm:min-w-[4ch]"
                         : header.id === "overall" ||
                           header.id === "attack" ||
                           header.id === "defense"
                         ? "text-right whitespace-nowrap"
                         : "text-right"
                     } px-2 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
-                      header.id === "group"
-                        ? "sticky left-0 z-40 bg-slate-200 rounded-tl-xl"
-                        : header.id === "flag"
-                        ? "sticky left-[var(--group-col-width)] z-40 bg-slate-200"
+                      header.id === "flag"
+                        ? "sticky left-0 z-50 bg-slate-200 rounded-tl-xl"
                         : ""
                     } ${isLastHeader ? "rounded-tr-xl" : ""}`}
                     onClick={() => handleSortToggle(header.id)}
@@ -418,17 +428,15 @@ export function WorldCupProbabilitiesTable({
                     key={cell.id}
                     className={`px-2 py-2.5 ${
                       cell.column.id === "flag"
-                        ? "text-right min-w-[3ch] px-1"
+                        ? "text-left w-[3rem] min-w-[3rem] pl-1 pr-3 py-2.5 overflow-hidden"
                         : cell.column.id === "team"
-                        ? "text-left w-[12ch] md:w-[16ch] lg:w-[20ch] xl:w-[24ch] min-w-0 pl-1"
+                        ? "text-left w-[10rem] min-w-[10rem] shrink-0 pl-2"
                         : cell.column.columnDef.meta?.isGroup
-                        ? "text-center min-w-[4ch] sm:min-w-[6ch]"
+                        ? "text-center min-w-[3ch] sm:min-w-[4ch]"
                         : "text-right"
                     } ${
-                      cell.column.id === "group"
-                        ? "sticky left-0 z-30 bg-white"
-                        : cell.column.id === "flag"
-                        ? "sticky left-[var(--group-col-width)] z-30 bg-white"
+                      cell.column.id === "flag"
+                        ? "sticky left-0 z-40 bg-white"
                         : ""
                     } ${
                       isGroupEnd ? "border-b-2 border-slate-200" : ""

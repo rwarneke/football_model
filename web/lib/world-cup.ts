@@ -36,7 +36,17 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
     return { columns: [], rows: [] };
   }
   const headers = lines[0]?.split(",") ?? [];
-  const columns = headers.filter((header) => header !== "team");
+  const columnRenames = new Map<string, string>([
+    ["Reach Ro32", "Reach R32"],
+    ["Reach Ro16", "Reach R16"],
+  ]);
+  const columnDefs = headers
+    .filter((header) => header !== "team")
+    .map((header) => ({
+      source: header,
+      label: columnRenames.get(header) ?? header,
+    }));
+  const columns = columnDefs.map((column) => column.label);
 
   const groupFile = path.resolve(
     process.cwd(),
@@ -159,8 +169,8 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
     const pathGroup = path ? pathGroupMap.get(path) ?? null : null;
 
     const columnValues: Record<string, number> = {};
-    for (const column of columns) {
-      columnValues[column] = toNumber(record[column]);
+    for (const column of columnDefs) {
+      columnValues[column.label] = toNumber(record[column.source]);
     }
 
     const resolvedGroup = group ?? pathGroup;
