@@ -10,8 +10,8 @@ export default function WorldCupPredictorRoute() {
   });
 
   return (
-    <main className="px-2 pb-16 pt-12 md:px-6">
-      <div className="flex w-full flex-col gap-10">
+    <main className="px-1 pb-16 pt-12 sm:px-2 md:px-6">
+      <div className="flex w-full flex-col gap-6 sm:gap-10">
         <header className="space-y-4">
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
             FIFA WORLD CUP 2026

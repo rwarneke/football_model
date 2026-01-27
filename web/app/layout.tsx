@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${sourceCodePro.variable}`}>
       <body className="min-h-screen bg-white text-ebony antialiased">
-        <div className="fixed inset-x-0 top-0 z-30 h-16 border-b border-slate-200 bg-white md:hidden" />
+        <div className="fixed inset-x-0 top-0 z-[60] h-16 border-b border-slate-200 bg-white md:hidden" />
         <div className="flex min-h-screen">
           <aside className="relative z-[80] w-0 shrink-0 md:z-40 md:sticky md:top-0 md:h-screen md:w-auto md:border-r md:border-slate-200 md:bg-white">
             <SiteNav />

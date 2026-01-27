@@ -1998,8 +1998,8 @@ function MatchCard({
         )
     );
     const probabilityLabelWidthClass = isDecimalProbabilities
-      ? "min-w-[74px]"
-      : "w-16";
+      ? "min-w-[56px] sm:min-w-[74px]"
+      : "w-12 sm:w-16";
     const formattedHome = formatDisplayLabel(homeTeam);
     const formattedAway = formatDisplayLabel(awayTeam);
     // Use FIFA codes on mobile for group stage matches, or "Qualifier" for qualifier placeholders
@@ -2112,7 +2112,7 @@ function MatchCard({
             }}
             disabled={!isPickableMatch}
             className={cn(
-              "w-8 h-7 rounded-md text-center text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors",
+              "w-7 h-6 sm:w-8 sm:h-7 rounded-md text-center text-xs sm:text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors",
               !isScoreSet && "bg-slate-100 text-slate-400 placeholder:text-slate-400",
               isScoreSet && isWin && "bg-transparent text-blue-700",
               isScoreSet && isDraw && "bg-transparent text-blue-700",
@@ -2138,7 +2138,7 @@ function MatchCard({
           onClick={() => handleTeamSelect(side)}
           disabled={!isPickableMatch}
           className={cn(
-            "group flex items-center gap-3 px-1.5 py-2 transition-all duration-200 w-full relative",
+            "group flex items-center gap-1.5 sm:gap-3 px-1 sm:px-1.5 py-1.5 sm:py-2 transition-all duration-200 w-full relative",
             side === "home" ? "justify-end" : "justify-start",
             isPickableMatch && "cursor-pointer",
             !isPickableMatch && "cursor-default"
@@ -2159,12 +2159,12 @@ function MatchCard({
             <TeamFlag
               team={team}
               flags={flags}
-              className="h-4 w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] relative z-10"
+              className="h-3.5 w-5 sm:h-4 sm:w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] relative z-10"
             />
           )}
           <span
             className={cn(
-              "min-w-0 truncate text-sm leading-5 relative z-10",
+              "min-w-0 truncate text-xs sm:text-sm leading-5 relative z-10",
               side === "home" && "text-right",
               !isPickableMatch && "text-slate-400",
               !isScoreSet && isPickableMatch && "font-medium text-slate-900",
@@ -2179,7 +2179,7 @@ function MatchCard({
             <TeamFlag
               team={team}
               flags={flags}
-              className="h-4 w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] relative z-10"
+              className="h-3.5 w-5 sm:h-4 sm:w-6 flex-shrink-0 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] relative z-10"
             />
           )}
         </button>
@@ -2243,7 +2243,7 @@ function MatchCard({
             <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
               <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
-            <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm text-center">
+            <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm text-center">
               <span>{hintTextHome}</span>
             </div>
           </div>
@@ -2251,7 +2251,7 @@ function MatchCard({
             <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
               <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
-            <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm text-center">
+            <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm text-center">
               <span>Click the probability bar to predict a draw</span>
             </div>
           </div>
@@ -2259,7 +2259,7 @@ function MatchCard({
             <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
               <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
-            <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm text-center">
+            <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm text-center">
               <span>{hintTextAway}</span>
             </div>
           </div>
@@ -2310,7 +2310,7 @@ function MatchCard({
           </div>
 
           {/* Score area */}
-          <div className="relative flex items-center gap-1 px-1.5">
+          <div className="relative flex items-center gap-0.5 sm:gap-1 px-0.5 sm:px-1.5">
             {renderScoreInput("home", homeInputRef)}
             <button
               type="button"
@@ -2319,12 +2319,12 @@ function MatchCard({
               onMouseEnter={() => setIsDrawHovered(true)}
               onMouseLeave={() => setIsDrawHovered(false)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-md transition-colors",
+                "flex flex-col items-center justify-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 sm:py-1 rounded-md transition-colors",
                 allowDraw && isPickableMatch && "cursor-pointer",
                 !isPickableMatch && "cursor-default"
               )}
             >
-              <div className="flex h-1 w-16 overflow-hidden rounded-full bg-slate-200">
+              <div className="flex h-1 w-12 sm:w-16 overflow-hidden rounded-full bg-slate-200">
                 <div
                   className="h-full bg-emerald-400"
                   style={{ width: `${segments?.home ?? 0}%` }}
@@ -2340,9 +2340,9 @@ function MatchCard({
               </div>
               <div
                 className={cn(
-                  "flex justify-between text-xs leading-none tabular-nums text-slate-600",
+                  "flex justify-between text-[10px] sm:text-xs leading-none tabular-nums text-slate-600",
                   probabilityLabelWidthClass,
-                  isDecimalProbabilities && "gap-1"
+                  isDecimalProbabilities && "gap-0.5 sm:gap-1"
                 )}
               >
                 <span className={cn(isDecimalProbabilities && "min-w-[18px] text-center")}>
@@ -2598,7 +2598,7 @@ function KnockoutMatchCard({
   compact,
   isFinal,
   centerPlaceholders,
-  cardWidthClass = "w-[192px]",
+  cardWidthClass = "w-[152px] sm:w-[192px]",
   containerRef,
   homeRowRef,
   awayRowRef,
@@ -2654,7 +2654,7 @@ function KnockoutMatchCard({
         away: awayValue,
       })
     : normalizeTwoSegments({ home: homeValue, away: awayValue });
-  const paddedRow = compact ? "py-1.5" : "py-0.5";
+  const paddedRow = compact ? "py-1 sm:py-1.5" : "py-0.5";
   const scoreSlot = <div className="flex w-0 flex-none" />;
 
   const renderTeamLabel = (
@@ -2668,7 +2668,7 @@ function KnockoutMatchCard({
     const textAlign = isPlaceholder && centerPlaceholders ? "text-center" : mirrored ? "text-right" : "text-left";
     if (isPlaceholder) {
       return (
-      <span className={cn("inline-flex h-[20px] max-w-full items-center truncate rounded-md bg-slate-50 px-2 text-[12px] leading-[20px] text-slate-500 ring-1 ring-slate-200", textAlign, centerPlaceholders && "justify-center")}>
+      <span className={cn("inline-flex h-[18px] sm:h-[20px] max-w-full items-center truncate rounded-md bg-slate-50 px-1.5 sm:px-2 text-[11px] sm:text-[12px] leading-[18px] sm:leading-[20px] text-slate-500 ring-1 ring-slate-200", textAlign, centerPlaceholders && "justify-center")}>
         {formatDisplayLabel(team)}
       </span>
     );
@@ -2676,7 +2676,7 @@ function KnockoutMatchCard({
   return (
       <span
         className={cn(
-          "block min-w-0 truncate text-sm leading-[20px]",
+          "block min-w-0 truncate text-xs sm:text-sm leading-[20px]",
           textAlign,
           !isResolved && "font-medium text-slate-900",
           isResolved && isWinner && "font-semibold text-slate-900",
@@ -2718,7 +2718,7 @@ function KnockoutMatchCard({
         disabled={!isPickableMatch}
         className={cn(
           "group flex w-full flex-1 items-center relative z-10",
-          centerPlaceholders && isLockedMatch ? "px-2 justify-center gap-0" : "gap-2",
+          centerPlaceholders && isLockedMatch ? "px-1.5 sm:px-2 justify-center gap-0" : "gap-1.5 sm:gap-2",
           centerPlaceholders && isLockedMatch ? "" : mirrored ? "pl-0 pr-0" : "pl-0 pr-0",
           paddedRow,
           isResolved &&
@@ -2774,7 +2774,7 @@ function KnockoutMatchCard({
               <TeamFlag
                 team={team}
                 flags={flags}
-                className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                className="h-3.5 w-5 sm:h-4 sm:w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
               />
             )}
           </>
@@ -2784,7 +2784,7 @@ function KnockoutMatchCard({
               <TeamFlag
                 team={team}
                 flags={flags}
-                className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                className="h-3.5 w-5 sm:h-4 sm:w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
               />
             )}
             <div className={cn("relative flex min-w-0 items-center", isPlaceholder && centerPlaceholders ? "flex-1 justify-center" : "flex-1")}>
@@ -2819,16 +2819,16 @@ function KnockoutMatchCard({
   const probabilityBar = (
     <div
       className={cn(
-        "flex h-[72px] w-7 flex-col items-center justify-center px-4 py-1 pointer-events-none",
+        "flex h-[56px] sm:h-[72px] w-5 sm:w-7 flex-col items-center justify-center px-2 sm:px-4 py-0.5 sm:py-1 pointer-events-none",
         hideProbabilities && "invisible",
         hasSelection && "opacity-55"
       )}
       aria-hidden={hideProbabilities}
     >
-      <span className="text-xs tabular-nums text-slate-600">
+      <span className="text-[10px] sm:text-xs tabular-nums text-slate-600">
         {segments ? formatSegmentDisplay(segments.home) : "--"}
       </span>
-      <div className="h-6 w-2 overflow-hidden rounded-full bg-slate-200/70">
+      <div className="h-4 sm:h-6 w-1.5 sm:w-2 overflow-hidden rounded-full bg-slate-200/70">
         <div className="flex h-full flex-col">
           <div
             className="w-full bg-emerald-300/70"
@@ -2846,7 +2846,7 @@ function KnockoutMatchCard({
           />
         </div>
       </div>
-      <span className="text-xs tabular-nums text-slate-600">
+      <span className="text-[10px] sm:text-xs tabular-nums text-slate-600">
         {segments ? formatSegmentDisplay(segments.away) : "--"}
       </span>
     </div>
@@ -2929,7 +2929,7 @@ function KnockoutMatchCard({
         className
       )}
     >
-      <div className="flex h-[72px]">
+      <div className="flex h-[56px] sm:h-[72px]">
         {centerPlaceholders && isLockedMatch ? (
           // For Final/Third Place with both placeholders, hide probability bar for proper centering
           teamRows
@@ -3242,17 +3242,17 @@ function QualifierPathBracket({
   }, [semis, final, winnerSelections]);
 
   const content = (
-    <div className="flex w-full flex-col gap-4">
+    <div className="flex w-full flex-col gap-2 sm:gap-4">
       <div
         className={cn(
-          "flex items-center gap-3 min-h-[44px]",
-          showTitle ? "justify-between" : "justify-start flex-wrap mb-4"
+          "flex items-center gap-2 sm:gap-3 min-h-[36px] sm:min-h-[44px]",
+          showTitle ? "justify-between" : "justify-start flex-wrap mb-2 sm:mb-4"
         )}
       >
         {showTitle && (
-          <h3 className="text-sm font-semibold text-slate-900">{path}</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-slate-900">{path}</h3>
         )}
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
           <LoadingButton
             loading={autoPredictLoading}
             disabled={!hasUnpredictedPathMatches}
@@ -3291,7 +3291,7 @@ function QualifierPathBracket({
           >
             <div
               ref={hintTextRef}
-              className="absolute flex w-44 items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm text-center"
+              className="absolute flex w-44 items-center justify-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm text-center"
               style={{ left: hintPosition.textX, top: hintPosition.textY }}
             >
               <span>Click to predict a winner</span>
@@ -3328,9 +3328,9 @@ function QualifierPathBracket({
           ))}
         </svg>
         <div className="relative z-10">
-          <div className="grid min-w-max grid-cols-[max-content_max-content] gap-4 pr-2 sm:pr-1">
+          <div className="grid min-w-max grid-cols-[max-content_max-content] gap-3 sm:gap-4 pr-2 sm:pr-1">
           <div
-            className="grid w-fit grid-rows-[72px_72px] gap-4"
+            className="grid w-fit grid-rows-[56px_56px] sm:grid-rows-[72px_72px] gap-3 sm:gap-4"
             style={semisOffset ? { marginTop: semisOffset } : undefined}
           >
             {topSemi ? (
@@ -3378,7 +3378,7 @@ function QualifierPathBracket({
                 );
               })()
             ) : (
-              <div className="h-[72px]" />
+              <div className="h-[56px] sm:h-[72px]" />
             )}
             {bottomSemi ? (
               (() => {
@@ -3427,10 +3427,10 @@ function QualifierPathBracket({
                 );
               })()
             ) : (
-              <div className="h-[72px]" />
+              <div className="h-[56px] sm:h-[72px]" />
             )}
           </div>
-          <div className="grid w-fit grid-rows-[72px_auto] gap-4">
+          <div className="grid w-fit grid-rows-[56px_auto] sm:grid-rows-[72px_auto] gap-3 sm:gap-4">
             {final && (
               <KnockoutMatchCard
                 homeTeam={finalHome}
@@ -3469,10 +3469,10 @@ function QualifierPathBracket({
               {qualifiedTeam && (
                 <div className="rounded-lg px-3 py-2 bg-[radial-gradient(ellipse_at_center,rgba(219,234,254,0.7)_0%,rgba(219,234,254,0.35)_45%,rgba(219,234,254,0.15)_65%,transparent_100%)]">
                   <div className="flex flex-col items-center gap-2 text-slate-600">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                    <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                       Qualified
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <TeamFlag
                         team={qualifiedTeam}
                         flags={flags}
@@ -3550,25 +3550,37 @@ function GroupTable({
     <div className="w-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden relative">
       <style dangerouslySetInnerHTML={{ __html: `
         @media (max-width: 639px) {
-          .group-table-mobile col:nth-child(1) { width: 34px !important; }
-          .group-table-mobile col:nth-child(3) { width: 30px !important; }
-          .group-table-mobile col:nth-child(4) { width: 26px !important; }
-          .group-table-mobile col:nth-child(5) { width: 26px !important; }
-          .group-table-mobile col:nth-child(6) { width: 26px !important; }
-          .group-table-mobile col:nth-child(7) { width: 32px !important; }
-          .group-table-mobile col:nth-child(8) { width: 32px !important; }
-          .group-table-mobile col:nth-child(9) { width: 30px !important; }
-          .group-table-mobile col:nth-child(10) { width: 38px !important; }
+          .group-table-mobile col:nth-child(1) { width: 30px !important; }
+          .group-table-mobile col:nth-child(2) { min-width: 80px !important; }
+          .group-table-mobile col:nth-child(3) { width: 26px !important; }
+          .group-table-mobile col:nth-child(4) { width: 22px !important; }
+          .group-table-mobile col:nth-child(5) { width: 22px !important; }
+          .group-table-mobile col:nth-child(6) { width: 22px !important; }
+          .group-table-mobile col:nth-child(7) { width: 28px !important; }
+          .group-table-mobile col:nth-child(8) { width: 28px !important; }
+          .group-table-mobile col:nth-child(9) { width: 26px !important; }
+          .group-table-mobile col:nth-child(10) { width: 32px !important; }
         }
         @media (max-width: 479px) {
-          .group-table-mobile col:nth-child(1) { width: 36px !important; }
-          .group-table-mobile col:nth-child(3) { width: 32px !important; }
-          .group-table-mobile col:nth-child(4) { width: 28px !important; }
-          .group-table-mobile col:nth-child(5) { width: 28px !important; }
-          .group-table-mobile col:nth-child(6) { width: 28px !important; }
-          .group-table-mobile col:nth-child(9) { width: 32px !important; }
-          .group-table-mobile col:nth-child(10) { width: 40px !important; }
+          .group-table-mobile col:nth-child(1) { width: 28px !important; }
+          .group-table-mobile col:nth-child(2) { min-width: 70px !important; }
+          .group-table-mobile col:nth-child(3) { width: 24px !important; }
+          .group-table-mobile col:nth-child(4) { width: 20px !important; }
+          .group-table-mobile col:nth-child(5) { width: 20px !important; }
+          .group-table-mobile col:nth-child(6) { width: 20px !important; }
+          .group-table-mobile col:nth-child(9) { width: 28px !important; }
+          .group-table-mobile col:nth-child(10) { width: 32px !important; }
           .group-table-mobile .group-table-gfga { display: none !important; }
+        }
+        @media (max-width: 359px) {
+          .group-table-mobile col:nth-child(1) { width: 26px !important; }
+          .group-table-mobile col:nth-child(2) { min-width: 65px !important; }
+          .group-table-mobile col:nth-child(3) { width: 22px !important; }
+          .group-table-mobile col:nth-child(4) { width: 18px !important; }
+          .group-table-mobile col:nth-child(5) { width: 18px !important; }
+          .group-table-mobile col:nth-child(6) { width: 18px !important; }
+          .group-table-mobile col:nth-child(9) { width: 26px !important; }
+          .group-table-mobile col:nth-child(10) { width: 30px !important; }
         }
       `}} />
       {/* Qualifier markers overlay - positioned relative to table container */}
@@ -3606,7 +3618,7 @@ function GroupTable({
         <table className="w-full table-fixed text-sm group-table-mobile">
           <colgroup>
             <col style={{ width: "40px" }} />
-            <col />
+            <col style={{ minWidth: "100px" }} />
             <col style={{ width: "36px" }} />
             <col style={{ width: "32px" }} />
             <col style={{ width: "32px" }} />
@@ -3618,34 +3630,35 @@ function GroupTable({
           </colgroup>
           <thead className="bg-slate-200 border-b border-slate-200">
             <tr>
-              <th className="px-1.5 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                Pos
+              <th className="px-0.5 sm:px-1.5 lg:px-2 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                <span className="sm:hidden">#</span>
+                <span className="hidden sm:inline">Pos</span>
               </th>
-              <th className="px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-1 sm:px-2 py-1.5 sm:py-2.5 text-left text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Team
               </th>
-              <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-0.5 sm:px-1 lg:px-2 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pld
               </th>
-              <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-0.5 sm:px-1 lg:px-2 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 W
               </th>
-              <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-0.5 sm:px-1 lg:px-2 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 D
               </th>
-              <th className="px-1 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-0.5 sm:px-1 lg:px-2 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 L
               </th>
-              <th className="group-table-gfga px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="group-table-gfga px-0.5 sm:px-1 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GF
               </th>
-              <th className="group-table-gfga px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="group-table-gfga px-0.5 sm:px-1 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GA
               </th>
-              <th className="px-0.5 lg:px-1 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-0.5 sm:px-0.5 lg:px-1 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 GD
               </th>
-              <th className="px-1.5 lg:px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <th className="px-0.5 sm:px-1.5 lg:px-2 py-1.5 sm:py-2.5 text-center text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                 Pts
               </th>
             </tr>
@@ -3667,17 +3680,17 @@ function GroupTable({
                     isLastRow && "border-b-0"
                   )}
                 >
-                  <td className="px-1.5 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-600">
+                  <td className="px-0.5 sm:px-1.5 lg:px-2 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm tabular-nums text-slate-600">
                     {row.position}
                   </td>
-                  <td className="px-2 py-2.5">
-                    <div className="flex min-w-0 items-center gap-2">
+                  <td className="px-1 sm:px-2 py-1.5 sm:py-2.5">
+                    <div className="flex min-w-0 items-center gap-1 sm:gap-2">
                       <TeamFlag
                         team={row.team}
                         flags={flags}
-                        className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                        className="h-3.5 w-5 sm:h-4 sm:w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] flex-shrink-0"
                       />
-                      <span className="min-w-0 truncate text-sm font-medium text-slate-900">
+                      <span className="min-w-0 truncate text-xs sm:text-sm font-medium text-slate-900">
                         {formatDisplayLabel(row.team)}
                       </span>
                       {showTieInfo && row.randomTiebreak && (
@@ -3694,28 +3707,28 @@ function GroupTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-0.5 sm:px-1 lg:px-2 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.played}
                   </td>
-                  <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-0.5 sm:px-1 lg:px-2 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.wins}
                   </td>
-                  <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-0.5 sm:px-1 lg:px-2 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.draws}
                   </td>
-                  <td className="px-1 lg:px-2 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-0.5 sm:px-1 lg:px-2 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.losses}
                   </td>
-                  <td className="group-table-gfga px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="group-table-gfga px-0.5 sm:px-1 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.gf}
                   </td>
-                  <td className="group-table-gfga px-1 py-2.5 text-center text-sm tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="group-table-gfga px-0.5 sm:px-1 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm tabular-nums text-slate-700 whitespace-nowrap">
                     {row.ga}
                   </td>
-                  <td className="px-0.5 lg:px-1 py-2.5 text-center text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
+                  <td className="px-0.5 sm:px-0.5 lg:px-1 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm font-medium tabular-nums text-slate-700 whitespace-nowrap">
                     {row.gd > 0 ? `+${row.gd}` : row.gd}
                   </td>
-                  <td className="px-1.5 lg:px-2 py-2.5 text-center text-sm font-semibold tabular-nums text-slate-900 whitespace-nowrap">
+                  <td className="px-0.5 sm:px-1.5 lg:px-2 py-1.5 sm:py-2.5 text-center text-xs sm:text-sm font-semibold tabular-nums text-slate-900 whitespace-nowrap">
                     {row.points}
                   </td>
                 </tr>
@@ -3836,16 +3849,16 @@ function GroupStageCards({
       <>
         <div
           className={cn(
-            "flex items-center gap-3 min-h-[44px]",
-            showTitle ? "justify-between" : "justify-start flex-wrap mb-4"
+            "flex items-center gap-2 sm:gap-3 min-h-[36px] sm:min-h-[44px]",
+            showTitle ? "justify-between" : "justify-start flex-wrap mb-2 sm:mb-4"
           )}
         >
           {showTitle && (
-            <h3 className="text-lg font-semibold text-slate-900">
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900">
               Group {entry.group.id}
             </h3>
           )}
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
             <LoadingButton
               loading={Boolean(loadingKeys[`group:${entry.group.id}`])}
               disabled={!hasUnpredictedGroupMatches}
@@ -3907,8 +3920,8 @@ function GroupStageCards({
             )}
           </div>
         </div>
-        <div className="flex flex-col gap-4">
-          <div className="flex w-full flex-col gap-3 px-0.5">
+        <div className="flex flex-col gap-2 sm:gap-4">
+          <div className="flex w-full flex-col gap-2 sm:gap-3 px-0.5">
             {matches.map((match) => {
               const probabilities = getMatchProbabilityLabels({
                 homeTeam: match.homeTeam,
@@ -3972,7 +3985,7 @@ function GroupStageCards({
     return (
       <div
         key={entry.group.id}
-        className="relative flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 h-full"
+        className="relative flex w-full min-w-0 flex-col gap-2 sm:gap-4 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-2 sm:p-4 h-full"
       >
         {renderGroupContent(entry, showTitle)}
       </div>
@@ -3986,7 +3999,7 @@ function GroupStageCards({
       return null;
     }
     return (
-      <div className="relative flex w-full min-w-0 flex-col overflow-visible rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 flex-1">
+      <div className="relative flex w-full min-w-0 flex-col overflow-visible rounded-xl bg-slate-50 ring-1 ring-slate-200 p-2 sm:p-4 flex-1">
         <div className="border-b border-slate-200 pb-3">
           <div className="overflow-visible pl-1 pr-2">
             <div
@@ -4147,6 +4160,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   );
   const [compactKnockout, setCompactKnockout] = React.useState(false);
   const hasUserSetCompactKnockout = React.useRef(false);
+  const isSmallScreen = useMediaQuery("(max-width: 639px)");
   const pendingGroupsAfterQualifiers = React.useRef(false);
   const groupCardsContainerRef = React.useRef<HTMLDivElement | null>(null);
   const qualifierPathTabsRef = React.useRef<HTMLDivElement | null>(null);
@@ -6197,7 +6211,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         const semisAvg = centers.reduce((sum, value) => sum + value, 0) / centers.length;
         const listOffset = listRect.top - containerRect.top;
         // Position third place lower than semis, with same offset as final is above (symmetric)
-        const finalOffset = 72; // Distance above/below semis average
+        const finalOffset = isSmallScreen ? 56 : 72; // Distance above/below semis average
         // In compact mode, move third place up by one match height
         const compactAdjustment = compactKnockout ? (knockoutCardHeight ?? 64) : 0;
         const nextTop = semisAvg - listOffset + finalOffset - compactAdjustment;
@@ -6218,7 +6232,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, knockoutCenters, knockoutContainerRef, compactKnockout, knockoutCardHeight]);
+  }, [knockoutMatchesByStage, knockoutCenters, knockoutContainerRef, compactKnockout, knockoutCardHeight, isSmallScreen]);
 
   React.useLayoutEffect(() => {
     const container = knockoutContainerRef.current;
@@ -6236,7 +6250,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
       frame = requestAnimationFrame(() => {
         const containerRect = container.getBoundingClientRect();
         const finalListRect = finalList.getBoundingClientRect();
-        const cardHeight = 64; // Match card height
+        const cardHeight = isSmallScreen ? 56 : 64; // Match card height
         
         // Get SF centers
         const sfCenters = semifinalMatches
@@ -6257,7 +6271,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         
         // Position Final equidistant from semis as Third Place (symmetric)
         // Final CENTER = sfAvg - listOffset - 80 - cardHeight/2
-        const finalOffset = 72; // Same offset used for Third Place
+        const finalOffset = isSmallScreen ? 56 : 72; // Same offset used for Third Place
         // In compact mode, move final down by one match height
         const compactAdjustment = compactKnockout ? (knockoutCardHeight ?? 64) : 0;
         const nextCenter = sfAvg - listOffset - finalOffset - cardHeight / 2 + compactAdjustment;
@@ -6277,7 +6291,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, knockoutCenters, compactKnockout]);
+  }, [knockoutMatchesByStage, knockoutCenters, compactKnockout, isSmallScreen]);
 
   const handleAutopredict = React.useCallback(() => {
     setShowQualifierHint(false);
@@ -7572,7 +7586,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     setAutoKnockoutWinners({});
   }, [knockoutWinners]);
 
-  const knockoutBaseColumnWidth = compactKnockout ? 48 : 200;
+  const knockoutBaseColumnWidth = compactKnockout ? 48 : isSmallScreen ? 152 : 200;
   const knockoutBaseGap = compactKnockout ? 8 : 24;
   const knockoutSfPosition = compactKnockout ? 3 : 2.8;
   const knockoutLeftBlockWidth =
@@ -7627,16 +7641,16 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         }
       `}</style>
       <div className="h-px w-full bg-slate-200/80" />
-      <section className="space-y-6">
+      <section className="space-y-3 sm:space-y-6">
         <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-end gap-2 sm:gap-3">
               <span
                 className="w-2 rounded-full bg-blue-300"
                 style={{ height: "calc(1em * 2)" }}
                 aria-hidden="true"
               />
-              <h2 className="text-2xl font-semibold text-ebony">
+              <h2 className="text-xl sm:text-2xl font-semibold text-ebony">
                 Qualifier playoffs
               </h2>
             </div>
@@ -7676,7 +7690,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           </div>
         </div>
         <div
-          className="flex flex-col gap-6 md:flex-row md:flex-wrap md:items-stretch md:justify-start"
+          className="flex flex-col gap-3 sm:gap-6 md:flex-row md:flex-wrap md:items-stretch md:justify-start"
           style={
             {
               "--supergroup-min": `${supergroupMinWidth}px`,
@@ -7685,7 +7699,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         >
           <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[3_1_0%] md:min-w-[var(--supergroup-min)]">
             {isGroupTabbed ? (
-              <div className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4 flex-1">
+              <div className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 p-2 sm:p-4 flex-1">
                 <div className="border-b border-slate-200 pb-3">
                 <div className="overflow-visible pl-1 pr-2">
                   <div
@@ -7705,7 +7719,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                           aria-selected={isActive}
                           aria-controls={qualifierPanelId(path)}
                           className={cn(
-                            "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors",
+                            "rounded-full border px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-colors",
                             isHighlighted && "ring-2 ring-[color:var(--cta-color)]",
                             isActive
                               ? "border-slate-900 bg-slate-900 text-white"
@@ -7778,7 +7792,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 )}
               </div>
             ) : (
-              <div className="grid gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,1fr))] items-stretch">
+              <div className="grid gap-3 sm:gap-6 lg:gap-6 grid-cols-[repeat(auto-fit,minmax(432px,1fr))] items-stretch">
                 {qualifierEntries.map(([path, matches]) => (
                   <QualifierPathBracket
                     key={path}
@@ -7801,9 +7815,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               </div>
             )}
           </div>
-          <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[2_1_0%] md:min-w-[var(--supergroup-min)] space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+          <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[2_1_0%] md:min-w-[var(--supergroup-min)] space-y-2 sm:space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-2 sm:p-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900">
                 Qualified through playoffs
               </h3>
             </div>
@@ -7815,10 +7829,10 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 </colgroup>
                 <thead className="bg-slate-200 border-b border-slate-200">
                   <tr>
-                    <th className="px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    <th className="px-1 sm:px-2 py-1.5 sm:py-2.5 text-left text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                       Team
                     </th>
-                    <th className="px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    <th className="px-1 sm:px-2 py-1.5 sm:py-2.5 text-left text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                       Path
                     </th>
                   </tr>
@@ -7826,19 +7840,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 <tbody className="divide-y divide-slate-100">
                   {qualifierQualifiedRows.map((row) => (
                     <tr key={row.slot}>
-                      <td className="px-2 py-2.5">
-                        <div className="flex min-w-0 items-center gap-2">
+                      <td className="px-1 sm:px-2 py-1.5 sm:py-2.5">
+                        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
                           {row.team ? (
                             <TeamFlag
                               team={row.team}
                               flags={data.flags}
-                              className="h-4 w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
+                              className="h-3.5 w-5 sm:h-4 sm:w-6 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] flex-shrink-0"
                             />
                           ) : (
-                            <div className="h-4 w-6 rounded-sm bg-slate-100 ring-1 ring-slate-200" />
+                            <div className="h-3.5 w-5 sm:h-4 sm:w-6 rounded-sm bg-slate-100 ring-1 ring-slate-200 flex-shrink-0" />
                           )}
                           <span className={cn(
-                            "min-w-0 truncate text-sm",
+                            "min-w-0 truncate text-xs sm:text-sm",
                             row.team ? "font-medium text-slate-900" : "text-slate-400"
                           )}>
                             {row.team ? formatDisplayLabel(row.team) : "—"}
@@ -7846,7 +7860,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                         </div>
                       </td>
                       <td className={cn(
-                        "px-2 py-2.5 text-sm",
+                        "px-1 sm:px-2 py-1.5 sm:py-2.5 text-xs sm:text-sm",
                         row.team ? "text-slate-700" : "text-slate-400"
                       )}>
                         {row.path ?? "—"}
@@ -7862,16 +7876,16 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
 
       <div className="h-px w-full bg-slate-200/80" />
 
-      <section className="space-y-6">
+      <section className="space-y-3 sm:space-y-6">
         <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-end gap-2 sm:gap-3">
               <span
                 className="w-2 rounded-full bg-blue-300"
                 style={{ height: "calc(1em * 2)" }}
                 aria-hidden="true"
               />
-              <h2 className="text-2xl font-semibold text-ebony">Group stage</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold text-ebony">Group stage</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <LoadingButton
@@ -7911,7 +7925,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         <div
           ref={groupCardsContainerRef}
           className={cn(
-            "flex flex-col gap-6 md:flex-row md:flex-wrap md:items-stretch md:justify-start",
+            "flex flex-col gap-3 sm:gap-6 md:flex-row md:flex-wrap md:items-stretch md:justify-start",
             thirdPlaceRankingRows.length > 0
               ? "md:gap-6"
               : ""
@@ -7949,9 +7963,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             />
           </div>
           {thirdPlaceRankingRows.length > 0 && (
-            <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[2_1_0%] md:min-w-[var(--supergroup-min)] space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-4">
+            <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[2_1_0%] md:min-w-[var(--supergroup-min)] space-y-2 sm:space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-2 sm:p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-900">
                   Ranking of 3rd place teams
                 </h3>
               </div>
@@ -7973,7 +7987,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
 
       <div className="h-px w-full bg-slate-200/80" />
 
-      <section className="relative space-y-6">
+      <section className="relative space-y-3 sm:space-y-6">
         {showCompactModeHint && compactModeHintPosition && (
           <div
             className={cn(
@@ -7988,7 +8002,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           >
             <div 
               ref={compactModeHintBoxRef}
-              className="flex items-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white shadow-sm max-w-[240px] sm:max-w-none"
+              className="flex items-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm max-w-[240px] sm:max-w-none"
             >
               <span className="sm:whitespace-nowrap">Toggle compact mode to see team names and probabilities.</span>
               <button
@@ -8032,17 +8046,17 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           </div>
         )}
         <div>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-end gap-3">
+          <div className="flex flex-col gap-2 sm:gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-end gap-2 sm:gap-3">
                 <span
                   className="w-2 rounded-full bg-blue-300"
                   style={{ height: "calc(1em * 2)" }}
                   aria-hidden="true"
                 />
-                <h2 className="text-2xl font-semibold text-ebony">Knockout stage</h2>
+                <h2 className="text-xl sm:text-2xl font-semibold text-ebony">Knockout stage</h2>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-sm font-medium text-slate-600">
                   Compact mode
                 </span>
@@ -8190,7 +8204,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     </button>
                   )}
                   {showTournamentControls && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <LoadingButton
                         loading={Boolean(loadingKeys.tournament)}
                         disabled={!canAutopredictTournament}
@@ -8801,7 +8815,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 </button>
               )}
               {showTournamentControls && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <LoadingButton
                     loading={Boolean(loadingKeys.tournament)}
                     disabled={!canAutopredictTournament}
