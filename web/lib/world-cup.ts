@@ -8,8 +8,11 @@ export type WorldCupProbabilities = {
     flagPath: string;
     group: string | null;
     values: Record<string, number>;
+    statuses: Record<string, ProbabilityStatus>;
   }>;
 };
+
+export type ProbabilityStatus = "G" | "U" | "I";
 
 const DATA_FILE = path.resolve(
   process.cwd(),
@@ -17,12 +20,25 @@ const DATA_FILE = path.resolve(
   "model_output",
   "simulation_results.csv"
 );
+const STATUS_FILE = path.resolve(
+  process.cwd(),
+  "..",
+  "model_output",
+  "simulation_results_status.csv"
+);
 
 function toNumber(value: string | undefined) {
   if (!value) {
     return Number.NaN;
   }
   return Number(value);
+}
+
+function toStatus(value: string | undefined): ProbabilityStatus {
+  if (value === "G" || value === "U" || value === "I") {
+    return value;
+  }
+  return "U";
 }
 
 function flagFileName(team: string) {
@@ -47,6 +63,24 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
       label: columnRenames.get(header) ?? header,
     }));
   const columns = columnDefs.map((column) => column.label);
+
+  let statusHeaders: string[] = [];
+  const statusMap = new Map<string, Record<string, string | undefined>>();
+  if (fs.existsSync(STATUS_FILE)) {
+    const statusContents = fs.readFileSync(STATUS_FILE, "utf8");
+    const statusLines = statusContents.trim().split(/\r?\n/);
+    statusHeaders = statusLines[0]?.split(",") ?? [];
+    for (const line of statusLines.slice(1)) {
+      const values = line.split(",");
+      const record = Object.fromEntries(
+        statusHeaders.map((header, index) => [header, values[index]])
+      ) as Record<string, string | undefined>;
+      const team = record.team;
+      if (team) {
+        statusMap.set(team, record);
+      }
+    }
+  }
 
   const groupFile = path.resolve(
     process.cwd(),
@@ -169,8 +203,13 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
     const pathGroup = path ? pathGroupMap.get(path) ?? null : null;
 
     const columnValues: Record<string, number> = {};
+    const columnStatuses: Record<string, ProbabilityStatus> = {};
+    const statusRecord = statusMap.get(team) ?? {};
     for (const column of columnDefs) {
       columnValues[column.label] = toNumber(record[column.source]);
+      columnStatuses[column.label] = statusHeaders.length
+        ? toStatus(statusRecord[column.source])
+        : "U";
     }
 
     const resolvedGroup = group ?? pathGroup;
@@ -185,6 +224,7 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
       flagPath: `/flags/${flagFileName(team)}`,
       group: groupLabel,
       values: columnValues,
+      statuses: columnStatuses,
     };
   });
 

@@ -183,6 +183,20 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
   const [isSelecting, setIsSelecting] = React.useState(false);
   const [lockedAxis, setLockedAxis] = React.useState<"x" | "y" | null>(null);
   const [activeTeam, setActiveTeam] = React.useState<string | null>(null);
+  const [pinnedTooltip, setPinnedTooltip] = React.useState<{
+    payload: TooltipPayloadItem[];
+    label: number;
+    coordinate?: { x?: number; y?: number };
+  } | null>(null);
+  const [pinnedTeam, setPinnedTeam] = React.useState<string | null>(null);
+  const [dragZoomEnabled, setDragZoomEnabled] = React.useState(true);
+  const chartWrapperRef = React.useRef<HTMLDivElement | null>(null);
+  const pinchRef = React.useRef<{
+    startDistance: number;
+    startCenter: { x: number; y: number };
+    startXDomain: [number, number];
+    startYDomain: [number, number];
+  } | null>(null);
   const dragStartRef = React.useRef<{ x: number; y: number } | null>(null);
   const dragEndRef = React.useRef<{ x: number; y: number } | null>(null);
   const chartMetaRef = React.useRef<{
@@ -225,6 +239,8 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
     setRefAreaRight(null);
     setRefAreaTop(null);
     setRefAreaBottom(null);
+    setPinnedTooltip(null);
+    setPinnedTeam(null);
   }, []);
 
   const chartMargin = { top: 12, right: 16, bottom: 16, left: 12 };
@@ -371,6 +387,21 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
     setYDomain(null);
   }, []);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const media = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setDragZoomEnabled(media.matches);
+    update();
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
+
   const yTicks = React.useMemo(() => {
     const [minRaw, maxRaw] = yDomain ?? [0, 100];
     const min = Math.floor(minRaw);
@@ -461,6 +492,402 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
     []
   );
 
+  const clampDomain = React.useCallback(
+    (domain: [number, number], min: number, max: number) => {
+      const span = domain[1] - domain[0];
+      if (!Number.isFinite(span) || span <= 0) {
+        return [min, max] as [number, number];
+      }
+      let nextMin = domain[0];
+      let nextMax = domain[1];
+      if (nextMin < min) {
+        nextMin = min;
+        nextMax = min + span;
+      }
+      if (nextMax > max) {
+        nextMax = max;
+        nextMin = max - span;
+      }
+      return [nextMin, nextMax] as [number, number];
+    },
+    []
+  );
+
+  const startPinch = React.useCallback(
+    (touches: React.TouchList) => {
+      if (touches.length < 2) {
+        return;
+      }
+      const rect = chartWrapperRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+      const [first, second] = [touches[0], touches[1]];
+      if (!first || !second) {
+        return;
+      }
+      const dx = second.clientX - first.clientX;
+      const dy = second.clientY - first.clientY;
+      const startDistance = Math.hypot(dx, dy);
+      if (!Number.isFinite(startDistance) || startDistance === 0) {
+        return;
+      }
+      const startCenter = {
+        x: (first.clientX + second.clientX) / 2 - rect.left,
+        y: (first.clientY + second.clientY) / 2 - rect.top,
+      };
+      const meta = chartMetaRef.current;
+      const rawXDomain =
+        xDomain ??
+        (meta?.xScale?.domain?.().map((value) =>
+          value instanceof Date ? value.getTime() : (value as number)
+        ) as number[]) ??
+        dataExtent;
+      const startXDomain: [number, number] = [
+        Math.min(rawXDomain[0], rawXDomain[rawXDomain.length - 1]),
+        Math.max(rawXDomain[0], rawXDomain[rawXDomain.length - 1]),
+      ];
+      const startYDomain: [number, number] = yDomain ?? [0, 100];
+      pinchRef.current = {
+        startDistance,
+        startCenter,
+        startXDomain,
+        startYDomain,
+      };
+    },
+    [dataExtent, xDomain, yDomain]
+  );
+
+  const handlePinchMove = React.useCallback(
+    (touches: React.TouchList) => {
+      if (touches.length < 2 || !pinchRef.current) {
+        return;
+      }
+      const rect = chartWrapperRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+      const [first, second] = [touches[0], touches[1]];
+      if (!first || !second) {
+        return;
+      }
+      const dx = second.clientX - first.clientX;
+      const dy = second.clientY - first.clientY;
+      const distance = Math.hypot(dx, dy);
+      if (!Number.isFinite(distance) || distance === 0) {
+        return;
+      }
+      const scale = distance / pinchRef.current.startDistance;
+      if (!Number.isFinite(scale) || scale <= 0) {
+        return;
+      }
+      const center = {
+        x: (first.clientX + second.clientX) / 2 - rect.left,
+        y: (first.clientY + second.clientY) / 2 - rect.top,
+      };
+      const centerX = toDomainValue(center.x, "x");
+      const centerY = toDomainValue(center.y, "y");
+      if (typeof centerX === "number") {
+        const span = pinchRef.current.startXDomain[1] - pinchRef.current.startXDomain[0];
+        const nextSpan = Math.max(span / scale, 1);
+        const nextXDomain = clampDomain(
+          [centerX - nextSpan / 2, centerX + nextSpan / 2],
+          dataExtent[0],
+          dataExtent[1]
+        );
+        setXDomain(nextXDomain);
+      }
+      if (typeof centerY === "number") {
+        const span = pinchRef.current.startYDomain[1] - pinchRef.current.startYDomain[0];
+        const nextSpan = Math.max(span / scale, 1);
+        const nextYDomain = clampDomain(
+          [centerY - nextSpan / 2, centerY + nextSpan / 2],
+          0,
+          100
+        );
+        setYDomain(nextYDomain);
+      }
+    },
+    [clampDomain, dataExtent, toDomainValue]
+  );
+
+  const endPinch = React.useCallback(() => {
+    pinchRef.current = null;
+  }, []);
+
+  const closestTeamForPayload = React.useCallback(
+    (payload: TooltipPayloadItem[] | undefined, chartY: number | undefined) => {
+      const meta = chartMetaRef.current;
+      const yScale = meta?.yScale as ((value: number) => number) | undefined;
+      if (!payload || payload.length === 0 || typeof chartY !== "number" || typeof yScale !== "function") {
+        return null;
+      }
+      let closestTeam: string | null = null;
+      let closestDistance = Infinity;
+      for (const item of payload) {
+        if (typeof item.value !== "number") {
+          continue;
+        }
+        const yPx = yScale(item.value);
+        const dist = Math.abs(yPx - chartY);
+        if (dist < closestDistance) {
+          closestDistance = dist;
+          closestTeam = (item.name ?? item.dataKey ?? null) as string | null;
+        }
+      }
+      const threshold = 8;
+      return closestTeam && closestDistance <= threshold ? closestTeam : null;
+    },
+    []
+  );
+
+  function handlePointerDown(event: any) {
+    const sourceType =
+      event?.sourceEvent?.type ??
+      event?.nativeEvent?.type ??
+      event?.type ??
+      "";
+    const isTouchEvent =
+      typeof sourceType === "string"
+        ? sourceType.startsWith("touch")
+        : Boolean(event?.touches);
+    if (!dragZoomEnabled) {
+      if (isTouchEvent && event?.touches?.length) {
+        startPinch(event.touches);
+        setIsSelecting(false);
+        setLockedAxis(null);
+        setActiveTeam(null);
+        setPinnedTooltip(null);
+        setPinnedTeam(null);
+      }
+      return;
+    }
+    if (!event) {
+      return;
+    }
+    const xValue = toDomainValue(event.chartX, "x");
+    const yValue = toDomainValue(event.chartY, "y");
+    if (xValue === null || yValue === null) {
+      return;
+    }
+    if (typeof event.chartX === "number" && typeof event.chartY === "number") {
+      dragStartRef.current = { x: event.chartX, y: event.chartY };
+      dragEndRef.current = { x: event.chartX, y: event.chartY };
+    } else {
+      dragStartRef.current = null;
+      dragEndRef.current = null;
+    }
+    setIsSelecting(true);
+    setActiveTeam(null);
+    setPinnedTooltip(null);
+    setPinnedTeam(null);
+    setLockedAxis(null);
+    setRefAreaLeft(xValue);
+    setRefAreaRight(null);
+    setRefAreaTop(yValue);
+    setRefAreaBottom(null);
+  }
+
+  function handlePointerMove(event: any) {
+    if (!dragZoomEnabled) {
+      if (event?.touches?.length) {
+        handlePinchMove(event.touches);
+      }
+      return;
+    }
+    if (!event) {
+      return;
+    }
+
+    if (isSelecting) {
+      if (refAreaLeft === null) {
+        return;
+      }
+      const xValue = toDomainValue(event.chartX, "x");
+      const yValue = toDomainValue(event.chartY, "y");
+      const dragStart = dragStartRef.current;
+      const dragEnd =
+        typeof event.chartX === "number" && typeof event.chartY === "number"
+          ? { x: event.chartX, y: event.chartY }
+          : dragEndRef.current;
+      if (dragEnd) {
+        dragEndRef.current = dragEnd;
+      }
+
+      const minPixel = 12;
+      const dx =
+        dragStart && dragEnd
+          ? Math.abs(dragStart.x - dragEnd.x)
+          : null;
+      const dy =
+        dragStart && dragEnd
+          ? Math.abs(dragStart.y - dragEnd.y)
+          : null;
+      const shouldLockX =
+        dx !== null && dx < minPixel && (dy === null || dy >= minPixel);
+      const shouldLockY =
+        dy !== null && dy < minPixel && (dx === null || dx >= minPixel);
+      if (shouldLockX) {
+        setLockedAxis("y");
+      } else if (shouldLockY) {
+        setLockedAxis("x");
+      } else {
+        setLockedAxis(null);
+      }
+
+      if (xValue !== null) {
+        setRefAreaRight(xValue);
+      }
+      if (yValue !== null) {
+        setRefAreaBottom(yValue);
+      }
+      return;
+    }
+
+    if (pinnedTooltip) {
+      return;
+    }
+
+    const payload = event.activePayload as TooltipPayloadItem[] | undefined;
+    const closestTeam = closestTeamForPayload(payload, event.chartY);
+    if (closestTeam) {
+      if (activeTeam !== closestTeam) {
+        setActiveTeam(closestTeam);
+      }
+    } else if (activeTeam) {
+      setActiveTeam(null);
+    }
+  }
+
+  function handlePointerUp() {
+    endPinch();
+    if (!dragZoomEnabled) {
+      return;
+    }
+    setIsSelecting(false);
+    setLockedAxis(null);
+    if (
+      refAreaLeft === null ||
+      refAreaRight === null ||
+      refAreaTop === null ||
+      refAreaBottom === null
+    ) {
+      dragStartRef.current = null;
+      setRefAreaLeft(null);
+      setRefAreaRight(null);
+      setRefAreaTop(null);
+      setRefAreaBottom(null);
+      return;
+    }
+
+    const x1 = Math.min(refAreaLeft, refAreaRight);
+    const x2 = Math.max(refAreaLeft, refAreaRight);
+    const y1 = Math.min(refAreaTop, refAreaBottom);
+    const y2 = Math.max(refAreaTop, refAreaBottom);
+
+    const dragStart = dragStartRef.current;
+    const dragEnd = dragEndRef.current;
+    const minPixel = 12;
+    const dx =
+      dragStart && dragEnd
+        ? Math.abs(dragStart.x - dragEnd.x)
+        : null;
+    const dy =
+      dragStart && dragEnd
+        ? Math.abs(dragStart.y - dragEnd.y)
+        : null;
+
+    const meta = chartMetaRef.current;
+    const xDomainRaw =
+      xDomain ??
+      (meta?.xScale?.domain?.().map((value) =>
+        value instanceof Date ? value.getTime() : (value as number)
+      ) as number[]) ??
+      [x1, x2];
+    const xDomainCurrent: [number, number] = [
+      Math.min(xDomainRaw[0] ?? x1, xDomainRaw[xDomainRaw.length - 1] ?? x2),
+      Math.max(xDomainRaw[0] ?? x1, xDomainRaw[xDomainRaw.length - 1] ?? x2),
+    ];
+    const yDomainCurrent = yDomain ?? [0, 100];
+
+    if (x1 === x2 && y1 === y2) {
+      dragStartRef.current = null;
+      setRefAreaLeft(null);
+      setRefAreaRight(null);
+      setRefAreaTop(null);
+      setRefAreaBottom(null);
+      return;
+    }
+
+    const domain = meta?.xScale?.domain?.() ?? [];
+    const rawMin =
+      domain[0] instanceof Date ? domain[0].getTime() : domain[0];
+    const rawMax =
+      domain[domain.length - 1] instanceof Date
+        ? domain[domain.length - 1].getTime()
+        : domain[domain.length - 1];
+    const minX = typeof rawMin === "number" ? rawMin : x1;
+    const maxX = typeof rawMax === "number" ? rawMax : x2;
+    const nextX1 = Math.max(minX, x1);
+    const nextX2 = Math.min(maxX, x2);
+    const nextY1 = Math.max(0, Math.min(100, y1));
+    const nextY2 = Math.max(0, Math.min(100, y2));
+
+    const shouldLockX = dx !== null && dx < minPixel && (dy === null || dy >= minPixel);
+    const shouldLockY = dy !== null && dy < minPixel && (dx === null || dx >= minPixel);
+
+    if (shouldLockX) {
+      setXDomain(xDomainCurrent);
+      setYDomain([roundToTenth(nextY1), roundToTenth(nextY2)]);
+    } else if (shouldLockY) {
+      setXDomain([nextX1, nextX2]);
+      setYDomain(yDomainCurrent);
+    } else {
+      setXDomain([nextX1, nextX2]);
+      setYDomain([roundToTenth(nextY1), roundToTenth(nextY2)]);
+    }
+
+    dragStartRef.current = null;
+    dragEndRef.current = null;
+    setRefAreaLeft(null);
+    setRefAreaRight(null);
+    setRefAreaTop(null);
+    setRefAreaBottom(null);
+  }
+
+  function handlePointerLeave() {
+    endPinch();
+    setIsSelecting(false);
+    setLockedAxis(null);
+    setActiveTeam(null);
+    dragStartRef.current = null;
+    dragEndRef.current = null;
+  }
+
+  function handleChartClick(event: any) {
+    if (!event || isSelecting) {
+      return;
+    }
+    const payload = event.activePayload as TooltipPayloadItem[] | undefined;
+    const label = event.activeLabel;
+    if (!payload || payload.length === 0 || typeof label !== "number") {
+      setPinnedTooltip(null);
+      setPinnedTeam(null);
+      return;
+    }
+    const closestTeam = closestTeamForPayload(payload, event.chartY);
+    const coordinate =
+      event.activeCoordinate ??
+      (typeof event.chartX === "number" && typeof event.chartY === "number"
+        ? { x: event.chartX, y: event.chartY }
+        : undefined);
+    setPinnedTooltip({ payload, label, coordinate });
+    setPinnedTeam(closestTeam);
+    if (closestTeam) {
+      setActiveTeam(closestTeam);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
@@ -503,223 +930,24 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
           </div>
         </div>
         <div className="mt-4 h-[520px] w-full select-none rounded-md">
-          <div className="h-full w-full select-none">
+          <div
+            ref={chartWrapperRef}
+            className="h-full w-full select-none touch-none"
+          >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={data}
                 margin={chartMargin}
                 onDoubleClick={resetZoom}
-                onMouseDown={(event) => {
-                  if (!event) {
-                    return;
-                  }
-                  const xValue = toDomainValue(event.chartX, "x");
-                  const yValue = toDomainValue(event.chartY, "y");
-                  if (xValue === null || yValue === null) {
-                    return;
-                  }
-                  if (typeof event.chartX === "number" && typeof event.chartY === "number") {
-                    dragStartRef.current = { x: event.chartX, y: event.chartY };
-                    dragEndRef.current = { x: event.chartX, y: event.chartY };
-                  } else {
-                    dragStartRef.current = null;
-                    dragEndRef.current = null;
-                  }
-                  setIsSelecting(true);
-                  setActiveTeam(null);
-                  setLockedAxis(null);
-                  setRefAreaLeft(xValue);
-                  setRefAreaRight(null);
-                  setRefAreaTop(yValue);
-                  setRefAreaBottom(null);
-                }}
-                onMouseMove={(event) => {
-                  if (!event) {
-                    return;
-                  }
-
-                  if (isSelecting) {
-                    if (refAreaLeft === null) {
-                      return;
-                    }
-                    const xValue = toDomainValue(event.chartX, "x");
-                    const yValue = toDomainValue(event.chartY, "y");
-                    const dragStart = dragStartRef.current;
-                    const dragEnd =
-                      typeof event.chartX === "number" && typeof event.chartY === "number"
-                        ? { x: event.chartX, y: event.chartY }
-                        : dragEndRef.current;
-                    if (dragEnd) {
-                      dragEndRef.current = dragEnd;
-                    }
-
-                    const minPixel = 12;
-                    const dx =
-                      dragStart && dragEnd
-                        ? Math.abs(dragStart.x - dragEnd.x)
-                        : null;
-                    const dy =
-                      dragStart && dragEnd
-                        ? Math.abs(dragStart.y - dragEnd.y)
-                        : null;
-                    const shouldLockX =
-                      dx !== null && dx < minPixel && (dy === null || dy >= minPixel);
-                    const shouldLockY =
-                      dy !== null && dy < minPixel && (dx === null || dx >= minPixel);
-                    if (shouldLockX) {
-                      setLockedAxis("y");
-                    } else if (shouldLockY) {
-                      setLockedAxis("x");
-                    } else {
-                      setLockedAxis(null);
-                    }
-
-                    if (xValue !== null) {
-                      setRefAreaRight(xValue);
-                    }
-                    if (yValue !== null) {
-                      setRefAreaBottom(yValue);
-                    }
-                    return;
-                  }
-
-                  const payload = event.activePayload as TooltipPayloadItem[] | undefined;
-                  const chartY = event.chartY;
-                  const meta = chartMetaRef.current;
-                  const yScale = meta?.yScale as ((value: number) => number) | undefined;
-                  if (
-                    !payload ||
-                    payload.length === 0 ||
-                    typeof chartY !== "number" ||
-                    typeof yScale !== "function"
-                  ) {
-                    if (activeTeam) {
-                      setActiveTeam(null);
-                    }
-                    return;
-                  }
-
-                  let closestTeam: string | null = null;
-                  let closestDistance = Infinity;
-                  for (const item of payload) {
-                    if (typeof item.value !== "number") {
-                      continue;
-                    }
-                    const yPx = yScale(item.value);
-                    const dist = Math.abs(yPx - chartY);
-                    if (dist < closestDistance) {
-                      closestDistance = dist;
-                      closestTeam = (item.name ?? item.dataKey ?? null) as string | null;
-                    }
-                  }
-
-                  const threshold = 8;
-                  if (closestTeam && closestDistance <= threshold) {
-                    if (activeTeam !== closestTeam) {
-                      setActiveTeam(closestTeam);
-                    }
-                  } else if (activeTeam) {
-                    setActiveTeam(null);
-                  }
-                }}
-                onMouseUp={() => {
-                  setIsSelecting(false);
-                  setLockedAxis(null);
-                  if (
-                    refAreaLeft === null ||
-                    refAreaRight === null ||
-                    refAreaTop === null ||
-                    refAreaBottom === null
-                  ) {
-                    dragStartRef.current = null;
-                    setRefAreaLeft(null);
-                    setRefAreaRight(null);
-                    setRefAreaTop(null);
-                    setRefAreaBottom(null);
-                    return;
-                  }
-
-                  const x1 = Math.min(refAreaLeft, refAreaRight);
-                  const x2 = Math.max(refAreaLeft, refAreaRight);
-                  const y1 = Math.min(refAreaTop, refAreaBottom);
-                  const y2 = Math.max(refAreaTop, refAreaBottom);
-
-                  const dragStart = dragStartRef.current;
-                  const dragEnd = dragEndRef.current;
-                  const minPixel = 12;
-                  const dx =
-                    dragStart && dragEnd
-                      ? Math.abs(dragStart.x - dragEnd.x)
-                      : null;
-                  const dy =
-                    dragStart && dragEnd
-                      ? Math.abs(dragStart.y - dragEnd.y)
-                      : null;
-
-                  const meta = chartMetaRef.current;
-                  const xDomainRaw =
-                    xDomain ??
-                    (meta?.xScale?.domain?.().map((value) =>
-                      value instanceof Date ? value.getTime() : (value as number)
-                    ) as number[]) ??
-                    [x1, x2];
-                  const xDomainCurrent: [number, number] = [
-                    Math.min(xDomainRaw[0] ?? x1, xDomainRaw[xDomainRaw.length - 1] ?? x2),
-                    Math.max(xDomainRaw[0] ?? x1, xDomainRaw[xDomainRaw.length - 1] ?? x2),
-                  ];
-                  const yDomainCurrent = yDomain ?? [0, 100];
-
-                  if (x1 === x2 && y1 === y2) {
-                    dragStartRef.current = null;
-                    setRefAreaLeft(null);
-                    setRefAreaRight(null);
-                    setRefAreaTop(null);
-                    setRefAreaBottom(null);
-                    return;
-                  }
-
-                  const domain = meta?.xScale?.domain?.() ?? [];
-                  const rawMin =
-                    domain[0] instanceof Date ? domain[0].getTime() : domain[0];
-                  const rawMax =
-                    domain[domain.length - 1] instanceof Date
-                      ? domain[domain.length - 1].getTime()
-                      : domain[domain.length - 1];
-                  const minX = typeof rawMin === "number" ? rawMin : x1;
-                  const maxX = typeof rawMax === "number" ? rawMax : x2;
-                  const nextX1 = Math.max(minX, x1);
-                  const nextX2 = Math.min(maxX, x2);
-                  const nextY1 = Math.max(0, Math.min(100, y1));
-                  const nextY2 = Math.max(0, Math.min(100, y2));
-
-                  const shouldLockX = dx !== null && dx < minPixel && (dy === null || dy >= minPixel);
-                  const shouldLockY = dy !== null && dy < minPixel && (dx === null || dx >= minPixel);
-
-                  if (shouldLockX) {
-                    setXDomain(xDomainCurrent);
-                    setYDomain([roundToTenth(nextY1), roundToTenth(nextY2)]);
-                  } else if (shouldLockY) {
-                    setXDomain([nextX1, nextX2]);
-                    setYDomain(yDomainCurrent);
-                  } else {
-                    setXDomain([nextX1, nextX2]);
-                    setYDomain([roundToTenth(nextY1), roundToTenth(nextY2)]);
-                  }
-
-                  dragStartRef.current = null;
-                  dragEndRef.current = null;
-                  setRefAreaLeft(null);
-                  setRefAreaRight(null);
-                  setRefAreaTop(null);
-                  setRefAreaBottom(null);
-                }}
-                onMouseLeave={() => {
-                  setIsSelecting(false);
-                  setLockedAxis(null);
-                  setActiveTeam(null);
-                  dragStartRef.current = null;
-                  dragEndRef.current = null;
-                }}
+                onMouseDown={dragZoomEnabled ? handlePointerDown : undefined}
+                onMouseMove={dragZoomEnabled ? handlePointerMove : undefined}
+                onMouseUp={dragZoomEnabled ? handlePointerUp : undefined}
+                onMouseLeave={dragZoomEnabled ? handlePointerLeave : undefined}
+                onTouchStart={handlePointerDown}
+                onTouchMove={handlePointerMove}
+                onTouchEnd={handlePointerUp}
+                onTouchCancel={handlePointerLeave}
+                onClick={handleChartClick}
               >
               <CartesianGrid stroke="var(--color-accent-light)" />
               <XAxis
@@ -759,9 +987,24 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
                     borderColor: "var(--color-accent-light)",
                     color: "var(--color-primary-dark)",
                   }}
-                  content={(props) => (
-                    <TooltipContent {...props} activeTeam={activeTeam} />
-                  )}
+                  active={pinnedTooltip ? true : undefined}
+                  content={(props) => {
+                    const mergedProps = pinnedTooltip
+                      ? {
+                          ...props,
+                          active: true,
+                          payload: pinnedTooltip.payload,
+                          label: pinnedTooltip.label,
+                          coordinate: pinnedTooltip.coordinate ?? props.coordinate,
+                        }
+                      : props;
+                    return (
+                      <TooltipContent
+                        {...mergedProps}
+                        activeTeam={pinnedTeam ?? activeTeam}
+                      />
+                    );
+                  }}
                 />
               )}
               <Customized component={ChartMeta} />

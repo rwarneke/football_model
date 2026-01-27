@@ -72,6 +72,18 @@ export function RatingsTable({ data }: RatingsTableProps) {
   >(
     () => [
       {
+        id: "rank",
+        header: "Rank",
+        accessorFn: (row) => row.rank ?? row.rating_rank,
+        sortingFn: (a, b, id) => (b.getValue(id) ?? 0) - (a.getValue(id) ?? 0),
+        meta: { minWidthCh: 3 },
+        cell: ({ row }) => (
+          <span className="text-sm font-mono tabular-nums text-slate-700">
+            {row.original.rank ?? row.index + 1}
+          </span>
+        ),
+      },
+      {
         id: "flag",
         header: "",
         accessorFn: (row) => row.flagPath ?? "",
@@ -98,17 +110,6 @@ export function RatingsTable({ data }: RatingsTableProps) {
         ),
       },
       {
-        id: "rank",
-        header: "Rank",
-        accessorFn: (row) => row.rank ?? row.rating_rank,
-        sortingFn: (a, b, id) => (b.getValue(id) ?? 0) - (a.getValue(id) ?? 0),
-        cell: ({ row }) => (
-          <span className="text-sm font-mono tabular-nums text-slate-700">
-            {row.original.rank ?? row.index + 1}
-          </span>
-        ),
-      },
-      {
         id: "team",
         header: "Team",
         accessorFn: (row) => row.team,
@@ -118,14 +119,19 @@ export function RatingsTable({ data }: RatingsTableProps) {
           return teamA.localeCompare(teamB);
         },
         cell: ({ row }) => (
-          <span className="min-w-0 truncate text-sm font-medium text-slate-900">
+          <span className="block max-w-[10rem] truncate text-sm font-medium text-slate-900">
             {row.original.team}
           </span>
         ),
       },
       {
         id: "rating",
-        header: "Overall",
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">OVR</span>
+            <span className="hidden md:inline">Overall</span>
+          </span>
+        ),
         accessorFn: (row) => row.rating ?? Number.NaN,
         sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
         meta: { isRating: true },
@@ -139,7 +145,12 @@ export function RatingsTable({ data }: RatingsTableProps) {
       },
       {
         id: "rating_attack",
-        header: "Attack",
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">ATT</span>
+            <span className="hidden md:inline">Attack</span>
+          </span>
+        ),
         accessorFn: (row) => row.rating_attack ?? Number.NaN,
         sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
         meta: { isRating: true },
@@ -153,7 +164,12 @@ export function RatingsTable({ data }: RatingsTableProps) {
       },
       {
         id: "rating_defense",
-        header: "Defense",
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">DEF</span>
+            <span className="hidden md:inline">Defense</span>
+          </span>
+        ),
         accessorFn: (row) => row.rating_defense ?? Number.NaN,
         sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
         meta: { isRating: true },
@@ -199,16 +215,18 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         ? "cursor-pointer hover:text-slate-900"
                         : "cursor-default"
                     } ${
-                      header.id === "flag"
-                        ? "text-left w-[3rem] min-w-[3rem] pl-1 pr-3"
+                      header.id === "rank"
+                        ? "text-right w-[3rem] min-w-[3rem] pr-3"
+                        : header.id === "flag"
+                        ? "text-left w-[3rem] min-w-[3rem] pl-0.5 pr-2 sm:pl-1 sm:pr-3"
                         : header.id === "team"
-                        ? "text-left w-[12rem] min-w-[12rem] shrink-0"
-                        : header.id === "rank"
-                        ? "text-right whitespace-nowrap min-w-[4ch]"
+                        ? "text-left w-[10rem] max-w-[10rem]"
                         : "text-right"
                     } px-2 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
-                      header.id === "flag"
+                      header.id === "rank"
                         ? "sticky left-0 z-50 bg-slate-200 rounded-tl-xl"
+                        : header.id === "flag"
+                        ? "sticky left-[3rem] z-50 bg-slate-200"
                         : ""
                     } ${isLastHeader ? "rounded-tr-xl" : ""}`}
                     onClick={header.column.getToggleSortingHandler()}
@@ -244,16 +262,18 @@ export function RatingsTable({ data }: RatingsTableProps) {
                   <TableCell
                     key={cell.id}
                     className={`px-2 py-2.5 ${
-                      cell.column.id === "flag"
-                        ? "text-left w-[3rem] min-w-[3rem] pl-1 pr-3 py-2.5 overflow-hidden"
+                      cell.column.id === "rank"
+                        ? "text-right w-[3rem] min-w-[3rem] pr-3"
+                        : cell.column.id === "flag"
+                        ? "text-left w-[3rem] min-w-[3rem] pl-0.5 pr-2 sm:pl-1 sm:pr-3 py-2.5 overflow-hidden"
                         : cell.column.id === "team"
-                        ? "text-left w-[12rem] min-w-[12rem] shrink-0 pl-2"
-                        : cell.column.id === "rank"
-                        ? "text-right"
+                        ? "text-left w-[10rem] max-w-[10rem] pl-2 overflow-hidden"
                         : "text-right"
                     } ${
-                      cell.column.id === "flag"
+                      cell.column.id === "rank"
                         ? "sticky left-0 z-40 bg-white"
+                        : cell.column.id === "flag"
+                        ? "sticky left-[3rem] z-30 bg-white"
                         : ""
                     }`}
                     style={{

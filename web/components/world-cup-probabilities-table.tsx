@@ -27,6 +27,7 @@ type TableRowData = {
   ratingAttack?: number;
   ratingDefense?: number;
   values: Record<string, number>;
+  statuses: Record<string, "G" | "U" | "I">;
 };
 
 type WorldCupProbabilitiesTableProps = {
@@ -58,15 +59,21 @@ function teamInitials(team: string) {
   return letters || team.slice(0, 2).toUpperCase();
 }
 
-function formatProbability(value: number) {
+function formatProbability(value: number, status: "G" | "U" | "I") {
+  if (status === "G") {
+    return "✓";
+  }
+  if (status === "I") {
+    return "✕";
+  }
   if (!Number.isFinite(value)) {
     return "";
   }
-  if (value >= 0.9995) {
-    return "✓";
-  }
   if (value < 0.001) {
     return "<0.1%";
+  }
+  if (value >= 0.9995) {
+    return ">99.9%";
   }
   return `${percentFormatter.format(value * 100)}%`;
 }
@@ -261,6 +268,11 @@ export function WorldCupProbabilitiesTable({
               <span className="md:hidden">R32</span>
               <span className="hidden md:inline">Win round of 32</span>
             </span>
+          ) : column === "Qualify" ? (
+            <span className="whitespace-nowrap">
+              <span className="md:hidden">Qual.</span>
+              <span className="hidden md:inline">Qualify</span>
+            </span>
           ) : (
             column
           ),
@@ -271,9 +283,14 @@ export function WorldCupProbabilitiesTable({
         sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
         cell: ({ row }) => {
           const value = row.original.values[column];
-          const formatted = formatProbability(value);
-          if (formatted === "✓") {
-            return <span className="text-sm font-mono tabular-nums text-slate-700">✓</span>;
+          const status = row.original.statuses[column] ?? "U";
+          const formatted = formatProbability(value, status);
+          if (formatted === "✓" || formatted === "✕") {
+            return (
+              <span className="text-sm font-mono tabular-nums text-slate-700">
+                {formatted}
+              </span>
+            );
           }
           return (
             <span className="text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">{formatted}</span>

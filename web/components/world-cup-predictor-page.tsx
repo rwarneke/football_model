@@ -2875,7 +2875,7 @@ function KnockoutMatchCard({
           }}
           disabled={!isPickableMatch}
           className={cn(
-            "flex items-center justify-center p-1",
+            "flex w-full flex-1 items-center justify-center p-1",
             isResolved && isWinner && !isChampionRow && "bg-blue-200",
             isChampionRow && "bg-amber-200",
             isPickableMatch ? "cursor-pointer" : "cursor-default"

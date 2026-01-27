@@ -17,7 +17,7 @@ export default function CurrentRatingsPage() {
             Current Ratings
           </p>
           <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
-            International Football Power Table
+            International Football Team Ratings
           </h1>
           <p className="text-base text-ink-200">
             All current teams who have ever participated in FIFA World Cup

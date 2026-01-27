@@ -121,6 +121,7 @@ class Tournament:
         self.teams = list(teams or [])
         self.matches: List[MatchResult] = []
         self.group_tables: Dict[str, pd.DataFrame] = {}
+        self.group_rankings: Dict[str, List[str]] = {}
         self.finished = False
         self.champion: Optional[str] = None
         self.record_params = False
@@ -190,6 +191,29 @@ class Tournament:
                     stage = "Fourth place"
             stages[team] = mapping.get(stage, f"0.{stage}")
         return stages
+
+    def won_group_stage(self) -> Dict[str, bool]:
+        if not self.group_tables and not self.group_rankings:
+            return {}
+        winners: set[str] = set()
+        if self.group_rankings:
+            winners = {ranking[0] for ranking in self.group_rankings.values() if ranking}
+        else:
+            for group, table in self.group_tables.items():
+                if table.empty:
+                    continue
+                ranked = table.loc[:, ["points", "gd", "gf"]].copy()
+                ranked["team"] = ranked.index
+                ranked = ranked.sort_values(
+                    by=["points", "gd", "gf"], ascending=[False, False, False]
+                )
+                winners.add(str(ranked.iloc[0]["team"]))
+        groups = getattr(self, "groups", None)
+        if groups:
+            teams = [t for ts in groups.values() for t in ts]
+        else:
+            teams = list(self.teams)
+        return {team: team in winners for team in teams}
 
 
 class WorldCup2026(Tournament):
@@ -310,6 +334,7 @@ class WorldCup2026(Tournament):
 
         group_tables, group_rankings = self._group_tables(group_results, rng)
         self.group_tables = group_tables
+        self.group_rankings = group_rankings
 
         _qualifiers, _third_place, best_third = self._select_qualifiers(
             group_rankings, rng

@@ -17,7 +17,7 @@ export default function HistoryPage() {
             Historical Ratings
           </p>
           <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
-            Historical International Football Power Ratings
+            Historical International Football Ratings
           </h1>
           <p className="text-base text-ink-200">
             Explore how each team has evolved since its first recorded match.

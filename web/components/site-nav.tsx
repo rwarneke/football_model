@@ -52,7 +52,7 @@ export function SiteNav() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="md:hidden fixed left-4 top-3 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 text-slate-700 hover:bg-slate-100"
+        className="md:hidden fixed left-4 top-3 z-[70] flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 text-slate-700 hover:bg-slate-100"
       >
         <span className="relative h-4 w-5">
           <span className="absolute left-0 top-0 h-0.5 w-full rounded-full bg-slate-700" />
@@ -63,7 +63,7 @@ export function SiteNav() {
 
       <nav
         className={cn(
-          "fixed inset-y-0 left-0 z-40 h-full overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 transition-[width] duration-200 md:static md:shadow-none md:ring-0",
+          "fixed inset-y-0 left-0 z-[60] h-full overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 transition-[width] duration-200 md:static md:shadow-none md:ring-0",
           open ? "w-64" : "w-0",
           open ? "md:w-64" : "md:w-20"
         )}
