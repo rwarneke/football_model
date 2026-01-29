@@ -402,6 +402,39 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
     return () => media.removeListener(update);
   }, []);
 
+  // Prevent pinch zoom on devices that don't support click-drag zoom
+  React.useEffect(() => {
+    if (dragZoomEnabled) {
+      return;
+    }
+    const wrapper = chartWrapperRef.current;
+    if (!wrapper) {
+      return;
+    }
+
+    const preventZoom = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const preventWheelZoom = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+
+    wrapper.addEventListener("touchstart", preventZoom, { passive: false });
+    wrapper.addEventListener("touchmove", preventZoom, { passive: false });
+    wrapper.addEventListener("wheel", preventWheelZoom, { passive: false });
+
+    return () => {
+      wrapper.removeEventListener("touchstart", preventZoom);
+      wrapper.removeEventListener("touchmove", preventZoom);
+      wrapper.removeEventListener("wheel", preventWheelZoom);
+    };
+  }, [dragZoomEnabled]);
+
   const yTicks = React.useMemo(() => {
     const [minRaw, maxRaw] = yDomain ?? [0, 100];
     const min = Math.floor(minRaw);
@@ -642,24 +675,8 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
   );
 
   function handlePointerDown(event: any) {
-    const sourceType =
-      event?.sourceEvent?.type ??
-      event?.nativeEvent?.type ??
-      event?.type ??
-      "";
-    const isTouchEvent =
-      typeof sourceType === "string"
-        ? sourceType.startsWith("touch")
-        : Boolean(event?.touches);
     if (!dragZoomEnabled) {
-      if (isTouchEvent && event?.touches?.length) {
-        startPinch(event.touches);
-        setIsSelecting(false);
-        setLockedAxis(null);
-        setActiveTeam(null);
-        setPinnedTooltip(null);
-        setPinnedTeam(null);
-      }
+      // Completely disable zoom for devices that don't support click-drag zoom
       return;
     }
     if (!event) {
@@ -690,9 +707,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
 
   function handlePointerMove(event: any) {
     if (!dragZoomEnabled) {
-      if (event?.touches?.length) {
-        handlePinchMove(event.touches);
-      }
+      // Completely disable zoom for devices that don't support click-drag zoom
       return;
     }
     if (!event) {
@@ -760,10 +775,11 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
   }
 
   function handlePointerUp() {
-    endPinch();
     if (!dragZoomEnabled) {
+      // Completely disable zoom for devices that don't support click-drag zoom
       return;
     }
+    endPinch();
     setIsSelecting(false);
     setLockedAxis(null);
     if (
@@ -856,6 +872,9 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
   }
 
   function handlePointerLeave() {
+    if (!dragZoomEnabled) {
+      return;
+    }
     endPinch();
     setIsSelecting(false);
     setLockedAxis(null);
@@ -929,10 +948,15 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
             </button>
           </div>
         </div>
-        <div className="mt-4 h-[520px] w-full select-none rounded-md">
+        <div className="mt-4 aspect-square w-full max-h-[520px] select-none rounded-md">
           <div
             ref={chartWrapperRef}
-            className="h-full w-full select-none touch-none"
+            className="h-full w-full min-h-0 select-none touch-none"
+            style={{
+              touchAction: dragZoomEnabled ? 'auto' : 'pan-x pan-y',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+            }}
           >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
@@ -943,10 +967,10 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
                 onMouseMove={dragZoomEnabled ? handlePointerMove : undefined}
                 onMouseUp={dragZoomEnabled ? handlePointerUp : undefined}
                 onMouseLeave={dragZoomEnabled ? handlePointerLeave : undefined}
-                onTouchStart={handlePointerDown}
-                onTouchMove={handlePointerMove}
-                onTouchEnd={handlePointerUp}
-                onTouchCancel={handlePointerLeave}
+                onTouchStart={dragZoomEnabled ? handlePointerDown : undefined}
+                onTouchMove={dragZoomEnabled ? handlePointerMove : undefined}
+                onTouchEnd={dragZoomEnabled ? handlePointerUp : undefined}
+                onTouchCancel={dragZoomEnabled ? handlePointerLeave : undefined}
                 onClick={handleChartClick}
               >
               <CartesianGrid stroke="var(--color-accent-light)" />
@@ -1098,7 +1122,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Filter teams"
+            placeholder="Search teams"
             className="w-full rounded-lg border border-ink-900 bg-white px-3 py-1 text-sm text-ebony placeholder:text-ink-900/60 md:w-64"
           />
         </div>

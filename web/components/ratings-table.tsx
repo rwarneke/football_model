@@ -12,11 +12,8 @@ import {
 } from "@tanstack/react-table";
 
 import {
-  Table,
-  TableBody,
   TableCell,
   TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import type { RatingRow } from "@/lib/ratings";
@@ -88,9 +85,9 @@ export function RatingsTable({ data }: RatingsTableProps) {
         header: "",
         accessorFn: (row) => row.flagPath ?? "",
         enableSorting: false,
-        meta: { minWidthCh: 2.5, isFlag: true, width: "2.5rem" },
+        meta: { minWidthCh: 2.5, isFlag: true, width: "2rem" },
         cell: ({ row }) => (
-          <div className="flex pl-1 sm:pl-2 w-full">
+          <div className="flex pl-0.5 sm:pl-1 w-full">
             <div className="relative h-3.5 w-5 sm:h-4 sm:w-6 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
               {row.original.flagPath ? (
                 <Image
@@ -196,10 +193,10 @@ export function RatingsTable({ data }: RatingsTableProps) {
   });
 
   return (
-    <div className="min-w-0 w-full overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
+    <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <Table className="w-full table-auto xl:table-fixed text-sm [--rating-col-width:clamp(5ch,7vw,9ch)] sm:[--rating-col-width:clamp(6ch,7vw,10ch)]">
-          <TableHeader className="border-b border-slate-200">
+        <table className="w-full table-auto xl:table-fixed text-sm [--rating-col-width:clamp(5ch,7vw,9ch)] sm:[--rating-col-width:clamp(6ch,7vw,10ch)]">
+          <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
                 key={headerGroup.id}
@@ -216,17 +213,17 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : "cursor-default"
                     } ${
                       header.id === "rank"
-                        ? "text-right w-[3rem] min-w-[2.5rem] sm:min-w-[3rem] pr-2 sm:pr-3"
+                        ? "text-right w-[2.5rem] min-w-[2.5rem] sm:w-[3rem] sm:min-w-[3rem] pr-2 sm:pr-3"
                         : header.id === "flag"
-                        ? "text-left w-[3rem] min-w-[3rem] pl-0.5 pr-1 sm:pl-1 sm:pr-2"
+                        ? "text-left w-[2rem] min-w-[2rem] sm:w-[3rem] sm:min-w-[3rem] pl-0.5 pr-1 sm:pl-1 sm:pr-2"
                         : header.id === "team"
-                        ? "text-left w-[10rem] min-w-[8rem] sm:min-w-[10rem] max-w-[10rem]"
+                        ? "text-left w-[10rem] min-w-[6rem] sm:min-w-[8rem] max-w-[10rem]"
                         : "text-right"
                     } px-1 sm:px-2 py-1.5 sm:py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
                       header.id === "rank"
                         ? "sticky left-0 z-10 bg-slate-200 rounded-tl-xl pr-2 sm:pr-3"
                         : header.id === "flag"
-                        ? "sticky left-[3rem] z-10 bg-slate-200 pl-0.5 pr-1 sm:pl-1 sm:pr-2"
+                        ? "sticky left-[2.5rem] sm:left-[3rem] z-10 bg-slate-200"
                         : header.id === "team"
                         ? "pl-0.5 sm:pl-1"
                         : ""
@@ -253,8 +250,8 @@ export function RatingsTable({ data }: RatingsTableProps) {
                 })}
               </TableRow>
             ))}
-          </TableHeader>
-          <TableBody className="divide-y divide-slate-100">
+          </thead>
+          <tbody className="divide-y divide-slate-100">
             {table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
@@ -265,17 +262,17 @@ export function RatingsTable({ data }: RatingsTableProps) {
                     key={cell.id}
                     className={`px-1 sm:px-2 py-1.5 sm:py-2.5 ${
                       cell.column.id === "rank"
-                        ? "text-right w-[3rem] min-w-[2.5rem] sm:min-w-[3rem] pr-2 sm:pr-3"
+                        ? "text-right w-[2.5rem] min-w-[2.5rem] sm:w-[3rem] sm:min-w-[3rem] pr-2 sm:pr-3"
                         : cell.column.id === "flag"
-                        ? "text-left w-[3rem] min-w-[3rem] pl-0.5 pr-1 sm:pl-1 sm:pr-2 overflow-hidden"
+                        ? "text-left w-[2rem] min-w-[2rem] sm:w-[3rem] sm:min-w-[3rem] pl-0.5 pr-1 sm:pl-1 sm:pr-2 overflow-hidden"
                         : cell.column.id === "team"
-                        ? "text-left w-[10rem] min-w-[8rem] sm:min-w-[10rem] max-w-[10rem] pl-0.5 sm:pl-1 overflow-hidden"
+                        ? "text-left w-[10rem] min-w-[6rem] sm:min-w-[8rem] max-w-[10rem] pl-0.5 sm:pl-1 overflow-hidden"
                         : "text-right"
                     } ${
                       cell.column.id === "rank"
                         ? "sticky left-0 z-10 bg-white"
                         : cell.column.id === "flag"
-                        ? "sticky left-[3rem] z-10 bg-white"
+                        ? "sticky left-[2.5rem] sm:left-[3rem] z-10 bg-white"
                         : ""
                     }`}
                     style={{
@@ -298,8 +295,8 @@ export function RatingsTable({ data }: RatingsTableProps) {
                 ))}
               </TableRow>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </div>
   );

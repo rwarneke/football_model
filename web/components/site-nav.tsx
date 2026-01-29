@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { Home, Trophy, ArrowUpDown, Clock, Percent, Shuffle, Globe } from "lucide-react";
 
 type NavGroup = {
   label: string;
@@ -12,23 +13,23 @@ type NavGroup = {
 };
 
 const navGroups: Array<
-  NavGroup & { icon: string; children?: Array<{ label: string; href: string; icon: string }> }
+  NavGroup & { icon: React.ComponentType<{ className?: string }>; children?: Array<{ label: string; href: string; icon: React.ComponentType<{ className?: string }> }> }
 > = [
-  { label: "Home", href: "/", icon: "🏠" },
+  { label: "Home", href: "/", icon: Home },
   {
     label: "World Football Ratings",
-    icon: "⚽",
+    icon: Globe,
     children: [
-      { label: "Current ratings", href: "/current-ratings", icon: "↕️" },
-      { label: "Historical ratings", href: "/history", icon: "🕒" },
+      { label: "Current ratings", href: "/current-ratings", icon: ArrowUpDown },
+      { label: "Historical ratings", href: "/history", icon: Clock },
     ],
   },
   {
     label: "FIFA World Cup 2026",
-    icon: "🏆",
+    icon: Trophy,
     children: [
-      { label: "Progression chances", href: "/world-cup-2026/probabilities", icon: "％" },
-      { label: "Tournament predictor", href: "/world-cup-2026/predictor", icon: "🔀" },
+      { label: "Progression chances", href: "/world-cup-2026/probabilities", icon: Percent },
+      { label: "Tournament predictor", href: "/world-cup-2026/predictor", icon: Shuffle },
     ],
   },
 ];
@@ -36,6 +37,34 @@ const navGroups: Array<
 export function SiteNav() {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
+  const touchStartXRef = React.useRef<number | null>(null);
+  const touchStartYRef = React.useRef<number | null>(null);
+
+  const handleTouchStart = (event: React.TouchEvent<HTMLElement>) => {
+    if (!open) return;
+    const touch = event.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLElement>) => {
+    if (!open || touchStartXRef.current === null || touchStartYRef.current === null) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartXRef.current;
+    const deltaY = touch.clientY - touchStartYRef.current;
+
+    // Only consider mostly horizontal swipes
+    if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX < -40) {
+      // Swipe left to close
+      setOpen(false);
+    }
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
 
   const handleNavSelect = React.useCallback(() => {
     setOpen(false);
@@ -61,7 +90,18 @@ export function SiteNav() {
         </span>
       </button>
 
+      {open && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="fixed inset-0 z-[55] bg-black/20 md:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <nav
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className={cn(
           "fixed inset-y-0 left-0 z-[60] h-full overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 transition-[width] duration-200 md:static md:shadow-none md:ring-0",
           open ? "w-64" : "w-0",
@@ -108,9 +148,7 @@ export function SiteNav() {
                     open ? "justify-start" : "justify-center"
                   )}
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-base">
-                    {group.icon}
-                  </span>
+                  <group.icon className="h-6 w-6 shrink-0 text-slate-700" />
                   <span
                     className={cn(
                       "whitespace-nowrap transition-all duration-200 overflow-hidden",
@@ -124,9 +162,7 @@ export function SiteNav() {
                 </Link>
               ) : (
                 <div className={cn("flex items-center gap-3 px-2 md:px-2", open ? "justify-start" : "justify-center")}>
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-base">
-                    {group.icon}
-                  </span>
+                  <group.icon className="h-6 w-6 shrink-0 text-slate-700" />
                   <span
                     className={cn(
                       "whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-500 transition-all duration-200 overflow-hidden",
@@ -152,9 +188,7 @@ export function SiteNav() {
                         open ? "justify-start" : "justify-center"
                       )}
                     >
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-slate-200 text-[11px]">
-                        {child.icon}
-                      </span>
+                      <child.icon className="h-5 w-5 shrink-0 text-slate-600" />
                       <span
                         className={cn(
                           "whitespace-nowrap transition-all duration-200 overflow-hidden",

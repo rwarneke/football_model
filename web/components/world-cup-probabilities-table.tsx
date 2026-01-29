@@ -12,7 +12,6 @@ import {
 } from "@tanstack/react-table";
 
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -373,10 +372,10 @@ export function WorldCupProbabilitiesTable({
   const lastProbabilityId = columns[columns.length - 1];
 
   return (
-    <div className="min-w-0 w-full overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
+    <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <Table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] sm:[--prob-col-width:clamp(6ch,6vw,9ch)]">
-          <TableHeader className="border-b border-slate-200">
+        <table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] sm:[--prob-col-width:clamp(6ch,6vw,9ch)]">
+          <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">
                 {headerGroup.headers.map((header, index) => {
@@ -426,8 +425,8 @@ export function WorldCupProbabilitiesTable({
                 })}
               </TableRow>
             ))}
-          </TableHeader>
-          <TableBody className="divide-y divide-slate-100">
+          </thead>
+          <tbody className="divide-y divide-slate-100">
             {table.getRowModel().rows.map((row, index, allRows) => {
               const isGroupEnd =
                 isGroupedByGroup &&
@@ -483,8 +482,8 @@ export function WorldCupProbabilitiesTable({
                 </TableRow>
               );
             })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ export default function HomePage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
                 Ratings
               </p>
-              <h2 className="mt-3 text-lg font-semibold">Current ratings</h2>
+              <h2 className="mt-3 text-lg font-semibold">International football team ratings</h2>
               <p className="mt-2 text-sm text-ink-300">
                 Snapshot of the latest team strength rankings.
               </p>
@@ -48,7 +48,7 @@ export default function HomePage() {
               </p>
               <h2 className="mt-3 text-lg font-semibold">Ratings history</h2>
               <p className="mt-2 text-sm text-ink-300">
-                Explore how teams move over time.
+                Explore historical ratings since the first ever international match in 1872.
               </p>
             </div>
             <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 lg:basis-1/2 lg:min-w-[240px] lg:flex-1 lg:self-center">
