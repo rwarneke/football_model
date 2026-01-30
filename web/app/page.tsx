@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="px-2 pb-16 pt-12 lg:px-6">
+    <main className="px-2 pb-16 pt-8 lg:px-6">
       <div className="flex w-full flex-col gap-10">
         <header className="text-center space-y-4">
           <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
@@ -14,10 +14,10 @@ export default function HomePage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           <Link
-            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 lg:flex-row lg:flex-wrap lg:gap-0 lg:items-stretch"
+            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-row sm:flex-wrap sm:gap-0 sm:items-stretch"
             href="/current-ratings"
           >
-            <div className="flex-1 lg:basis-1/2 lg:shrink-0 lg:pr-3">
+            <div className="flex-1 sm:basis-1/2 sm:shrink-0 sm:pr-3">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
                 Ratings
               </p>
@@ -26,7 +26,7 @@ export default function HomePage() {
                 Snapshot of the latest team strength rankings.
               </p>
             </div>
-            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 lg:basis-1/2 lg:min-w-[240px] lg:flex-1 lg:self-center">
+            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 sm:basis-1/2 sm:min-w-[240px] sm:flex-1 sm:self-center">
               <Image
                 src="/img/preview-current-ratings.png"
                 alt="Preview of current ratings"
@@ -39,10 +39,10 @@ export default function HomePage() {
             </div>
           </Link>
           <Link
-            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 lg:flex-row lg:flex-wrap lg:gap-0 lg:items-stretch"
+            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-row sm:flex-wrap sm:gap-0 sm:items-stretch"
             href="/history"
           >
-            <div className="flex-1 lg:basis-1/2 lg:shrink-0 lg:pr-3">
+            <div className="flex-1 sm:basis-1/2 sm:shrink-0 sm:pr-3">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
                 Trends
               </p>
@@ -51,7 +51,7 @@ export default function HomePage() {
                 Explore historical ratings since the first ever international match in 1872.
               </p>
             </div>
-            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 lg:basis-1/2 lg:min-w-[240px] lg:flex-1 lg:self-center">
+            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 sm:basis-1/2 sm:min-w-[240px] sm:flex-1 sm:self-center">
               <Image
                 src="/img/preview-historical-ratings.png"
                 alt="Preview of ratings history"
@@ -64,10 +64,10 @@ export default function HomePage() {
             </div>
           </Link>
           <Link
-            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 lg:flex-row lg:flex-wrap lg:gap-0 lg:items-stretch"
+            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-row sm:flex-wrap sm:gap-0 sm:items-stretch"
             href="/world-cup-2026/probabilities"
           >
-            <div className="flex-1 lg:basis-1/2 lg:shrink-0 lg:pr-3">
+            <div className="flex-1 sm:basis-1/2 sm:shrink-0 sm:pr-3">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
                 World Cup 2026
               </p>
@@ -76,7 +76,7 @@ export default function HomePage() {
                 Chances of progressing through each round.
               </p>
             </div>
-            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 lg:basis-1/2 lg:min-w-[240px] lg:flex-1 lg:self-center">
+            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 sm:basis-1/2 sm:min-w-[240px] sm:flex-1 sm:self-center">
               <Image
                 src="/img/preview-probabilities.png"
                 alt="Preview of stage probabilities"
@@ -89,10 +89,10 @@ export default function HomePage() {
             </div>
           </Link>
           <Link
-            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 lg:flex-row lg:flex-wrap lg:gap-0 lg:items-stretch"
+            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-row sm:flex-wrap sm:gap-0 sm:items-stretch"
             href="/world-cup-2026/predictor"
           >
-            <div className="flex-1 lg:basis-1/2 lg:shrink-0 lg:pr-3">
+            <div className="flex-1 sm:basis-1/2 sm:shrink-0 sm:pr-3">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
                 World Cup 2026
               </p>
@@ -101,7 +101,7 @@ export default function HomePage() {
                 Simulate paths and pick outcomes.
               </p>
             </div>
-            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 lg:basis-1/2 lg:min-w-[240px] lg:flex-1 lg:self-center">
+            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 sm:basis-1/2 sm:min-w-[240px] sm:flex-1 sm:self-center">
               <Image
                 src="/img/preview-predictor.png"
                 alt="Preview of tournament predictor"

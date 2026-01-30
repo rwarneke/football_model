@@ -3859,37 +3859,41 @@ function GroupStageCards({
             </h3>
           )}
           <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
-            <LoadingButton
-              loading={Boolean(loadingKeys[`group:${entry.group.id}`])}
-              disabled={!hasUnpredictedGroupMatches}
-              onClick={() =>
-                runAutopredictWithDelay(
-                  `group:${entry.group.id}`,
-                  () => handleGroupAutopredict(entry.group.id)
-                )
-              }
-              className={cn(
-                "rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                hasUnpredictedGroupMatches
-                  ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                  : "text-slate-500"
-              )}
-            >
-              Auto-predict
-            </LoadingButton>
-            <button
-              type="button"
-              disabled={!hasPredictedGroupMatches}
-              onClick={() => handleGroupReset(entry.group.id)}
-              className={cn(
-                "rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                hasPredictedGroupMatches
-                  ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                  : "text-slate-500 cursor-default"
-              )}
-            >
-              Reset
-            </button>
+            {!groupsWithUnresolvedParticipants.has(entry.group.id) && (
+              <>
+                <LoadingButton
+                  loading={Boolean(loadingKeys[`group:${entry.group.id}`])}
+                  disabled={!hasUnpredictedGroupMatches}
+                  onClick={() =>
+                    runAutopredictWithDelay(
+                      `group:${entry.group.id}`,
+                      () => handleGroupAutopredict(entry.group.id)
+                    )
+                  }
+                  className={cn(
+                    "rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                    hasUnpredictedGroupMatches
+                      ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                      : "text-slate-500"
+                  )}
+                >
+                  Auto-predict
+                </LoadingButton>
+                <button
+                  type="button"
+                  disabled={!hasPredictedGroupMatches}
+                  onClick={() => handleGroupReset(entry.group.id)}
+                  className={cn(
+                    "rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                    hasPredictedGroupMatches
+                      ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                      : "text-slate-500 cursor-default"
+                  )}
+                >
+                  Reset
+                </button>
+              </>
+            )}
             {groupsWithUnresolvedParticipants.has(entry.group.id) && (
               <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700">
                 <span>
@@ -4184,9 +4188,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     "idle"
   );
   const shareStatusRef = React.useRef<"idle" | "copied" | "error">("idle");
-  const [showTournamentControls, setShowTournamentControls] = React.useState(false);
   const hasLoadedShare = React.useRef(false);
-  const initialTournamentComplete = React.useRef<boolean | null>(null);
   const pendingSharedKnockouts = React.useRef<Record<string, WinnerSelection> | null>(
     null
   );
@@ -5681,18 +5683,6 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     qualifierWinners,
   ]);
 
-  React.useEffect(() => {
-    if (initialTournamentComplete.current === null) {
-      initialTournamentComplete.current = isTournamentComplete;
-      return;
-    }
-    if (showTournamentControls) {
-      return;
-    }
-    if (!initialTournamentComplete.current && isTournamentComplete) {
-      setShowTournamentControls(true);
-    }
-  }, [isTournamentComplete, showTournamentControls]);
   const isKnockoutBracketReady = React.useMemo(() => {
     const roundOf32 = knockoutMatchesByStage.get("Round of 32") ?? [];
     if (roundOf32.length === 0) {
@@ -8085,37 +8075,41 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <LoadingButton
-                loading={Boolean(loadingKeys["section:knockouts"])}
-                disabled={!canAutopredictKnockouts}
-                onClick={() =>
-                  runAutopredictWithDelay(
-                    "section:knockouts",
-                    handleSectionKnockoutsAutopredict
-                  )
-                }
-                className={cn(
-                  "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                  canAutopredictKnockouts
-                    ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                    : "text-slate-500"
-                )}
-              >
-                Auto-predict knockout
-              </LoadingButton>
-              <button
-                type="button"
-                disabled={!hasAnyKnockoutPredictions}
-                onClick={handleSectionKnockoutsReset}
-                className={cn(
-                  "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                  hasAnyKnockoutPredictions
-                    ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                    : "text-slate-500 cursor-default"
-                )}
-              >
-                Reset
-              </button>
+              {isKnockoutBracketReady && (
+                <>
+                  <LoadingButton
+                    loading={Boolean(loadingKeys["section:knockouts"])}
+                    disabled={!canAutopredictKnockouts}
+                    onClick={() =>
+                      runAutopredictWithDelay(
+                        "section:knockouts",
+                        handleSectionKnockoutsAutopredict
+                      )
+                    }
+                    className={cn(
+                      "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                      canAutopredictKnockouts
+                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                        : "text-slate-500"
+                    )}
+                  >
+                    Auto-predict knockout
+                  </LoadingButton>
+                  <button
+                    type="button"
+                    disabled={!hasAnyKnockoutPredictions}
+                    onClick={handleSectionKnockoutsReset}
+                    className={cn(
+                      "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                      hasAnyKnockoutPredictions
+                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                        : "text-slate-500 cursor-default"
+                    )}
+                  >
+                    Reset
+                  </button>
+                </>
+              )}
               {!isKnockoutBracketReady && (
                 <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
                   <span>
@@ -8164,77 +8158,77 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               marginRight: compactKnockout ? "auto" : undefined,
             }}
           >
-            {(isTournamentComplete || showTournamentControls) && !compactKnockout && (
+            {!compactKnockout && (
               <div className="pointer-events-none absolute bottom-10 left-1/2 z-20 -translate-x-1/2">
                 <div className="pointer-events-auto flex flex-col items-center gap-2">
-                  {isTournamentComplete && (
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <LoadingButton
+                      loading={Boolean(loadingKeys.tournament)}
+                      disabled={!canAutopredictTournament}
+                      onClick={() =>
+                        runAutopredictWithDelay("tournament", handleAutopredict)
+                      }
+                      className={cn(
+                        "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                        canAutopredictTournament
+                          ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                          : "text-slate-500"
+                      )}
+                    >
+                      Auto-predict tournament
+                    </LoadingButton>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!shareLink) {
-                          setShareStatus("error");
-                          return;
-                        }
-                        if (navigator?.clipboard?.writeText) {
-                          navigator.clipboard
-                            .writeText(shareLink)
-                            .then(() => setShareStatus("copied"))
-                            .catch(() => setShareStatus("error"));
-                          return;
-                        }
-                        const ok = window.prompt("Copy link to share", shareLink);
-                        setShareStatus(ok ? "copied" : "error");
-                      }}
-                      className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
+                      disabled={!canResetTournament}
+                      onClick={handleResetAll}
+                      className={cn(
+                        "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                        canResetTournament
+                          ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                          : "text-slate-500 cursor-default"
+                      )}
                     >
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        className="h-4 w-4 text-slate-600"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
-                        <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
-                      </svg>
-                      {shareStatus === "copied" ? "Link copied" : "Share prediction"}
+                      Reset
                     </button>
-                  )}
-                  {showTournamentControls && (
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <LoadingButton
-                        loading={Boolean(loadingKeys.tournament)}
-                        disabled={!canAutopredictTournament}
-                        onClick={() =>
-                          runAutopredictWithDelay("tournament", handleAutopredict)
-                        }
-                        className={cn(
-                          "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                          canAutopredictTournament
-                            ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                            : "text-slate-500"
-                        )}
-                      >
-                        Auto-predict tournament
-                      </LoadingButton>
+                  </div>
+                  <div className="flex min-h-9 items-center">
+                    {isTournamentComplete && (
                       <button
                         type="button"
-                        disabled={!canResetTournament}
-                        onClick={handleResetAll}
-                        className={cn(
-                          "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                          canResetTournament
-                            ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                            : "text-slate-500 cursor-default"
-                        )}
+                        onClick={() => {
+                          if (!shareLink) {
+                            setShareStatus("error");
+                            return;
+                          }
+                          if (navigator?.clipboard?.writeText) {
+                            navigator.clipboard
+                              .writeText(shareLink)
+                              .then(() => setShareStatus("copied"))
+                              .catch(() => setShareStatus("error"));
+                            return;
+                          }
+                          const ok = window.prompt("Copy link to share", shareLink);
+                          setShareStatus(ok ? "copied" : "error");
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
                       >
-                        Reset
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4 text-slate-600"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
+                          <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
+                        </svg>
+                        {shareStatus === "copied" ? "Link copied" : "Share prediction"}
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -8775,75 +8769,75 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </div>
           </div>
         </div>
-        {(isTournamentComplete || showTournamentControls) && compactKnockout && (
+        {compactKnockout && (
           <div className="pointer-events-none mt-0.5 flex w-full justify-center">
             <div className="pointer-events-auto flex flex-col items-center gap-2">
-              {isTournamentComplete && (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <LoadingButton
+                  loading={Boolean(loadingKeys.tournament)}
+                  disabled={!canAutopredictTournament}
+                  onClick={() => runAutopredictWithDelay("tournament", handleAutopredict)}
+                  className={cn(
+                    "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                    canAutopredictTournament
+                      ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                      : "text-slate-500"
+                  )}
+                >
+                  Auto-predict tournament
+                </LoadingButton>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!shareLink) {
-                      setShareStatus("error");
-                      return;
-                    }
-                    if (navigator?.clipboard?.writeText) {
-                      navigator.clipboard
-                        .writeText(shareLink)
-                        .then(() => setShareStatus("copied"))
-                        .catch(() => setShareStatus("error"));
-                      return;
-                    }
-                    const ok = window.prompt("Copy link to share", shareLink);
-                    setShareStatus(ok ? "copied" : "error");
-                  }}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
+                  disabled={!canResetTournament}
+                  onClick={handleResetAll}
+                  className={cn(
+                    "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                    canResetTournament
+                      ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                      : "text-slate-500 cursor-default"
+                  )}
                 >
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    className="h-4 w-4 text-slate-600"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
-                    <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
-                  </svg>
-                  {shareStatus === "copied" ? "Link copied" : "Share prediction"}
+                  Reset
                 </button>
-              )}
-              {showTournamentControls && (
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <LoadingButton
-                    loading={Boolean(loadingKeys.tournament)}
-                    disabled={!canAutopredictTournament}
-                    onClick={() => runAutopredictWithDelay("tournament", handleAutopredict)}
-                    className={cn(
-                      "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                      canAutopredictTournament
-                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                        : "text-slate-500"
-                    )}
-                  >
-                    Auto-predict tournament
-                  </LoadingButton>
+              </div>
+              <div className="flex min-h-9 items-center">
+                {isTournamentComplete && (
                   <button
                     type="button"
-                    disabled={!canResetTournament}
-                    onClick={handleResetAll}
-                    className={cn(
-                      "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                      canResetTournament
-                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                        : "text-slate-500 cursor-default"
-                    )}
+                    onClick={() => {
+                      if (!shareLink) {
+                        setShareStatus("error");
+                        return;
+                      }
+                      if (navigator?.clipboard?.writeText) {
+                        navigator.clipboard
+                          .writeText(shareLink)
+                          .then(() => setShareStatus("copied"))
+                          .catch(() => setShareStatus("error"));
+                        return;
+                      }
+                      const ok = window.prompt("Copy link to share", shareLink);
+                      setShareStatus(ok ? "copied" : "error");
+                    }}
+                    className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
                   >
-                    Reset
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 text-slate-600"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
+                      <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
+                    </svg>
+                    {shareStatus === "copied" ? "Link copied" : "Share prediction"}
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
