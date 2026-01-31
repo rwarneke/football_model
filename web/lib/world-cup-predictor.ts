@@ -68,7 +68,7 @@ export type WorldCupPredictorData = {
   winProbabilities: WinProbabilities;
 };
 
-const REFERENCE_DIR = path.resolve(process.cwd(), "..", "reference_data");
+const REFERENCE_DIR = path.resolve(process.cwd(), "public", "reference_data");
 const GROUPS_FILE = path.join(REFERENCE_DIR, "world_cup_2026_groups.csv");
 const GROUP_MATCHES_FILE = path.join(
   REFERENCE_DIR,
@@ -83,8 +83,8 @@ const ROUND_OF_32_FILE = path.join(
   "world_cup_2026_round_of_32_combinations.csv"
 );
 const WIN_PROBABILITIES_FILE = path.join(
-  REFERENCE_DIR,
-  "..",
+  process.cwd(),
+  "public",
   "model_output",
   "win_probabilities.json"
 );

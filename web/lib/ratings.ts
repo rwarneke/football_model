@@ -16,13 +16,13 @@ export type RatingRow = z.infer<typeof ratingRowSchema> & {
 
 const DATA_FILE = path.resolve(
   process.cwd(),
-  "..",
+  "public",
   "model_output",
   "ratings_current.csv"
 );
 const HISTORY_DATA_FILE = path.resolve(
   process.cwd(),
-  "..",
+  "public",
   "model_output",
   "ratings_history.csv"
 );

@@ -16,13 +16,13 @@ export type ProbabilityStatus = "G" | "U" | "I";
 
 const DATA_FILE = path.resolve(
   process.cwd(),
-  "..",
+  "public",
   "model_output",
   "simulation_results.csv"
 );
 const STATUS_FILE = path.resolve(
   process.cwd(),
-  "..",
+  "public",
   "model_output",
   "simulation_results_status.csv"
 );
@@ -84,13 +84,13 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
 
   const groupFile = path.resolve(
     process.cwd(),
-    "..",
+    "public",
     "reference_data",
     "world_cup_2026_groups.csv"
   );
   const qualifiedFile = path.resolve(
     process.cwd(),
-    "..",
+    "public",
     "reference_data",
     "world_cup_2026_qualified.csv"
   );
@@ -126,7 +126,7 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
 
   const remainingFile = path.resolve(
     process.cwd(),
-    "..",
+    "public",
     "reference_data",
     "world_cup_2026_remaining_qualifiers.csv"
   );
@@ -141,12 +141,12 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
   });
 
   const mapFiles = [
-    "reference_data/fifa_member_to_canonical_name_map.csv",
-    "reference_data/kaggle_team_to_canonical_name_map.csv",
+    "public/reference_data/fifa_member_to_canonical_name_map.csv",
+    "public/reference_data/kaggle_team_to_canonical_name_map.csv",
   ];
   const nameMap = new Map<string, string>();
   for (const mapFile of mapFiles) {
-    const mapContents = fs.readFileSync(path.resolve(process.cwd(), "..", mapFile), "utf8");
+    const mapContents = fs.readFileSync(path.resolve(process.cwd(), mapFile), "utf8");
     const mapLines = mapContents.trim().split(/\r?\n/);
     const mapHeaders = mapLines[0]?.split(",") ?? [];
     const mapRows = mapLines.slice(1).map((line) => {
