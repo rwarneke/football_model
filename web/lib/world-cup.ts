@@ -14,18 +14,11 @@ export type WorldCupProbabilities = {
 
 export type ProbabilityStatus = "G" | "U" | "I";
 
-const DATA_FILE = path.resolve(
-  process.cwd(),
-  "public",
-  "model_output",
-  "simulation_results.csv"
-);
-const STATUS_FILE = path.resolve(
-  process.cwd(),
-  "public",
-  "model_output",
-  "simulation_results_status.csv"
-);
+const cwd = process.cwd();
+const webRoot = cwd.endsWith(`${path.sep}web`) ? cwd : path.join(cwd, "web");
+const MODEL_OUTPUT_DIR = path.join(webRoot, "public", "model_output");
+const DATA_FILE = path.join(MODEL_OUTPUT_DIR, "simulation_results.csv");
+const STATUS_FILE = path.join(MODEL_OUTPUT_DIR, "simulation_results_status.csv");
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -82,18 +75,9 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
     }
   }
 
-  const groupFile = path.resolve(
-    process.cwd(),
-    "public",
-    "reference_data",
-    "world_cup_2026_groups.csv"
-  );
-  const qualifiedFile = path.resolve(
-    process.cwd(),
-    "public",
-    "reference_data",
-    "world_cup_2026_qualified.csv"
-  );
+  const referenceDir = path.join(webRoot, "public", "reference_data");
+  const groupFile = path.join(referenceDir, "world_cup_2026_groups.csv");
+  const qualifiedFile = path.join(referenceDir, "world_cup_2026_qualified.csv");
   const groupContents = fs.readFileSync(groupFile, "utf8");
   const groupLines = groupContents.trim().split(/\r?\n/);
   const groupHeaders = groupLines[0]?.split(",") ?? [];
@@ -124,10 +108,8 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
       .map((row) => row.team as string)
   );
 
-  const remainingFile = path.resolve(
-    process.cwd(),
-    "public",
-    "reference_data",
+  const remainingFile = path.join(
+    referenceDir,
     "world_cup_2026_remaining_qualifiers.csv"
   );
   const remainingContents = fs.readFileSync(remainingFile, "utf8");
@@ -141,12 +123,12 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
   });
 
   const mapFiles = [
-    "public/reference_data/fifa_member_to_canonical_name_map.csv",
-    "public/reference_data/kaggle_team_to_canonical_name_map.csv",
+    path.join(referenceDir, "fifa_member_to_canonical_name_map.csv"),
+    path.join(referenceDir, "kaggle_team_to_canonical_name_map.csv"),
   ];
   const nameMap = new Map<string, string>();
   for (const mapFile of mapFiles) {
-    const mapContents = fs.readFileSync(path.resolve(process.cwd(), mapFile), "utf8");
+    const mapContents = fs.readFileSync(mapFile, "utf8");
     const mapLines = mapContents.trim().split(/\r?\n/);
     const mapHeaders = mapLines[0]?.split(",") ?? [];
     const mapRows = mapLines.slice(1).map((line) => {

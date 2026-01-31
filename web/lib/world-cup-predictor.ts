@@ -68,7 +68,9 @@ export type WorldCupPredictorData = {
   winProbabilities: WinProbabilities;
 };
 
-const REFERENCE_DIR = path.resolve(process.cwd(), "public", "reference_data");
+const cwd = process.cwd();
+const webRoot = cwd.endsWith(`${path.sep}web`) ? cwd : path.join(cwd, "web");
+const REFERENCE_DIR = path.join(webRoot, "public", "reference_data");
 const GROUPS_FILE = path.join(REFERENCE_DIR, "world_cup_2026_groups.csv");
 const GROUP_MATCHES_FILE = path.join(
   REFERENCE_DIR,
@@ -83,7 +85,7 @@ const ROUND_OF_32_FILE = path.join(
   "world_cup_2026_round_of_32_combinations.csv"
 );
 const WIN_PROBABILITIES_FILE = path.join(
-  process.cwd(),
+  webRoot,
   "public",
   "model_output",
   "win_probabilities.json"
@@ -96,7 +98,7 @@ const NAME_MAP_FILES = [
   path.join(REFERENCE_DIR, "fifa_member_to_canonical_name_map.csv"),
   path.join(REFERENCE_DIR, "kaggle_team_to_canonical_name_map.csv"),
 ];
-const FLAGS_DIR = path.resolve(process.cwd(), "public", "flags");
+const FLAGS_DIR = path.join(webRoot, "public", "flags");
 
 function readCsv(filePath: string) {
   const contents = fs.readFileSync(filePath, "utf8").trim();

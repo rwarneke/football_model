@@ -14,18 +14,11 @@ export type RatingRow = z.infer<typeof ratingRowSchema> & {
   flagPath: string | null;
 };
 
-const DATA_FILE = path.resolve(
-  process.cwd(),
-  "public",
-  "model_output",
-  "ratings_current.csv"
-);
-const HISTORY_DATA_FILE = path.resolve(
-  process.cwd(),
-  "public",
-  "model_output",
-  "ratings_history.csv"
-);
+const cwd = process.cwd();
+const webRoot = cwd.endsWith(`${path.sep}web`) ? cwd : path.join(cwd, "web");
+const DATA_DIR = path.join(webRoot, "public", "model_output");
+const DATA_FILE = path.join(DATA_DIR, "ratings_current.csv");
+const HISTORY_DATA_FILE = path.join(DATA_DIR, "ratings_history.csv");
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -46,7 +39,7 @@ function flagFileName(team: string) {
   return `${team.replace(/ /g, "_")}.png`;
 }
 
-const FLAGS_DIR = path.resolve(process.cwd(), "public", "flags");
+const FLAGS_DIR = path.join(webRoot, "public", "flags");
 
 function resolveFlagPath(team: string) {
   const fileName = flagFileName(team);
