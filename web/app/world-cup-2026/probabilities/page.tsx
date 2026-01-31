@@ -2,9 +2,11 @@ import { WorldCupProbabilitiesPage } from "@/components/world-cup-probabilities-
 import { loadRatings } from "@/lib/ratings";
 import { loadWorldCupProbabilities } from "@/lib/world-cup";
 
-export default function WorldCupProbabilitiesRoute() {
-  const { columns, rows } = loadWorldCupProbabilities();
-  const ratings = loadRatings();
+export const dynamic = "force-dynamic";
+
+export default async function WorldCupProbabilitiesRoute() {
+  const { columns, rows } = await loadWorldCupProbabilities();
+  const ratings = await loadRatings();
   const ratingsMap = new Map(
     ratings.map((row) => [
       row.team,

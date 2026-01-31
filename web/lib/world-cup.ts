@@ -1,5 +1,4 @@
-import fs from "fs";
-import path from "path";
+import { headers } from "next/headers";
 
 export type WorldCupProbabilities = {
   columns: string[];
@@ -14,11 +13,9 @@ export type WorldCupProbabilities = {
 
 export type ProbabilityStatus = "G" | "U" | "I";
 
-const cwd = process.cwd();
-const webRoot = cwd.endsWith(`${path.sep}web`) ? cwd : path.join(cwd, "web");
-const MODEL_OUTPUT_DIR = path.join(webRoot, "public", "model_output");
-const DATA_FILE = path.join(MODEL_OUTPUT_DIR, "simulation_results.csv");
-const STATUS_FILE = path.join(MODEL_OUTPUT_DIR, "simulation_results_status.csv");
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const DATA_FILE = "/model_output/simulation_results.csv";
+const STATUS_FILE = "/model_output/simulation_results_status.csv";
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -38,8 +35,57 @@ function flagFileName(team: string) {
   return `${team.replace(/ /g, "_")}.png`;
 }
 
-export function loadWorldCupProbabilities(): WorldCupProbabilities {
-  const contents = fs.readFileSync(DATA_FILE, "utf8");
+function normalizeBaseUrl(value: string) {
+  const trimmed = value.replace(/\/$/, "");
+  return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+}
+
+function normalizeHost(value: string) {
+  if (value.startsWith("0.0.0.0")) {
+    return value.replace(/^0\.0\.0\.0/, "127.0.0.1");
+  }
+  return value;
+}
+
+function getBaseUrl() {
+  const envUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.CF_PAGES_URL ??
+    process.env.VERCEL_URL;
+  if (envUrl) {
+    return `${normalizeBaseUrl(envUrl)}${BASE_PATH}`;
+  }
+  const headerList = headers();
+  const forwardedHost = headerList.get("x-forwarded-host");
+  const hostValue = forwardedHost ?? headerList.get("host");
+  const proto =
+    headerList.get("x-forwarded-proto") ??
+    (process.env.NODE_ENV === "development" ? "http" : "https");
+  if (hostValue) {
+    const host = normalizeHost(hostValue);
+    return `${proto}://${host}${BASE_PATH}`;
+  }
+  throw new Error("Missing base URL for data fetch");
+}
+
+async function fetchText(filePath: string) {
+  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Failed to load ${filePath}`);
+  }
+  return res.text();
+}
+
+async function fetchOptionalText(filePath: string) {
+  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  if (!res.ok) {
+    return null;
+  }
+  return res.text();
+}
+
+export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities> {
+  const contents = await fetchText(DATA_FILE);
   const lines = contents.trim().split(/\r?\n/);
   if (lines.length <= 1) {
     return { columns: [], rows: [] };
@@ -59,8 +105,8 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
 
   let statusHeaders: string[] = [];
   const statusMap = new Map<string, Record<string, string | undefined>>();
-  if (fs.existsSync(STATUS_FILE)) {
-    const statusContents = fs.readFileSync(STATUS_FILE, "utf8");
+  const statusContents = await fetchOptionalText(STATUS_FILE);
+  if (statusContents) {
     const statusLines = statusContents.trim().split(/\r?\n/);
     statusHeaders = statusLines[0]?.split(",") ?? [];
     for (const line of statusLines.slice(1)) {
@@ -75,10 +121,10 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
     }
   }
 
-  const referenceDir = path.join(webRoot, "public", "reference_data");
-  const groupFile = path.join(referenceDir, "world_cup_2026_groups.csv");
-  const qualifiedFile = path.join(referenceDir, "world_cup_2026_qualified.csv");
-  const groupContents = fs.readFileSync(groupFile, "utf8");
+  const referenceDir = "/reference_data";
+  const groupFile = `${referenceDir}/world_cup_2026_groups.csv`;
+  const qualifiedFile = `${referenceDir}/world_cup_2026_qualified.csv`;
+  const groupContents = await fetchText(groupFile);
   const groupLines = groupContents.trim().split(/\r?\n/);
   const groupHeaders = groupLines[0]?.split(",") ?? [];
   const groupRows = groupLines.slice(1).map((line) => {
@@ -93,7 +139,7 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
       .map((row) => [row.team as string, row.group as string])
   );
 
-  const qualifiedContents = fs.readFileSync(qualifiedFile, "utf8");
+  const qualifiedContents = await fetchText(qualifiedFile);
   const qualifiedLines = qualifiedContents.trim().split(/\r?\n/);
   const qualifiedHeaders = qualifiedLines[0]?.split(",") ?? [];
   const qualifiedRows = qualifiedLines.slice(1).map((line) => {
@@ -108,11 +154,8 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
       .map((row) => row.team as string)
   );
 
-  const remainingFile = path.join(
-    referenceDir,
-    "world_cup_2026_remaining_qualifiers.csv"
-  );
-  const remainingContents = fs.readFileSync(remainingFile, "utf8");
+  const remainingFile = `${referenceDir}/world_cup_2026_remaining_qualifiers.csv`;
+  const remainingContents = await fetchText(remainingFile);
   const remainingLines = remainingContents.trim().split(/\r?\n/);
   const remainingHeaders = remainingLines[0]?.split(",") ?? [];
   const remainingRows = remainingLines.slice(1).map((line) => {
@@ -123,12 +166,12 @@ export function loadWorldCupProbabilities(): WorldCupProbabilities {
   });
 
   const mapFiles = [
-    path.join(referenceDir, "fifa_member_to_canonical_name_map.csv"),
-    path.join(referenceDir, "kaggle_team_to_canonical_name_map.csv"),
+    `${referenceDir}/fifa_member_to_canonical_name_map.csv`,
+    `${referenceDir}/kaggle_team_to_canonical_name_map.csv`,
   ];
   const nameMap = new Map<string, string>();
   for (const mapFile of mapFiles) {
-    const mapContents = fs.readFileSync(mapFile, "utf8");
+    const mapContents = await fetchText(mapFile);
     const mapLines = mapContents.trim().split(/\r?\n/);
     const mapHeaders = mapLines[0]?.split(",") ?? [];
     const mapRows = mapLines.slice(1).map((line) => {

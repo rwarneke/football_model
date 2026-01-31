@@ -1,6 +1,5 @@
-import fs from "fs";
-import path from "path";
 import { z } from "zod";
+import { headers } from "next/headers";
 
 const ratingRowSchema = z.object({
   team: z.string().min(1),
@@ -14,11 +13,10 @@ export type RatingRow = z.infer<typeof ratingRowSchema> & {
   flagPath: string | null;
 };
 
-const cwd = process.cwd();
-const webRoot = cwd.endsWith(`${path.sep}web`) ? cwd : path.join(cwd, "web");
-const DATA_DIR = path.join(webRoot, "public", "model_output");
-const DATA_FILE = path.join(DATA_DIR, "ratings_current.csv");
-const HISTORY_DATA_FILE = path.join(DATA_DIR, "ratings_history.csv");
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const DATA_DIR = "/model_output";
+const DATA_FILE = `${DATA_DIR}/ratings_current.csv`;
+const HISTORY_DATA_FILE = `${DATA_DIR}/ratings_history.csv`;
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -39,19 +37,57 @@ function flagFileName(team: string) {
   return `${team.replace(/ /g, "_")}.png`;
 }
 
-const FLAGS_DIR = path.join(webRoot, "public", "flags");
-
 function resolveFlagPath(team: string) {
-  const fileName = flagFileName(team);
-  const filePath = path.join(FLAGS_DIR, fileName);
-  if (fs.existsSync(filePath)) {
-    return `/flags/${fileName}`;
+  if (!team) {
+    return null;
   }
-  return null;
+  const fileName = flagFileName(team);
+  return `/flags/${fileName}`;
 }
 
-export function loadRatings(): RatingRow[] {
-  const contents = fs.readFileSync(DATA_FILE, "utf8");
+function normalizeBaseUrl(value: string) {
+  const trimmed = value.replace(/\/$/, "");
+  return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+}
+
+function normalizeHost(value: string) {
+  if (value.startsWith("0.0.0.0")) {
+    return value.replace(/^0\.0\.0\.0/, "127.0.0.1");
+  }
+  return value;
+}
+
+function getBaseUrl() {
+  const envUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.CF_PAGES_URL ??
+    process.env.VERCEL_URL;
+  if (envUrl) {
+    return `${normalizeBaseUrl(envUrl)}${BASE_PATH}`;
+  }
+  const headerList = headers();
+  const forwardedHost = headerList.get("x-forwarded-host");
+  const hostValue = forwardedHost ?? headerList.get("host");
+  const proto =
+    headerList.get("x-forwarded-proto") ??
+    (process.env.NODE_ENV === "development" ? "http" : "https");
+  if (hostValue) {
+    const host = normalizeHost(hostValue);
+    return `${proto}://${host}${BASE_PATH}`;
+  }
+  throw new Error("Missing base URL for data fetch");
+}
+
+async function fetchText(filePath: string) {
+  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Failed to load ${filePath}`);
+  }
+  return res.text();
+}
+
+export async function loadRatings(): Promise<RatingRow[]> {
+  const contents = await fetchText(DATA_FILE);
   const lines = contents.trim().split(/\r?\n/);
   if (lines.length <= 1) {
     return [];
@@ -91,8 +127,8 @@ export type RatingsHistoryPoint = {
   [team: string]: number | null;
 };
 
-export function loadRatingsHistory() {
-  const contents = fs.readFileSync(HISTORY_DATA_FILE, "utf8");
+export async function loadRatingsHistory() {
+  const contents = await fetchText(HISTORY_DATA_FILE);
   const lines = contents.trim().split(/\r?\n/);
   if (lines.length <= 1) {
     return { data: [], teams: [] };

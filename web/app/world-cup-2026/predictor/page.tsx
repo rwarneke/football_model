@@ -1,8 +1,10 @@
 import { WorldCupPredictorPage } from "@/components/world-cup-predictor-page";
 import { loadWorldCupPredictorData } from "@/lib/world-cup-predictor";
 
-export default function WorldCupPredictorRoute() {
-  const data = loadWorldCupPredictorData();
+export const dynamic = "force-dynamic";
+
+export default async function WorldCupPredictorRoute() {
+  const data = await loadWorldCupPredictorData();
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",

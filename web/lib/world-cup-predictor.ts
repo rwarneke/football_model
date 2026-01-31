@@ -1,5 +1,4 @@
-import fs from "fs";
-import path from "path";
+import { headers } from "next/headers";
 
 export type GroupDefinition = {
   id: string;
@@ -68,40 +67,70 @@ export type WorldCupPredictorData = {
   winProbabilities: WinProbabilities;
 };
 
-const cwd = process.cwd();
-const webRoot = cwd.endsWith(`${path.sep}web`) ? cwd : path.join(cwd, "web");
-const REFERENCE_DIR = path.join(webRoot, "public", "reference_data");
-const GROUPS_FILE = path.join(REFERENCE_DIR, "world_cup_2026_groups.csv");
-const GROUP_MATCHES_FILE = path.join(
-  REFERENCE_DIR,
-  "world_cup_2026_group_matches.csv"
-);
-const KNOCKOUT_MATCHES_FILE = path.join(
-  REFERENCE_DIR,
-  "world_cup_2026_knockout_matches.csv"
-);
-const ROUND_OF_32_FILE = path.join(
-  REFERENCE_DIR,
-  "world_cup_2026_round_of_32_combinations.csv"
-);
-const WIN_PROBABILITIES_FILE = path.join(
-  webRoot,
-  "public",
-  "model_output",
-  "win_probabilities.json"
-);
-const QUALIFIERS_FILE = path.join(
-  REFERENCE_DIR,
-  "world_cup_2026_remaining_qualifiers.csv"
-);
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const REFERENCE_DIR = "/reference_data";
+const GROUPS_FILE = `${REFERENCE_DIR}/world_cup_2026_groups.csv`;
+const GROUP_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_group_matches.csv`;
+const KNOCKOUT_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_knockout_matches.csv`;
+const ROUND_OF_32_FILE = `${REFERENCE_DIR}/world_cup_2026_round_of_32_combinations.csv`;
+const WIN_PROBABILITIES_FILE = "/model_output/win_probabilities.json";
+const QUALIFIERS_FILE = `${REFERENCE_DIR}/world_cup_2026_remaining_qualifiers.csv`;
 const NAME_MAP_FILES = [
-  path.join(REFERENCE_DIR, "fifa_member_to_canonical_name_map.csv"),
-  path.join(REFERENCE_DIR, "kaggle_team_to_canonical_name_map.csv"),
+  `${REFERENCE_DIR}/fifa_member_to_canonical_name_map.csv`,
+  `${REFERENCE_DIR}/kaggle_team_to_canonical_name_map.csv`,
 ];
-const FLAGS_DIR = path.join(webRoot, "public", "flags");
 
-function readCsv(filePath: string) {
-  const contents = fs.readFileSync(filePath, "utf8").trim();
+function normalizeBaseUrl(value: string) {
+  const trimmed = value.replace(/\/$/, "");
+  return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+}
+
+function normalizeHost(value: string) {
+  if (value.startsWith("0.0.0.0")) {
+    return value.replace(/^0\.0\.0\.0/, "127.0.0.1");
+  }
+  return value;
+}
+
+function getBaseUrl() {
+  const envUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.CF_PAGES_URL ??
+    process.env.VERCEL_URL;
+  if (envUrl) {
+    return `${normalizeBaseUrl(envUrl)}${BASE_PATH}`;
+  }
+  const headerList = headers();
+  const forwardedHost = headerList.get("x-forwarded-host");
+  const hostValue = forwardedHost ?? headerList.get("host");
+  const proto =
+    headerList.get("x-forwarded-proto") ??
+    (process.env.NODE_ENV === "development" ? "http" : "https");
+  if (hostValue) {
+    const host = normalizeHost(hostValue);
+    return `${proto}://${host}${BASE_PATH}`;
+  }
+  throw new Error("Missing base URL for data fetch");
+}
+
+async function fetchText(filePath: string) {
+  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Failed to load ${filePath}`);
+  }
+  return res.text();
+}
+
+async function fetchJson(filePath: string) {
+  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  if (!res.ok) {
+    return null;
+  }
+  return res.json();
+}
+
+async function readCsv(filePath: string) {
+  const contents = (await fetchText(filePath)).trim();
   const lines = contents ? contents.split(/\r?\n/) : [];
   if (lines.length === 0) {
     return { headers: [] as string[], rows: [] as Record<string, string>[] };
@@ -116,10 +145,10 @@ function readCsv(filePath: string) {
   return { headers, rows };
 }
 
-function buildNameMap() {
+async function buildNameMap() {
   const map = new Map<string, string>();
   for (const filePath of NAME_MAP_FILES) {
-    const { rows } = readCsv(filePath);
+    const { rows } = await readCsv(filePath);
     for (const row of rows) {
       const original = row.original_name?.trim();
       const replacement = row.replacement_name?.trim();
@@ -154,17 +183,13 @@ function resolveFlagPath(team: string) {
     return null;
   }
   const fileName = `${team.replace(/ /g, "_")}.png`;
-  const filePath = path.join(FLAGS_DIR, fileName);
-  if (fs.existsSync(filePath)) {
-    return `/flags/${fileName}`;
-  }
-  return null;
+  return `/flags/${fileName}`;
 }
 
-export function loadWorldCupPredictorData(): WorldCupPredictorData {
-  const nameMap = buildNameMap();
+export async function loadWorldCupPredictorData(): Promise<WorldCupPredictorData> {
+  const nameMap = await buildNameMap();
 
-  const groupRows = readCsv(GROUPS_FILE).rows;
+  const groupRows = (await readCsv(GROUPS_FILE)).rows;
   const groupsMap = new Map<string, string[]>();
   for (const row of groupRows) {
     const group = row.group?.trim();
@@ -186,7 +211,7 @@ export function loadWorldCupPredictorData(): WorldCupPredictorData {
       teams: groupsMap.get(group) ?? [],
     }));
 
-  const groupMatches = readCsv(GROUP_MATCHES_FILE).rows.map((row) => ({
+  const groupMatches = (await readCsv(GROUP_MATCHES_FILE)).rows.map((row) => ({
     id: Number(row.match_id),
     date: row.date,
     group: row.group?.trim() ?? "",
@@ -197,7 +222,7 @@ export function loadWorldCupPredictorData(): WorldCupPredictorData {
     country: row.country?.trim() ?? "",
   }));
 
-  const knockoutMatches = readCsv(KNOCKOUT_MATCHES_FILE).rows.map((row) => ({
+  const knockoutMatches = (await readCsv(KNOCKOUT_MATCHES_FILE)).rows.map((row) => ({
     id: Number(row.match_id),
     stage: row.stage?.trim() ?? "",
     date: row.date,
@@ -208,7 +233,7 @@ export function loadWorldCupPredictorData(): WorldCupPredictorData {
     country: row.country?.trim() ?? "",
   }));
 
-  const combosRows = readCsv(ROUND_OF_32_FILE).rows;
+  const combosRows = (await readCsv(ROUND_OF_32_FILE)).rows;
   const roundOf32Combos: RoundOf32Combos = {};
   for (const row of combosRows) {
     const combo = row.combo?.trim();
@@ -227,7 +252,7 @@ export function loadWorldCupPredictorData(): WorldCupPredictorData {
     };
   }
 
-  const qualifierRows = readCsv(QUALIFIERS_FILE).rows;
+  const qualifierRows = (await readCsv(QUALIFIERS_FILE)).rows;
   const qualifiers: QualifierMatch[] = qualifierRows.map((row) => ({
     id: `${row.path?.trim() ?? "path"}-${row.round?.trim() ?? "round"}`,
     date: row.date,
@@ -264,9 +289,8 @@ export function loadWorldCupPredictorData(): WorldCupPredictorData {
     flags[team] = resolveFlagPath(team);
   }
 
-  const winProbabilities: WinProbabilities = fs.existsSync(WIN_PROBABILITIES_FILE)
-    ? JSON.parse(fs.readFileSync(WIN_PROBABILITIES_FILE, "utf8"))
-    : {};
+  const winProbabilities =
+    (await fetchJson(WIN_PROBABILITIES_FILE)) ?? {};
 
   return {
     groups,

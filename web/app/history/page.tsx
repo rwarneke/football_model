@@ -1,8 +1,10 @@
 import { RatingsHistoryChart } from "@/components/ratings-history-chart";
 import { loadRatingsHistory } from "@/lib/ratings";
 
-export default function HistoryPage() {
-  const { data, teams } = loadRatingsHistory();
+export const dynamic = "force-dynamic";
+
+export default async function HistoryPage() {
+  const { data, teams } = await loadRatingsHistory();
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",

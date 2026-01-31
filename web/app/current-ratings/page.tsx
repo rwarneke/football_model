@@ -1,8 +1,10 @@
 import { RatingsPage } from "@/components/ratings-page";
 import { loadRatings } from "@/lib/ratings";
 
-export default function CurrentRatingsPage() {
-  const ratings = loadRatings();
+export const dynamic = "force-dynamic";
+
+export default async function CurrentRatingsPage() {
+  const ratings = await loadRatings();
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
