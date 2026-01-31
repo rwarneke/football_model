@@ -71,8 +71,9 @@ export function RatingsTable({ data }: RatingsTableProps) {
       {
         id: "rank",
         header: "Rank",
-        accessorFn: (row) => row.rank ?? row.rating_rank,
-        sortingFn: (a, b, id) => (b.getValue(id) ?? 0) - (a.getValue(id) ?? 0),
+        accessorFn: (row, index) => row.rank ?? index + 1,
+        sortingFn: (a, b, id) =>
+          Number(b.getValue(id) ?? 0) - Number(a.getValue(id) ?? 0),
         meta: { minWidthCh: 3 },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700">
@@ -130,7 +131,8 @@ export function RatingsTable({ data }: RatingsTableProps) {
           </span>
         ),
         accessorFn: (row) => row.rating ?? Number.NaN,
-        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        sortingFn: (a, b, id) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -149,7 +151,8 @@ export function RatingsTable({ data }: RatingsTableProps) {
           </span>
         ),
         accessorFn: (row) => row.rating_attack ?? Number.NaN,
-        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        sortingFn: (a, b, id) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -168,7 +171,8 @@ export function RatingsTable({ data }: RatingsTableProps) {
           </span>
         ),
         accessorFn: (row) => row.rating_defense ?? Number.NaN,
-        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        sortingFn: (a, b, id) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -204,6 +208,9 @@ export function RatingsTable({ data }: RatingsTableProps) {
               >
                 {headerGroup.headers.map((header, index) => {
                   const isLastHeader = index === headerGroup.headers.length - 1;
+                  const columnMeta = header.column.columnDef.meta as
+                    | { minWidthCh?: number; isRating?: boolean }
+                    | undefined;
                   return (
                   <TableHead
                     key={header.id}
@@ -230,11 +237,11 @@ export function RatingsTable({ data }: RatingsTableProps) {
                     } ${isLastHeader ? "rounded-tr-xl" : ""}`}
                     onClick={header.column.getToggleSortingHandler()}
                     style={
-                      header.column.columnDef.meta?.minWidthCh
+                      columnMeta?.minWidthCh
                         ? {
-                            minWidth: `${header.column.columnDef.meta.minWidthCh}ch`,
+                            minWidth: `${columnMeta.minWidthCh}ch`,
                           }
-                        : header.column.columnDef.meta?.isRating
+                        : columnMeta?.isRating
                         ? {
                             minWidth: "var(--rating-col-width)",
                           }
@@ -257,7 +264,11 @@ export function RatingsTable({ data }: RatingsTableProps) {
                 key={row.id}
                 className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
               >
-                {row.getVisibleCells().map((cell) => (
+                {row.getVisibleCells().map((cell) => {
+                  const columnMeta = cell.column.columnDef.meta as
+                    | { minWidthCh?: number; isRating?: boolean }
+                    | undefined;
+                  return (
                   <TableCell
                     key={cell.id}
                     className={`px-1 sm:px-2 py-1.5 sm:py-2.5 ${
@@ -276,14 +287,14 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : ""
                     }`}
                     style={{
-                      ...(cell.column.columnDef.meta?.isRating
+                      ...(columnMeta?.isRating
                         ? ratingBackground(cell.getValue<number>())
                         : {}),
-                      ...(cell.column.columnDef.meta?.minWidthCh
+                      ...(columnMeta?.minWidthCh
                         ? {
-                            minWidth: `${cell.column.columnDef.meta.minWidthCh}ch`,
+                            minWidth: `${columnMeta.minWidthCh}ch`,
                           }
-                        : cell.column.columnDef.meta?.isRating
+                        : columnMeta?.isRating
                         ? {
                             minWidth: "var(--rating-col-width)",
                           }
@@ -292,7 +303,8 @@ export function RatingsTable({ data }: RatingsTableProps) {
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
-                ))}
+                );
+                })}
               </TableRow>
             ))}
           </tbody>

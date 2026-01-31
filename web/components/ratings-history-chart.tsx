@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 
 import type { RatingsHistoryPoint } from "@/lib/ratings";
 import teamGroups from "@/lib/team-groups.json";
@@ -43,7 +44,7 @@ type PresetOption = {
 };
 
 function formatTick(value: number) {
-  return new Date(value).getFullYear();
+  return String(new Date(value).getFullYear());
 }
 
 function formatTooltipLabel(value: number) {
@@ -56,11 +57,17 @@ const tooltipNumberFormatter = new Intl.NumberFormat("en", {
 });
 
 type TooltipPayloadItem = {
-  dataKey?: string;
-  name?: string;
-  value?: number | null;
+  dataKey?: string | number;
+  name?: string | number;
+  value?: unknown;
   color?: string;
 };
+
+type RechartsTooltipProps = TooltipProps<
+  number | string | Array<number | string>,
+  string | number
+>;
+type RechartsPayload = NonNullable<RechartsTooltipProps["payload"]>[number];
 
 function TooltipContent({
   active,
@@ -69,14 +76,7 @@ function TooltipContent({
   coordinate,
   viewBox,
   activeTeam,
-}: {
-  active?: boolean;
-  payload?: TooltipPayloadItem[];
-  label?: number;
-  coordinate?: { x: number; y: number };
-  viewBox?: { x: number; y: number; width: number; height: number };
-  activeTeam?: string | null;
-}) {
+}: RechartsTooltipProps & { activeTeam?: string | null }) {
   const contentRef = React.useRef<HTMLDivElement | null>(null);
   const [contentHeight, setContentHeight] = React.useState<number | null>(null);
 
@@ -90,21 +90,26 @@ function TooltipContent({
   if (!active || !payload || payload.length === 0 || typeof label !== "number") {
     return null;
   }
-  const rows = payload
+  const rows = (payload ?? [])
+    .map((item) => item as TooltipPayloadItem)
     .filter((item) => typeof item.value === "number")
     .sort((a, b) => (b.value as number) - (a.value as number));
   if (rows.length === 0) {
     return null;
   }
   let translateY = "12px";
-  if (coordinate && viewBox && contentHeight) {
-    const bottom = viewBox.y + viewBox.height;
-    const desiredTop = coordinate.y + 12;
-    const canFit = contentHeight <= viewBox.height;
+  const coordY = typeof coordinate?.y === "number" ? coordinate.y : null;
+  const viewBoxY = typeof viewBox?.y === "number" ? viewBox.y : null;
+  const viewBoxHeight =
+    typeof viewBox?.height === "number" ? viewBox.height : null;
+  if (coordY !== null && viewBoxY !== null && viewBoxHeight !== null && contentHeight) {
+    const bottom = viewBoxY + viewBoxHeight;
+    const desiredTop = coordY + 12;
+    const canFit = contentHeight <= viewBoxHeight;
     const top = canFit
       ? Math.min(desiredTop, bottom - contentHeight)
-      : viewBox.y;
-    translateY = `${top - coordinate.y}px`;
+      : viewBoxY;
+    translateY = `${top - coordY}px`;
   }
   return (
     <div
@@ -184,7 +189,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
   const [lockedAxis, setLockedAxis] = React.useState<"x" | "y" | null>(null);
   const [activeTeam, setActiveTeam] = React.useState<string | null>(null);
   const [pinnedTooltip, setPinnedTooltip] = React.useState<{
-    payload: TooltipPayloadItem[];
+    payload: RechartsPayload[];
     label: number;
     coordinate?: { x?: number; y?: number };
   } | null>(null);
@@ -509,10 +514,10 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
       if (typeof scale.invert !== "function") {
         return null;
       }
-      const range =
-        typeof (scale as { range?: () => number[] }).range === "function"
-          ? (scale as { range: () => number[] }).range()
-          : null;
+      const range = (() => {
+        const candidate = (scale as unknown as { range?: () => number[] }).range;
+        return typeof candidate === "function" ? candidate() : null;
+      })();
       let clamped = value;
       if (range && range.length >= 2) {
         const min = Math.min(range[0] as number, range[range.length - 1] as number);
@@ -649,7 +654,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
   }, []);
 
   const closestTeamForPayload = React.useCallback(
-    (payload: TooltipPayloadItem[] | undefined, chartY: number | undefined) => {
+    (payload: RechartsPayload[] | undefined, chartY: number | undefined) => {
       const meta = chartMetaRef.current;
       const yScale = meta?.yScale as ((value: number) => number) | undefined;
       if (!payload || payload.length === 0 || typeof chartY !== "number" || typeof yScale !== "function") {
@@ -657,7 +662,8 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
       }
       let closestTeam: string | null = null;
       let closestDistance = Infinity;
-      for (const item of payload) {
+      for (const rawItem of payload) {
+        const item = rawItem as TooltipPayloadItem;
         if (typeof item.value !== "number") {
           continue;
         }
@@ -763,7 +769,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
       return;
     }
 
-    const payload = event.activePayload as TooltipPayloadItem[] | undefined;
+    const payload = event.activePayload as RechartsPayload[] | undefined;
     const closestTeam = closestTeamForPayload(payload, event.chartY);
     if (closestTeam) {
       if (activeTeam !== closestTeam) {
@@ -835,15 +841,24 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
       return;
     }
 
-    const domain = meta?.xScale?.domain?.() ?? [];
+    const domain =
+      (meta?.xScale as unknown as { domain?: () => unknown[] })?.domain?.() ?? [];
+    const firstDomainValue = domain[0];
+    const lastDomainValue = domain[domain.length - 1];
     const rawMin =
-      domain[0] instanceof Date ? domain[0].getTime() : domain[0];
+      firstDomainValue instanceof Date
+        ? firstDomainValue.getTime()
+        : typeof firstDomainValue === "number"
+        ? firstDomainValue
+        : null;
     const rawMax =
-      domain[domain.length - 1] instanceof Date
-        ? domain[domain.length - 1].getTime()
-        : domain[domain.length - 1];
-    const minX = typeof rawMin === "number" ? rawMin : x1;
-    const maxX = typeof rawMax === "number" ? rawMax : x2;
+      lastDomainValue instanceof Date
+        ? lastDomainValue.getTime()
+        : typeof lastDomainValue === "number"
+        ? lastDomainValue
+        : null;
+    const minX = rawMin ?? x1;
+    const maxX = rawMax ?? x2;
     const nextX1 = Math.max(minX, x1);
     const nextX2 = Math.min(maxX, x2);
     const nextY1 = Math.max(0, Math.min(100, y1));
@@ -887,7 +902,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
     if (!event || isSelecting) {
       return;
     }
-    const payload = event.activePayload as TooltipPayloadItem[] | undefined;
+    const payload = event.activePayload as RechartsPayload[] | undefined;
     const label = event.activeLabel;
     if (!payload || payload.length === 0 || typeof label !== "number") {
       setPinnedTooltip(null);
@@ -952,10 +967,14 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
           <div
             ref={chartWrapperRef}
             className="h-full w-full min-h-0 select-none touch-none"
+            onTouchStart={dragZoomEnabled ? handlePointerDown : undefined}
+            onTouchMove={dragZoomEnabled ? handlePointerMove : undefined}
+            onTouchEnd={dragZoomEnabled ? handlePointerUp : undefined}
+            onTouchCancel={dragZoomEnabled ? handlePointerLeave : undefined}
             style={{
-              touchAction: dragZoomEnabled ? 'auto' : 'pan-x pan-y',
-              WebkitUserSelect: 'none',
-              userSelect: 'none',
+              touchAction: dragZoomEnabled ? "auto" : "pan-x pan-y",
+              WebkitUserSelect: "none",
+              userSelect: "none",
             }}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -967,10 +986,6 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
                 onMouseMove={dragZoomEnabled ? handlePointerMove : undefined}
                 onMouseUp={dragZoomEnabled ? handlePointerUp : undefined}
                 onMouseLeave={dragZoomEnabled ? handlePointerLeave : undefined}
-                onTouchStart={dragZoomEnabled ? handlePointerDown : undefined}
-                onTouchMove={dragZoomEnabled ? handlePointerMove : undefined}
-                onTouchEnd={dragZoomEnabled ? handlePointerUp : undefined}
-                onTouchCancel={dragZoomEnabled ? handlePointerLeave : undefined}
                 onClick={handleChartClick}
               >
               <CartesianGrid stroke="var(--color-accent-light)" />
@@ -999,7 +1014,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
               {!isSelecting && (
                 <Tooltip
                   labelFormatter={formatTooltipLabel}
-                  formatter={(value: number | null) =>
+                  formatter={(value: unknown) =>
                     typeof value === "number"
                       ? tooltipNumberFormatter.format(value)
                       : ""

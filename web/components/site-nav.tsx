@@ -6,15 +6,22 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Home, Trophy, ArrowUpDown, Clock, Percent, Shuffle, Globe } from "lucide-react";
 
+type NavIcon = React.ComponentType<{ className?: string }>;
+
+type NavChild = {
+  label: string;
+  href: string;
+  icon: NavIcon;
+};
+
 type NavGroup = {
   label: string;
   href?: string;
-  children?: Array<{ label: string; href: string }>;
+  icon: NavIcon;
+  children?: NavChild[];
 };
 
-const navGroups: Array<
-  NavGroup & { icon: React.ComponentType<{ className?: string }>; children?: Array<{ label: string; href: string; icon: React.ComponentType<{ className?: string }> }> }
-> = [
+const navGroups: NavGroup[] = [
   { label: "Home", href: "/", icon: Home },
   {
     label: "World Football Ratings",

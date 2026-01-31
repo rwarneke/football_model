@@ -856,7 +856,9 @@ function encodeShareStateCompact(params: {
   const writer = new BitWriter();
   writer.writeBits(SHARE_VERSION, 4);
 
-  const qualifiers = [...params.qualifiers].sort((a, b) => a.id - b.id);
+  const qualifiers = [...params.qualifiers].sort((a, b) =>
+    String(a.id).localeCompare(String(b.id))
+  );
   qualifiers.forEach((match) => {
     const selection = params.qualifierWinners[String(match.id)] ?? null;
     const code = selection === "home" ? 1 : selection === "away" ? 2 : 0;
@@ -906,7 +908,9 @@ function decodeShareStateCompact(
     return null;
   }
 
-  const qualifiers = [...params.qualifiers].sort((a, b) => a.id - b.id);
+  const qualifiers = [...params.qualifiers].sort((a, b) =>
+    String(a.id).localeCompare(String(b.id))
+  );
   const qualifierWinners: Record<string, WinnerSelection> = {};
   for (const match of qualifiers) {
     const code = reader.readBits(2);
@@ -1926,7 +1930,10 @@ function MatchCard({
   const isDraw = hasScore && score.home === score.away;
   const selection = showScore ? null : winnerSelection ?? null;
   const winner = showScore
-    ? hasScore && score.home !== score.away
+    ? hasScore &&
+      score.home !== null &&
+      score.away !== null &&
+      score.home !== score.away
       ? score.home > score.away
         ? homeTeam
         : awayTeam
@@ -2654,6 +2661,7 @@ function KnockoutMatchCard({
         away: awayValue,
       })
     : normalizeTwoSegments({ home: homeValue, away: awayValue });
+  const drawSegment = showDraw ? (segments as { draw?: number }).draw ?? 0 : 0;
   const paddedRow = compact ? "py-1 sm:py-1.5" : "py-0.5";
   const scoreSlot = <div className="flex w-0 flex-none" />;
 
@@ -2837,7 +2845,7 @@ function KnockoutMatchCard({
           {showDraw && (
             <div
               className="w-full bg-slate-300/70"
-              style={{ height: `${segments?.draw ?? 0}%` }}
+              style={{ height: `${drawSegment}%` }}
             />
           )}
           <div
@@ -3031,8 +3039,8 @@ function QualifierPathBracket({
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const bracketRef = React.useRef<HTMLDivElement | null>(null);
   const matchRefs = React.useRef(new Map<string | number, HTMLDivElement>());
-  const matchHomeRefs = React.useRef(new Map<string | number, HTMLDivElement>());
-  const matchAwayRefs = React.useRef(new Map<string | number, HTMLDivElement>());
+  const matchHomeRefs = React.useRef(new Map<string | number, HTMLButtonElement>());
+  const matchAwayRefs = React.useRef(new Map<string | number, HTMLButtonElement>());
   const [paths, setPaths] = React.useState<string[]>([]);
   const [semisOffset, setSemisOffset] = React.useState(0);
   const hintTextRef = React.useRef<HTMLDivElement | null>(null);
@@ -4774,7 +4782,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     }));
     const filled = rows.slice(0, 6);
     while (filled.length < 6) {
-      filled.push({ slot: `empty-${filled.length}`, path: null, team: null });
+      filled.push({ slot: `empty-${filled.length}`, path: "Qualifier", team: null });
     }
     return filled;
   }, [qualifierSlots, qualifierPathBySlot, qualifierState.slotWinners]);
@@ -5415,7 +5423,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           randomTiebreak: thirdPlaceCutoffTies.has(entry.team),
         };
       })
-      .filter((row): row is GroupTableRow => Boolean(row));
+      .filter(
+        (row): row is GroupTableRow & { randomTiebreak: boolean } => Boolean(row)
+      );
   }, [groupTables, thirdPlaceEntries, thirdPlaceCutoffTies]);
   const bestThirdGroups = thirdPlaceEntries.slice(0, 8);
   const qualifiedThirdGroups = React.useMemo(

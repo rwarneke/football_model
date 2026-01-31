@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import {
   ColumnDef,
+  Row,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
@@ -234,7 +235,7 @@ export function WorldCupProbabilitiesTable({
           }
           return normA.starred ? -1 : 1;
         },
-        cell: ({ row }) => {
+        cell: ({ row }: { row: Row<TableRowData> }) => {
           const group = row.original.group ?? "";
           if (!group.includes("*")) {
             return <span className="font-mono text-xs sm:text-sm text-slate-700">{group}</span>;
@@ -251,36 +252,48 @@ export function WorldCupProbabilitiesTable({
       },
       ...columns.map((column) => ({
         id: column,
-        header:
-          column === "Champion" ? (
-            <span className="whitespace-nowrap">
-              <span className="md:hidden">Champ.</span>
-              <span className="hidden md:inline">Champion</span>
-            </span>
-          ) : column === "Win round of 16" ? (
-            <span className="whitespace-nowrap">
-              <span className="md:hidden">R16</span>
-              <span className="hidden md:inline">Win round of 16</span>
-            </span>
-          ) : column === "Win round of 32" ? (
-            <span className="whitespace-nowrap">
-              <span className="md:hidden">R32</span>
-              <span className="hidden md:inline">Win round of 32</span>
-            </span>
-          ) : column === "Qualify" ? (
-            <span className="whitespace-nowrap">
-              <span className="md:hidden">Qual.</span>
-              <span className="hidden md:inline">Qualify</span>
-            </span>
-          ) : (
-            column
-          ),
+        header: () => {
+          if (column === "Champion") {
+            return (
+              <span className="whitespace-nowrap">
+                <span className="md:hidden">Champ.</span>
+                <span className="hidden md:inline">Champion</span>
+              </span>
+            );
+          }
+          if (column === "Win round of 16") {
+            return (
+              <span className="whitespace-nowrap">
+                <span className="md:hidden">R16</span>
+                <span className="hidden md:inline">Win round of 16</span>
+              </span>
+            );
+          }
+          if (column === "Win round of 32") {
+            return (
+              <span className="whitespace-nowrap">
+                <span className="md:hidden">R32</span>
+                <span className="hidden md:inline">Win round of 32</span>
+              </span>
+            );
+          }
+          if (column === "Qualify") {
+            return (
+              <span className="whitespace-nowrap">
+                <span className="md:hidden">Qual.</span>
+                <span className="hidden md:inline">Qualify</span>
+              </span>
+            );
+          }
+          return column;
+        },
         accessorFn: (row: TableRowData) => row.values[column],
         meta: {
           isProbability: true,
         },
-        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
-        cell: ({ row }) => {
+        sortingFn: (a: Row<TableRowData>, b: Row<TableRowData>, id: string) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
+        cell: ({ row }: { row: Row<TableRowData> }) => {
           const value = row.original.values[column];
           const status = row.original.statuses[column] ?? "U";
           const formatted = formatProbability(value, status);
@@ -305,7 +318,8 @@ export function WorldCupProbabilitiesTable({
           </span>
         ),
         accessorFn: (row) => row.ratingOverall ?? Number.NaN,
-        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        sortingFn: (a, b, id) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -324,7 +338,8 @@ export function WorldCupProbabilitiesTable({
           </span>
         ),
         accessorFn: (row) => row.ratingAttack ?? Number.NaN,
-        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        sortingFn: (a, b, id) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -343,7 +358,8 @@ export function WorldCupProbabilitiesTable({
           </span>
         ),
         accessorFn: (row) => row.ratingDefense ?? Number.NaN,
-        sortingFn: (a, b, id) => (a.getValue(id) ?? 0) - (b.getValue(id) ?? 0),
+        sortingFn: (a, b, id) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -380,6 +396,14 @@ export function WorldCupProbabilitiesTable({
               <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">
                 {headerGroup.headers.map((header, index) => {
                   const isLastHeader = index === headerGroup.headers.length - 1;
+                  const columnMeta = header.column.columnDef.meta as
+                    | {
+                        minWidthCh?: number;
+                        isGroup?: boolean;
+                        isProbability?: boolean;
+                        isRating?: boolean;
+                      }
+                    | undefined;
                   return (
                   <TableHead
                     key={header.id}
@@ -388,7 +412,7 @@ export function WorldCupProbabilitiesTable({
                         ? "text-left w-[3rem] min-w-[3rem] pl-0.5 sm:pl-1 pr-1 sm:pr-2"
                         : header.id === "team"
                         ? "text-left w-[10rem] min-w-[8rem] sm:min-w-[10rem] shrink-0"
-                        : header.column.columnDef.meta?.isGroup
+                        : columnMeta?.isGroup
                         ? "text-center whitespace-nowrap min-w-[3ch] sm:min-w-[4ch]"
                         : header.id === "overall" ||
                           header.id === "attack" ||
@@ -402,12 +426,11 @@ export function WorldCupProbabilitiesTable({
                     } ${isLastHeader ? "rounded-tr-xl" : ""}`}
                     onClick={() => handleSortToggle(header.id)}
                     style={
-                      header.column.columnDef.meta?.minWidthCh
+                      columnMeta?.minWidthCh
                         ? {
-                            minWidth: `${header.column.columnDef.meta.minWidthCh}ch`,
+                            minWidth: `${columnMeta.minWidthCh}ch`,
                           }
-                        : header.column.columnDef.meta?.isProbability ||
-                          header.column.columnDef.meta?.isRating
+                        : columnMeta?.isProbability || columnMeta?.isRating
                         ? {
                             minWidth: "var(--prob-col-width)",
                           }
@@ -439,7 +462,16 @@ export function WorldCupProbabilitiesTable({
                   key={row.id}
                   className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
                 >
-                {row.getVisibleCells().map((cell) => (
+                {row.getVisibleCells().map((cell) => {
+                  const columnMeta = cell.column.columnDef.meta as
+                    | {
+                        minWidthCh?: number;
+                        isGroup?: boolean;
+                        isProbability?: boolean;
+                        isRating?: boolean;
+                      }
+                    | undefined;
+                  return (
                   <TableCell
                     key={cell.id}
                     className={`px-1 sm:px-2 py-1.5 sm:py-2.5 ${
@@ -447,7 +479,7 @@ export function WorldCupProbabilitiesTable({
                         ? "text-left w-[3rem] min-w-[3rem] pl-0.5 sm:pl-1 pr-1 sm:pr-2 py-1.5 sm:py-2.5 overflow-hidden"
                         : cell.column.id === "team"
                         ? "text-left w-[10rem] min-w-[8rem] sm:min-w-[10rem] shrink-0 pl-0.5 sm:pl-1"
-                        : cell.column.columnDef.meta?.isGroup
+                        : columnMeta?.isGroup
                         ? "text-center min-w-[3ch] sm:min-w-[4ch]"
                         : "text-right"
                     } ${
@@ -458,18 +490,17 @@ export function WorldCupProbabilitiesTable({
                       isGroupEnd ? "border-b-2 border-slate-200" : ""
                     }`}
                     style={{
-                      ...(cell.column.columnDef.meta?.isProbability
+                      ...(columnMeta?.isProbability
                         ? probabilityBackground(cell.getValue<number>())
                         : {}),
-                      ...(cell.column.columnDef.meta?.isRating
+                      ...(columnMeta?.isRating
                         ? ratingBackground(cell.getValue<number>())
                         : {}),
-                      ...(cell.column.columnDef.meta?.minWidthCh
+                      ...(columnMeta?.minWidthCh
                         ? {
-                            minWidth: `${cell.column.columnDef.meta.minWidthCh}ch`,
+                            minWidth: `${columnMeta.minWidthCh}ch`,
                           }
-                        : cell.column.columnDef.meta?.isProbability ||
-                          cell.column.columnDef.meta?.isRating
+                        : columnMeta?.isProbability || columnMeta?.isRating
                         ? {
                             minWidth: "var(--prob-col-width)",
                           }
@@ -478,7 +509,8 @@ export function WorldCupProbabilitiesTable({
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
-                ))}
+                );
+                })}
                 </TableRow>
               );
             })}
