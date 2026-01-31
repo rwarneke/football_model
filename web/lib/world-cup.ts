@@ -1,5 +1,3 @@
-import { headers } from "next/headers";
-
 export type WorldCupProbabilities = {
   columns: string[];
   rows: Array<{
@@ -13,7 +11,6 @@ export type WorldCupProbabilities = {
 
 export type ProbabilityStatus = "G" | "U" | "I";
 
-const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const DATA_FILE = "/model_output/simulation_results.csv";
 const STATUS_FILE = "/model_output/simulation_results_status.csv";
 
@@ -35,41 +32,18 @@ function flagFileName(team: string) {
   return `${team.replace(/ /g, "_")}.png`;
 }
 
-function normalizeBaseUrl(value: string) {
-  const trimmed = value.replace(/\/$/, "");
-  return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
-}
-
-function normalizeHost(value: string) {
-  if (value.startsWith("0.0.0.0")) {
-    return value.replace(/^0\.0\.0\.0/, "127.0.0.1");
-  }
-  return value;
-}
-
-function getBaseUrl() {
-  const envUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.CF_PAGES_URL ??
-    process.env.VERCEL_URL;
-  if (envUrl) {
-    return `${normalizeBaseUrl(envUrl)}${BASE_PATH}`;
-  }
+async function fetchText(filePath: string) {
   const headerList = headers();
   const forwardedHost = headerList.get("x-forwarded-host");
   const hostValue = forwardedHost ?? headerList.get("host");
-  const proto =
-    headerList.get("x-forwarded-proto") ??
-    (process.env.NODE_ENV === "development" ? "http" : "https");
-  if (hostValue) {
-    const host = normalizeHost(hostValue);
-    return `${proto}://${host}${BASE_PATH}`;
+  const proto = headerList.get("x-forwarded-proto") ?? "https";
+  if (!hostValue) {
+    throw new Error("Missing host header for data fetch");
   }
-  throw new Error("Missing base URL for data fetch");
-}
-
-async function fetchText(filePath: string) {
-  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  const host = hostValue.startsWith("0.0.0.0")
+    ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
+    : hostValue;
+  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Failed to load ${filePath}`);
   }
@@ -77,7 +51,17 @@ async function fetchText(filePath: string) {
 }
 
 async function fetchOptionalText(filePath: string) {
-  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  const headerList = headers();
+  const forwardedHost = headerList.get("x-forwarded-host");
+  const hostValue = forwardedHost ?? headerList.get("host");
+  const proto = headerList.get("x-forwarded-proto") ?? "https";
+  if (!hostValue) {
+    return null;
+  }
+  const host = hostValue.startsWith("0.0.0.0")
+    ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
+    : hostValue;
+  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
   if (!res.ok) {
     return null;
   }
@@ -255,3 +239,4 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
 
   return { columns, rows };
 }
+import { headers } from "next/headers";

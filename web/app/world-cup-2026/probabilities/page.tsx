@@ -3,6 +3,7 @@ import { loadRatings } from "@/lib/ratings";
 import { loadWorldCupProbabilities } from "@/lib/world-cup";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export default async function WorldCupProbabilitiesRoute() {
   const { columns, rows } = await loadWorldCupProbabilities();

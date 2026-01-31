@@ -2,6 +2,7 @@ import { RatingsPage } from "@/components/ratings-page";
 import { loadRatings } from "@/lib/ratings";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export default async function CurrentRatingsPage() {
   const ratings = await loadRatings();

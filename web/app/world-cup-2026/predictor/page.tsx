@@ -2,6 +2,7 @@ import { WorldCupPredictorPage } from "@/components/world-cup-predictor-page";
 import { loadWorldCupPredictorData } from "@/lib/world-cup-predictor";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export default async function WorldCupPredictorRoute() {
   const data = await loadWorldCupPredictorData();

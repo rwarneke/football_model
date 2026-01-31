@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-
 export type GroupDefinition = {
   id: string;
   teams: string[];
@@ -67,7 +66,6 @@ export type WorldCupPredictorData = {
   winProbabilities: WinProbabilities;
 };
 
-const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const REFERENCE_DIR = "/reference_data";
 const GROUPS_FILE = `${REFERENCE_DIR}/world_cup_2026_groups.csv`;
 const GROUP_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_group_matches.csv`;
@@ -80,41 +78,18 @@ const NAME_MAP_FILES = [
   `${REFERENCE_DIR}/kaggle_team_to_canonical_name_map.csv`,
 ];
 
-function normalizeBaseUrl(value: string) {
-  const trimmed = value.replace(/\/$/, "");
-  return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
-}
-
-function normalizeHost(value: string) {
-  if (value.startsWith("0.0.0.0")) {
-    return value.replace(/^0\.0\.0\.0/, "127.0.0.1");
-  }
-  return value;
-}
-
-function getBaseUrl() {
-  const envUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.CF_PAGES_URL ??
-    process.env.VERCEL_URL;
-  if (envUrl) {
-    return `${normalizeBaseUrl(envUrl)}${BASE_PATH}`;
-  }
+async function fetchText(filePath: string) {
   const headerList = headers();
   const forwardedHost = headerList.get("x-forwarded-host");
   const hostValue = forwardedHost ?? headerList.get("host");
-  const proto =
-    headerList.get("x-forwarded-proto") ??
-    (process.env.NODE_ENV === "development" ? "http" : "https");
-  if (hostValue) {
-    const host = normalizeHost(hostValue);
-    return `${proto}://${host}${BASE_PATH}`;
+  const proto = headerList.get("x-forwarded-proto") ?? "https";
+  if (!hostValue) {
+    throw new Error("Missing host header for data fetch");
   }
-  throw new Error("Missing base URL for data fetch");
-}
-
-async function fetchText(filePath: string) {
-  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  const host = hostValue.startsWith("0.0.0.0")
+    ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
+    : hostValue;
+  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Failed to load ${filePath}`);
   }
@@ -122,7 +97,17 @@ async function fetchText(filePath: string) {
 }
 
 async function fetchJson(filePath: string) {
-  const res = await fetch(`${getBaseUrl()}${filePath}`, { cache: "no-store" });
+  const headerList = headers();
+  const forwardedHost = headerList.get("x-forwarded-host");
+  const hostValue = forwardedHost ?? headerList.get("host");
+  const proto = headerList.get("x-forwarded-proto") ?? "https";
+  if (!hostValue) {
+    return null;
+  }
+  const host = hostValue.startsWith("0.0.0.0")
+    ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
+    : hostValue;
+  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
   if (!res.ok) {
     return null;
   }

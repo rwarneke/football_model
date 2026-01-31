@@ -2,6 +2,7 @@ import { RatingsHistoryChart } from "@/components/ratings-history-chart";
 import { loadRatingsHistory } from "@/lib/ratings";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export default async function HistoryPage() {
   const { data, teams } = await loadRatingsHistory();
