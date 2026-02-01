@@ -5703,6 +5703,10 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     );
   }, [knockoutMatchesByStage]);
 
+  const [showGroupStageContent, setShowGroupStageContent] = React.useState(false);
+  const [showKnockoutSection, setShowKnockoutSection] = React.useState(false);
+  const [showKnockoutContent, setShowKnockoutContent] = React.useState(false);
+
   React.useEffect(() => {
     if (!pendingSharedKnockouts.current || !isKnockoutBracketReady) {
       return;
@@ -5920,6 +5924,9 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   }, [data.knockoutMatches]);
 
   React.useEffect(() => {
+    if (!showKnockoutContent) {
+      return;
+    }
     const container = knockoutContainerRef.current;
     if (!container) {
       return;
@@ -6071,9 +6078,22 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutEdges, thirdPlaceOffset, finalCenterOverride, knockoutListHeight, matchStageById, knockoutMatchesByStage, splitMatchesByStage, compactKnockout]);
+  }, [
+    knockoutEdges,
+    thirdPlaceOffset,
+    finalCenterOverride,
+    knockoutListHeight,
+    matchStageById,
+    knockoutMatchesByStage,
+    splitMatchesByStage,
+    compactKnockout,
+    showKnockoutContent,
+  ]);
 
   React.useLayoutEffect(() => {
+    if (!showKnockoutContent) {
+      return;
+    }
     const list = roundOf32ListRef.current;
     const container = knockoutContainerRef.current;
     if (!list || !container) {
@@ -6167,11 +6187,21 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, roundOf32Order, knockoutCardHeight, compactKnockout]);
+  }, [
+    knockoutMatchesByStage,
+    roundOf32Order,
+    knockoutCardHeight,
+    compactKnockout,
+    showKnockoutContent,
+  ]);
 
 
 
   React.useLayoutEffect(() => {
+    if (!showKnockoutContent) {
+      setThirdPlaceOffset(null);
+      return;
+    }
     const finalMatch = (knockoutMatchesByStage.get("Final") ?? [])[0];
     const finalList = finalListRef.current;
     if (!finalMatch || !finalList) {
@@ -6231,9 +6261,21 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, knockoutCenters, knockoutContainerRef, compactKnockout, knockoutCardHeight, isSmallScreen]);
+  }, [
+    knockoutMatchesByStage,
+    knockoutCenters,
+    knockoutContainerRef,
+    compactKnockout,
+    knockoutCardHeight,
+    isSmallScreen,
+    showKnockoutContent,
+  ]);
 
   React.useLayoutEffect(() => {
+    if (!showKnockoutContent) {
+      setFinalCenterOverride(null);
+      return;
+    }
     const container = knockoutContainerRef.current;
     const finalList = finalListRef.current;
     const semifinalMatches = knockoutMatchesByStage.get("Semifinal") ?? [];
@@ -6290,7 +6332,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
         cancelAnimationFrame(frame);
       }
     };
-  }, [knockoutMatchesByStage, knockoutCenters, compactKnockout, isSmallScreen]);
+  }, [
+    knockoutMatchesByStage,
+    knockoutCenters,
+    compactKnockout,
+    isSmallScreen,
+    showKnockoutContent,
+  ]);
 
   const handleAutopredict = React.useCallback(() => {
     setShowQualifierHint(false);
@@ -7616,6 +7664,19 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const canResetTournament =
     hasAnyQualifierPredictions || hasAnyGroupPredictions || hasAnyKnockoutPredictions;
 
+  React.useEffect(() => {
+    if (isGroupStageReady) {
+      setShowGroupStageContent(true);
+      setShowKnockoutSection(true);
+    }
+  }, [isGroupStageReady]);
+
+  React.useEffect(() => {
+    if (isKnockoutBracketReady) {
+      setShowKnockoutContent(true);
+    }
+  }, [isKnockoutBracketReady]);
+
   return (
     <div
       className="flex flex-col gap-12"
@@ -7974,350 +8035,355 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </div>
           </div>
         </div>
-        <div
-          ref={groupCardsContainerRef}
-          className={cn(
-            "flex flex-col gap-3 sm:gap-6 md:flex-row md:flex-wrap md:items-stretch md:justify-start",
-            thirdPlaceRankingRows.length > 0
-              ? "md:gap-6"
-              : ""
-          )}
-          style={
-            {
-              "--supergroup-min": `${supergroupMinWidth}px`,
-            } as React.CSSProperties
-          }
-        >
-          <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[3_1_0%] md:min-w-[var(--supergroup-min)]">
-            <GroupStageCards
-              groupTables={groupTables}
-              resolvedGroupMatches={resolvedGroupMatches}
-              groupScores={groupScores}
-              updateGroupScore={updateGroupScore}
-              updateGroupScorePair={updateGroupScorePair}
-              winProbabilities={data.winProbabilities}
-              groupsWithUnresolvedParticipants={groupsWithUnresolvedParticipants}
-              groupQualifierPaths={groupQualifierPaths}
-              showGroupHint={showGroupHint}
-              groupsWithCtaMatches={groupsWithCtaMatches}
-              getMatchProbabilityLabels={getMatchProbabilityLabels}
-              loadingKeys={loadingKeys}
-              runAutopredictWithDelay={runAutopredictWithDelay}
-              handleGroupAutopredict={handleGroupAutopredict}
-              handleGroupReset={handleGroupReset}
-              handleQualifierAutopredict={handleQualifierAutopredict}
-              qualifierPathPredictionStatus={qualifierPathPredictionStatus}
-              groupCompletion={groupCompletion}
-              qualifiedThirdGroups={qualifiedThirdGroups}
-              allGroupMatchesComplete={allGroupMatchesComplete}
-              flags={data.flags}
-              isTabbed={isGroupTabbed}
-            />
-          </div>
-          {thirdPlaceRankingRows.length > 0 && (
-            <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[2_1_0%] md:min-w-[var(--supergroup-min)] space-y-2 sm:space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-2 sm:p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base sm:text-lg font-semibold text-slate-900">
-                  Ranking of 3rd place teams
-                </h3>
-              </div>
-              <div className="flex w-full px-0.5 flex-1">
-                <GroupTable
-                  group={{ id: "Third place", teams: [] }}
-                  rows={thirdPlaceRankingRows}
-                  highlightThird={false}
-                  highlightWeakThird={false}
-                  highlightTop={8}
-                  showTieInfo={allGroupMatchesComplete}
-                  flags={data.flags}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <div className="h-px w-full bg-slate-200/80" />
-
-      <section className="relative space-y-3 sm:space-y-6">
-        {showCompactModeHint && compactModeHintPosition && (
+        {showGroupStageContent && (
           <div
+            ref={groupCardsContainerRef}
             className={cn(
-              "pointer-events-none absolute z-30 transition-opacity duration-200 ease-out",
-              compactModeHintVisible ? "opacity-100" : "opacity-0"
+              "flex flex-col gap-3 sm:gap-6 md:flex-row md:flex-wrap md:items-stretch md:justify-start",
+              thirdPlaceRankingRows.length > 0
+                ? "md:gap-6"
+                : ""
             )}
-            style={{
-              left: `${compactModeHintPosition.x}px`,
-              top: `${compactModeHintPosition.y}px`,
-              transform: "translateY(-100%)",
-            }}
+            style={
+              {
+                "--supergroup-min": `${supergroupMinWidth}px`,
+              } as React.CSSProperties
+            }
           >
-            <div 
-              ref={compactModeHintBoxRef}
-              className="flex items-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm max-w-[240px] sm:max-w-none"
-            >
-              <span className="sm:whitespace-nowrap">Toggle compact mode to see team names and probabilities.</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCompactModeHint(false);
-                  if (typeof window !== "undefined") {
-                    sessionStorage.setItem("compactModeHintDismissed", "true");
-                  }
-                }}
-                className="ml-1 flex h-4 w-4 items-center justify-center rounded hover:bg-slate-700 transition-colors pointer-events-auto"
-                aria-label="Dismiss hint"
-              >
-                <svg
-                  className="h-3 w-3"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 5L5 15M5 5l10 10" />
-                </svg>
-              </button>
+            <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[3_1_0%] md:min-w-[var(--supergroup-min)]">
+              <GroupStageCards
+                groupTables={groupTables}
+                resolvedGroupMatches={resolvedGroupMatches}
+                groupScores={groupScores}
+                updateGroupScore={updateGroupScore}
+                updateGroupScorePair={updateGroupScorePair}
+                winProbabilities={data.winProbabilities}
+                groupsWithUnresolvedParticipants={groupsWithUnresolvedParticipants}
+                groupQualifierPaths={groupQualifierPaths}
+                showGroupHint={showGroupHint}
+                groupsWithCtaMatches={groupsWithCtaMatches}
+                getMatchProbabilityLabels={getMatchProbabilityLabels}
+                loadingKeys={loadingKeys}
+                runAutopredictWithDelay={runAutopredictWithDelay}
+                handleGroupAutopredict={handleGroupAutopredict}
+                handleGroupReset={handleGroupReset}
+                handleQualifierAutopredict={handleQualifierAutopredict}
+                qualifierPathPredictionStatus={qualifierPathPredictionStatus}
+                groupCompletion={groupCompletion}
+                qualifiedThirdGroups={qualifiedThirdGroups}
+                allGroupMatchesComplete={allGroupMatchesComplete}
+                flags={data.flags}
+                isTabbed={isGroupTabbed}
+              />
             </div>
-            {compactModeHintArrowLeft !== null && (
-              <svg
-                className="absolute top-full h-2 w-4 text-slate-900"
-                style={{
-                  left: `${compactModeHintArrowLeft}px`,
-                  transform: "translateX(-50%)",
-                }}
-                viewBox="0 0 20 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path d="M0 0 L10 8 L20 0" fill="currentColor" />
-              </svg>
+            {thirdPlaceRankingRows.length > 0 && (
+              <div className="flex min-w-0 w-full md:w-auto flex-col md:flex-[2_1_0%] md:min-w-[var(--supergroup-min)] space-y-2 sm:space-y-4 rounded-xl bg-slate-50 ring-1 ring-slate-200 p-2 sm:p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base sm:text-lg font-semibold text-slate-900">
+                    Ranking of 3rd place teams
+                  </h3>
+                </div>
+                <div className="flex w-full px-0.5 flex-1">
+                  <GroupTable
+                    group={{ id: "Third place", teams: [] }}
+                    rows={thirdPlaceRankingRows}
+                    highlightThird={false}
+                    highlightWeakThird={false}
+                    highlightTop={8}
+                    showTieInfo={allGroupMatchesComplete}
+                    flags={data.flags}
+                  />
+                </div>
+              </div>
             )}
           </div>
         )}
-        <div>
-          <div className="flex flex-col gap-2 sm:gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-              <div className="flex items-end gap-2 sm:gap-3">
-                <span
-                  className="w-2 rounded-full bg-blue-300"
-                  style={{ height: "calc(1em * 2)" }}
-                  aria-hidden="true"
-                />
-                <h2 className="text-xl sm:text-2xl font-semibold text-ebony">Knockout stage</h2>
-              </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-sm font-medium text-slate-600">
-                  Compact mode
-                </span>
-                <button
-                  ref={compactModeToggleRef}
-                  type="button"
-                  onClick={() => {
-                    hasUserSetCompactKnockout.current = true;
-                    setCompactKnockout((prev) => !prev);
-                  }}
-                  className={cn(
-                    "relative inline-flex h-6 w-14 items-center rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
-                    compactKnockout ? "bg-slate-900" : "bg-slate-200"
-                  )}
-                  aria-pressed={compactKnockout}
+      </section>
+
+      {showKnockoutSection && (
+        <>
+          <div className="h-px w-full bg-slate-200/80" />
+          <section className="relative space-y-3 sm:space-y-6">
+            {showCompactModeHint && compactModeHintPosition && (
+              <div
+                className={cn(
+                  "pointer-events-none absolute z-30 transition-opacity duration-200 ease-out",
+                  compactModeHintVisible ? "opacity-100" : "opacity-0"
+                )}
+                style={{
+                  left: `${compactModeHintPosition.x}px`,
+                  top: `${compactModeHintPosition.y}px`,
+                  transform: "translateY(-100%)",
+                }}
+              >
+                <div 
+                  ref={compactModeHintBoxRef}
+                  className="flex items-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm max-w-[240px] sm:max-w-none"
                 >
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-700 shadow-sm transition-transform",
-                      compactKnockout ? "translate-x-8" : "translate-x-0"
-                    )}
-                  >
-                    {compactKnockout ? "ON" : "OFF"}
-                  </span>
-                </button>
-              </div>
-            </div>
-            <div className="flex min-h-[56px] flex-wrap items-center gap-2 sm:min-h-[64px]">
-              {isKnockoutBracketReady && (
-                <>
-                  <LoadingButton
-                    loading={Boolean(loadingKeys["section:knockouts"])}
-                    disabled={!canAutopredictKnockouts}
-                    onClick={() =>
-                      runAutopredictWithDelay(
-                        "section:knockouts",
-                        handleSectionKnockoutsAutopredict
-                      )
-                    }
-                    className={cn(
-                      "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                      canAutopredictKnockouts
-                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                        : "text-slate-500"
-                    )}
-                  >
-                    Auto-predict knockout
-                  </LoadingButton>
+                  <span className="sm:whitespace-nowrap">Toggle compact mode to see team names and probabilities.</span>
                   <button
                     type="button"
-                    disabled={!hasAnyKnockoutPredictions}
-                    onClick={handleSectionKnockoutsReset}
-                    className={cn(
-                      "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                      hasAnyKnockoutPredictions
-                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                        : "text-slate-500 cursor-default"
-                    )}
-                  >
-                    Reset knockout
-                  </button>
-                </>
-              )}
-              {!isKnockoutBracketReady && (
-                <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
-                  <span>
-                    All qualifier and group stage matches must be predicted.
-                  </span>
-                  <LoadingButton
-                    loading={Boolean(loadingKeys["knockout:resolve"])}
-                    disabled={!canAutopredictQualifiers && !canAutopredictGroups}
-                    onClick={() =>
-                      runAutopredictWithDelay("knockout:resolve", () => {
-                        if (hasUnpredictedQualifiers()) {
-                          pendingGroupsAfterQualifiers.current = true;
-                          handleSectionQualifiersAutopredict();
-                        }
-                        if (!hasUnpredictedQualifiers() && hasUnpredictedGroups()) {
-                          handleSectionGroupsAutopredict();
-                        }
-                      })
-                    }
-                    className={cn(
-                      "rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-red-200",
-                      canAutopredictQualifiers || canAutopredictGroups
-                        ? "text-red-700 hover:bg-red-100"
-                        : "text-red-300 cursor-default"
-                    )}
-                  >
-                    Auto-predict
-                  </LoadingButton>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className={cn(
-          "overflow-x-scroll overflow-y-visible pb-2 knockout-scroll",
-          compactKnockout && "max-w-[520px] lg:max-w-none mx-auto"
-        )} style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(203 213 225) rgb(241 245 249)' }}>
-          <div
-            ref={knockoutContainerRef}
-            className="relative px-0.5 lg:px-2"
-            style={{ 
-              minWidth: `${knockoutMinBracketWidth}px`,
-              maxWidth: compactKnockout ? "520px" : undefined,
-              marginLeft: compactKnockout ? "auto" : undefined,
-              marginRight: compactKnockout ? "auto" : undefined,
-            }}
-          >
-            {!compactKnockout && (
-              <div className="pointer-events-none absolute bottom-10 left-1/2 z-20 -translate-x-1/2">
-                <div className="pointer-events-auto flex flex-col items-center gap-2">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <LoadingButton
-                      loading={Boolean(loadingKeys.tournament)}
-                      disabled={!canAutopredictTournament}
-                      onClick={() =>
-                        runAutopredictWithDelay("tournament", handleAutopredict)
+                    onClick={() => {
+                      setShowCompactModeHint(false);
+                      if (typeof window !== "undefined") {
+                        sessionStorage.setItem("compactModeHintDismissed", "true");
                       }
-                      className={cn(
-                        "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                        canAutopredictTournament
-                          ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                          : "text-slate-500"
-                      )}
+                    }}
+                    className="ml-1 flex h-4 w-4 items-center justify-center rounded hover:bg-slate-700 transition-colors pointer-events-auto"
+                    aria-label="Dismiss hint"
+                  >
+                    <svg
+                      className="h-3 w-3"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      Auto-predict tournament
-                    </LoadingButton>
-                    <button
-                      type="button"
-                      disabled={!canResetTournament}
-                      onClick={handleResetAll}
-                      className={cn(
-                        "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                        canResetTournament
-                          ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                          : "text-slate-500 cursor-default"
-                      )}
-                    >
-                      Reset tournament
-                    </button>
-                  </div>
-                  <div className="flex min-h-9 items-center">
-                    {isTournamentComplete && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!shareLink) {
-                            setShareStatus("error");
-                            return;
-                          }
-                          if (navigator?.clipboard?.writeText) {
-                            navigator.clipboard
-                              .writeText(shareLink)
-                              .then(() => setShareStatus("copied"))
-                              .catch(() => setShareStatus("error"));
-                            return;
-                          }
-                          const ok = window.prompt("Copy link to share", shareLink);
-                          setShareStatus(ok ? "copied" : "error");
-                        }}
-                        className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4 text-slate-600"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
-                          <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
-                        </svg>
-                        {shareStatus === "copied" ? "Link copied" : "Share prediction"}
-                      </button>
-                    )}
-                  </div>
+                      <path d="M15 5L5 15M5 5l10 10" />
+                    </svg>
+                  </button>
                 </div>
+                {compactModeHintArrowLeft !== null && (
+                  <svg
+                    className="absolute top-full h-2 w-4 text-slate-900"
+                    style={{
+                      left: `${compactModeHintArrowLeft}px`,
+                      transform: "translateX(-50%)",
+                    }}
+                    viewBox="0 0 20 8"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path d="M0 0 L10 8 L20 0" fill="currentColor" />
+                  </svg>
+                )}
               </div>
             )}
-            <svg
-              className="absolute inset-0 z-0 h-full w-full pointer-events-none"
-              aria-hidden="true"
-            >
-              {knockoutPaths.map((path, index) => (
-                <path
-                  key={`${path}-${index}`}
-                  d={path}
-                  fill="none"
-                  stroke="rgb(203 213 225)"
-                  strokeWidth={1.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-            </svg>
-            {/* Split bracket layout - left/right/center all absolutely positioned */}
-            <div className="z-10">
-              {(() => {
-                // In compact mode, cards are 40px wide with tighter spacing
-                const baseColumnWidth = knockoutBaseColumnWidth;
-                const baseGap = knockoutBaseGap;
-                const sfPosition = knockoutSfPosition;
-                const leftBlockWidth = knockoutLeftBlockWidth;
-                const minBracketWidth = knockoutMinBracketWidth;
+            <div>
+              <div className="flex flex-col gap-2 sm:gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+                  <div className="flex items-end gap-2 sm:gap-3">
+                    <span
+                      className="w-2 rounded-full bg-blue-300"
+                      style={{ height: "calc(1em * 2)" }}
+                      aria-hidden="true"
+                    />
+                    <h2 className="text-xl sm:text-2xl font-semibold text-ebony">Knockout stage</h2>
+                  </div>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <span className="text-sm font-medium text-slate-600">
+                      Compact mode
+                    </span>
+                    <button
+                      ref={compactModeToggleRef}
+                      type="button"
+                      onClick={() => {
+                        hasUserSetCompactKnockout.current = true;
+                        setCompactKnockout((prev) => !prev);
+                      }}
+                      className={cn(
+                        "relative inline-flex h-6 w-14 items-center rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+                        compactKnockout ? "bg-slate-900" : "bg-slate-200"
+                      )}
+                      aria-pressed={compactKnockout}
+                    >
+                      <span
+                        className={cn(
+                          "flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-700 shadow-sm transition-transform",
+                          compactKnockout ? "translate-x-8" : "translate-x-0"
+                        )}
+                      >
+                        {compactKnockout ? "ON" : "OFF"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex min-h-[56px] flex-wrap items-center gap-2 sm:min-h-[64px]">
+                  {isKnockoutBracketReady && (
+                    <>
+                      <LoadingButton
+                        loading={Boolean(loadingKeys["section:knockouts"])}
+                        disabled={!canAutopredictKnockouts}
+                        onClick={() =>
+                          runAutopredictWithDelay(
+                            "section:knockouts",
+                            handleSectionKnockoutsAutopredict
+                          )
+                        }
+                        className={cn(
+                          "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                          canAutopredictKnockouts
+                            ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                            : "text-slate-500"
+                        )}
+                      >
+                        Auto-predict knockout
+                      </LoadingButton>
+                      <button
+                        type="button"
+                        disabled={!hasAnyKnockoutPredictions}
+                        onClick={handleSectionKnockoutsReset}
+                        className={cn(
+                          "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                          hasAnyKnockoutPredictions
+                            ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                            : "text-slate-500 cursor-default"
+                        )}
+                      >
+                        Reset knockout
+                      </button>
+                    </>
+                  )}
+                  {!isKnockoutBracketReady && (
+                    <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
+                      <span>
+                        All qualifier and group stage matches must be predicted.
+                      </span>
+                      <LoadingButton
+                        loading={Boolean(loadingKeys["knockout:resolve"])}
+                        disabled={!canAutopredictQualifiers && !canAutopredictGroups}
+                        onClick={() =>
+                          runAutopredictWithDelay("knockout:resolve", () => {
+                            if (hasUnpredictedQualifiers()) {
+                              pendingGroupsAfterQualifiers.current = true;
+                              handleSectionQualifiersAutopredict();
+                            }
+                            if (!hasUnpredictedQualifiers() && hasUnpredictedGroups()) {
+                              handleSectionGroupsAutopredict();
+                            }
+                          })
+                        }
+                        className={cn(
+                          "rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-red-200",
+                          canAutopredictQualifiers || canAutopredictGroups
+                            ? "text-red-700 hover:bg-red-100"
+                            : "text-red-300 cursor-default"
+                        )}
+                      >
+                        Auto-predict
+                      </LoadingButton>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {showKnockoutContent && (
+              <>
+                <div className={cn(
+                  "overflow-x-scroll overflow-y-visible pb-2 knockout-scroll",
+                  compactKnockout && "max-w-[520px] lg:max-w-none mx-auto"
+                )} style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(203 213 225) rgb(241 245 249)' }}>
+                  <div
+                    ref={knockoutContainerRef}
+                    className="relative px-0.5 lg:px-2"
+                    style={{ 
+                      minWidth: `${knockoutMinBracketWidth}px`,
+                      maxWidth: compactKnockout ? "520px" : undefined,
+                      marginLeft: compactKnockout ? "auto" : undefined,
+                      marginRight: compactKnockout ? "auto" : undefined,
+                    }}
+                  >
+                    {!compactKnockout && (
+                      <div className="pointer-events-none absolute bottom-10 left-1/2 z-20 -translate-x-1/2">
+                        <div className="pointer-events-auto flex flex-col items-center gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <LoadingButton
+                              loading={Boolean(loadingKeys.tournament)}
+                              disabled={!canAutopredictTournament}
+                              onClick={() =>
+                                runAutopredictWithDelay("tournament", handleAutopredict)
+                              }
+                              className={cn(
+                                "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                                canAutopredictTournament
+                                  ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                                  : "text-slate-500"
+                              )}
+                            >
+                              Auto-predict tournament
+                            </LoadingButton>
+                            <button
+                              type="button"
+                              disabled={!canResetTournament}
+                              onClick={handleResetAll}
+                              className={cn(
+                                "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                                canResetTournament
+                                  ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                                  : "text-slate-500 cursor-default"
+                              )}
+                            >
+                              Reset tournament
+                            </button>
+                          </div>
+                          <div className="flex min-h-9 items-center">
+                            {isTournamentComplete && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!shareLink) {
+                                    setShareStatus("error");
+                                    return;
+                                  }
+                                  if (navigator?.clipboard?.writeText) {
+                                    navigator.clipboard
+                                      .writeText(shareLink)
+                                      .then(() => setShareStatus("copied"))
+                                      .catch(() => setShareStatus("error"));
+                                    return;
+                                  }
+                                  const ok = window.prompt("Copy link to share", shareLink);
+                                  setShareStatus(ok ? "copied" : "error");
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
+                              >
+                                <svg
+                                  aria-hidden="true"
+                                  viewBox="0 0 24 24"
+                                  className="h-4 w-4 text-slate-600"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
+                                  <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
+                                </svg>
+                                {shareStatus === "copied" ? "Link copied" : "Share prediction"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <svg
+                      className="absolute inset-0 z-0 h-full w-full pointer-events-none"
+                      aria-hidden="true"
+                    >
+                      {knockoutPaths.map((path, index) => (
+                        <path
+                          key={`${path}-${index}`}
+                          d={path}
+                          fill="none"
+                          stroke="rgb(203 213 225)"
+                          strokeWidth={1.5}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      ))}
+                    </svg>
+                    {/* Split bracket layout - left/right/center all absolutely positioned */}
+                    <div className="z-10">
+                      {(() => {
+                        // In compact mode, cards are 40px wide with tighter spacing
+                        const baseColumnWidth = knockoutBaseColumnWidth;
+                        const baseGap = knockoutBaseGap;
+                        const sfPosition = knockoutSfPosition;
+                        const leftBlockWidth = knockoutLeftBlockWidth;
+                        const minBracketWidth = knockoutMinBracketWidth;
                 
                 // Column positions within each block
                 const getLeftPosition = (pos: number) => {
@@ -8830,79 +8896,83 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
             </div>
           </div>
         </div>
-        {compactKnockout && (
-          <div className="pointer-events-none mt-0.5 flex w-full justify-center">
-            <div className="pointer-events-auto flex flex-col items-center gap-2">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <LoadingButton
-                  loading={Boolean(loadingKeys.tournament)}
-                  disabled={!canAutopredictTournament}
-                  onClick={() => runAutopredictWithDelay("tournament", handleAutopredict)}
-                  className={cn(
-                    "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                    canAutopredictTournament
-                      ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                      : "text-slate-500"
-                  )}
-                >
-                  Auto-predict tournament
-                </LoadingButton>
-                <button
-                  type="button"
-                  disabled={!canResetTournament}
-                  onClick={handleResetAll}
-                  className={cn(
-                    "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                    canResetTournament
-                      ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                      : "text-slate-500 cursor-default"
-                  )}
-                >
-                  Reset tournament
-                </button>
-              </div>
-              <div className="flex min-h-9 items-center">
-                {isTournamentComplete && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!shareLink) {
-                        setShareStatus("error");
-                        return;
-                      }
-                      if (navigator?.clipboard?.writeText) {
-                        navigator.clipboard
-                          .writeText(shareLink)
-                          .then(() => setShareStatus("copied"))
-                          .catch(() => setShareStatus("error"));
-                        return;
-                      }
-                      const ok = window.prompt("Copy link to share", shareLink);
-                      setShareStatus(ok ? "copied" : "error");
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      className="h-4 w-4 text-slate-600"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
-                      <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
-                    </svg>
-                    {shareStatus === "copied" ? "Link copied" : "Share prediction"}
-                  </button>
+                {compactKnockout && (
+                  <div className="pointer-events-none mt-0.5 flex w-full justify-center">
+                    <div className="pointer-events-auto flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <LoadingButton
+                          loading={Boolean(loadingKeys.tournament)}
+                          disabled={!canAutopredictTournament}
+                          onClick={() => runAutopredictWithDelay("tournament", handleAutopredict)}
+                          className={cn(
+                            "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                            canAutopredictTournament
+                              ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                              : "text-slate-500"
+                          )}
+                        >
+                          Auto-predict tournament
+                        </LoadingButton>
+                        <button
+                          type="button"
+                          disabled={!canResetTournament}
+                          onClick={handleResetAll}
+                          className={cn(
+                            "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                            canResetTournament
+                              ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                              : "text-slate-500 cursor-default"
+                          )}
+                        >
+                          Reset tournament
+                        </button>
+                      </div>
+                      <div className="flex min-h-9 items-center">
+                        {isTournamentComplete && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!shareLink) {
+                                setShareStatus("error");
+                                return;
+                              }
+                              if (navigator?.clipboard?.writeText) {
+                                navigator.clipboard
+                                  .writeText(shareLink)
+                                  .then(() => setShareStatus("copied"))
+                                  .catch(() => setShareStatus("error"));
+                                return;
+                              }
+                              const ok = window.prompt("Copy link to share", shareLink);
+                              setShareStatus(ok ? "copied" : "error");
+                            }}
+                            className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4 text-slate-600"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
+                              <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
+                            </svg>
+                            {shareStatus === "copied" ? "Link copied" : "Share prediction"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
+              </>
+            )}
+          </section>
+        </>
+      )}
 
     </div>
   );
