@@ -2899,11 +2899,12 @@ function KnockoutMatchCard({
           }}
           disabled={!isPickableMatch}
           className={cn(
-            "flex w-full flex-1 items-center justify-center p-1",
+            "relative z-10 flex w-full flex-1 items-center justify-center p-1",
             isResolved && isWinner && !isChampionRow && "bg-blue-200",
             isChampionRow && "bg-amber-200",
             isPickableMatch ? "cursor-pointer" : "cursor-default"
           )}
+          style={{ pointerEvents: "auto" }}
         >
           {isPlaceholder ? (
             <div className="h-4 w-6 rounded-sm bg-slate-100 ring-1 ring-slate-200" />
@@ -3302,7 +3303,7 @@ function QualifierPathBracket({
                 : "text-slate-500 cursor-default"
             )}
           >
-            Reset qualifiers
+            Reset path
           </button>
         </div>
       </div>
@@ -3492,18 +3493,18 @@ function QualifierPathBracket({
             )}
             <div className="flex items-center justify-center">
               {qualifiedTeam && (
-                <div className="rounded-lg px-3 py-2 bg-[radial-gradient(ellipse_at_center,rgba(219,234,254,0.7)_0%,rgba(219,234,254,0.35)_45%,rgba(219,234,254,0.15)_65%,transparent_100%)]">
-                  <div className="flex flex-col items-center gap-2 text-slate-600">
+                <div className="max-w-full rounded-lg px-3 py-2 bg-[radial-gradient(ellipse_at_center,rgba(219,234,254,0.7)_0%,rgba(219,234,254,0.35)_45%,rgba(219,234,254,0.15)_65%,transparent_100%)]">
+                  <div className="flex max-w-full flex-col items-center gap-2 text-slate-600">
                     <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                       Qualified
                     </div>
-                    <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex w-full max-w-[220px] flex-wrap items-center justify-center gap-1.5 sm:gap-2">
                       <TeamFlag
                         team={qualifiedTeam}
                         flags={flags}
                         className="h-5 w-7 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
                       />
-                      <span className="text-[15px] font-semibold text-slate-900">
+                      <span className="min-w-0 w-full text-[15px] font-semibold text-slate-900 text-center break-words whitespace-normal">
                         {formatDisplayLabel(qualifiedTeam)}
                       </span>
                     </div>
@@ -4261,6 +4262,10 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const [showQualifierHint, setShowQualifierHint] = React.useState(true);
   const [showGroupHint, setShowGroupHint] = React.useState(true);
   const [showCompactModeHint, setShowCompactModeHint] = React.useState(false);
+  const [compactModeHintDismissed, setCompactModeHintDismissed] = React.useState(false);
+  const [showGroupStageContent, setShowGroupStageContent] = React.useState(false);
+  const [showKnockoutSection, setShowKnockoutSection] = React.useState(false);
+  const [showKnockoutContent, setShowKnockoutContent] = React.useState(false);
   const compactModeToggleRef = React.useRef<HTMLButtonElement | null>(null);
   const compactModeHintBoxRef = React.useRef<HTMLDivElement | null>(null);
   const compactModeHintPositionAdjustedRef = React.useRef(false);
@@ -4302,16 +4307,30 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     }
   }, []);
 
-  // Initialize compact mode hint - only show if compact mode is on and hasn't been dismissed this session
+  const dismissCompactModeHint = React.useCallback(() => {
+    setShowCompactModeHint(false);
+    setCompactModeHintDismissed(true);
+  }, []);
+
+  // Initialize compact mode hint - only triggered when the knockout bracket appears
   React.useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    // Show on every reload when compact mode is enabled (after mobile check)
-    if (compactKnockout && !hasUserSetCompactKnockout.current) {
-      setShowCompactModeHint(true);
+    if (!showKnockoutContent || compactModeHintDismissed) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[predictor] compact hint: gated", {
+          showKnockoutContent,
+          compactModeHintDismissed,
+        });
+      }
+      return;
     }
-  }, [compactKnockout]);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[predictor] compact hint: show (knockout bracket appeared)");
+    }
+    setShowCompactModeHint(true);
+  }, [showKnockoutContent, compactModeHintDismissed]);
 
   // Auto-dismiss compact mode hint when any knockout team is selected (manually or automatically)
   React.useEffect(() => {
@@ -4321,11 +4340,13 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     const hasAnySelection = Object.values(knockoutWinners).some(
       (selection) => selection !== null && selection !== undefined
     );
-    const hasAnyAutoSelection = Object.keys(autoKnockoutWinners).length > 0;
-    if (hasAnySelection || hasAnyAutoSelection) {
-      setShowCompactModeHint(false);
+    if (hasAnySelection) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[predictor] compact hint: dismiss (knockout pick made)");
+      }
+      dismissCompactModeHint();
     }
-  }, [knockoutWinners, autoKnockoutWinners, showCompactModeHint]);
+  }, [knockoutWinners, showCompactModeHint, dismissCompactModeHint]);
 
   const computeCompactModeHintPosition = React.useCallback(() => {
     if (!showCompactModeHint || !compactModeToggleRef.current) {
@@ -4349,6 +4370,12 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       x: Math.max(16, boxX),
       y: toggleRect.top - sectionRect.top - 4,
     });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[predictor] compact hint: base position", {
+        toggleRightX,
+        boxX,
+      });
+    }
     compactModeHintPositionAdjustedRef.current = false;
   }, [showCompactModeHint]);
 
@@ -4401,6 +4428,12 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     });
     compactModeHintPositionAdjustedRef.current = true;
     setCompactModeHintArrowLeft(boxWidth * 0.75);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[predictor] compact hint: adjusted position", {
+        boxWidth,
+        newX,
+      });
+    }
   }, [showCompactModeHint, compactModeHintPosition]);
 
   // Show/hide compact mode hint with animation
@@ -4411,6 +4444,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     }
     setCompactModeHintVisible(false);
     const frame = requestAnimationFrame(() => setCompactModeHintVisible(true));
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[predictor] compact hint: visible", compactModeHintPosition);
+    }
     return () => cancelAnimationFrame(frame);
   }, [compactModeHintPosition, showCompactModeHint]);
 
@@ -5052,7 +5088,6 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       previousScores: Record<string, MatchScore>,
       nextScores: Record<string, MatchScore>,
       options?: {
-        logChanges?: boolean;
         previousSlotWinners?: Map<string, string>;
         nextSlotWinners?: Map<string, string>;
       }
@@ -5085,123 +5120,10 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       if (changedMatches.size === 0) {
         return { nextWinners: current, clearedIds: [] as string[] };
       }
-      let changedMatchDetails: Array<{
-        matchId: string;
-        stage: string;
-        rawLabels: { homeLabel: string; awayLabel: string } | null;
-        winnerGroupKey: string | null;
-        assignedGroup: string | null;
-        nextAssignedGroup: string | null;
-        previousThirdTeam: string | null;
-        nextThirdTeam: string | null;
-        before: { home: string; away: string } | undefined;
-        after: { home: string; away: string } | undefined;
-      }> = [];
-      if (options?.logChanges) {
-        changedMatchDetails = Array.from(changedMatches).map((matchId) => {
-          const before = previousLabels.get(matchId);
-          const after = nextLabels.get(matchId);
-          const match = data.knockoutMatches.find(
-            (entry) => String(entry.id) === matchId
-          );
-          const winnerGroupFromLabel = (label?: string) => {
-            if (!label || !label.startsWith("Winner Group ")) {
-              return null;
-            }
-            return `1${label.replace("Winner Group ", "").trim()}`;
-          };
-          const winnerGroupKey =
-            winnerGroupFromLabel(match?.homeLabel) ??
-            winnerGroupFromLabel(match?.awayLabel);
-          const assignedGroup =
-            winnerGroupKey && previousContext.thirdPlaceAssignments
-              ? previousContext.thirdPlaceAssignments[winnerGroupKey]
-              : null;
-          const nextAssignedGroup =
-            winnerGroupKey && nextContext.thirdPlaceAssignments
-              ? nextContext.thirdPlaceAssignments[winnerGroupKey]
-              : null;
-          const previousThirdTeam = assignedGroup
-            ? previousContext.thirdPlaceByGroup[assignedGroup]
-            : null;
-          const nextThirdTeam = nextAssignedGroup
-            ? nextContext.thirdPlaceByGroup[nextAssignedGroup]
-            : null;
-          return {
-            matchId,
-            stage: matchStageById[Number(matchId)],
-            rawLabels: match
-              ? { homeLabel: match.homeLabel, awayLabel: match.awayLabel }
-              : null,
-            winnerGroupKey,
-            assignedGroup,
-            nextAssignedGroup,
-            previousThirdTeam,
-            nextThirdTeam,
-            before,
-            after,
-          };
-        });
-      }
       const { next, clearedIds } = clearKnockoutSelectionsByMatchIds(
         current,
         changedMatches
       );
-      if (options?.logChanges) {
-        const describeSideChange = (
-          label: string | undefined,
-          beforeTeam: string | undefined,
-          afterTeam: string | undefined
-        ) => {
-          if (!beforeTeam || !afterTeam || beforeTeam === afterTeam) {
-            return null;
-          }
-          if (label) {
-            return `${label} changed (${beforeTeam} -> ${afterTeam})`;
-          }
-          return `participants changed (${beforeTeam} -> ${afterTeam})`;
-        };
-        const qualifiedNext = new Set(nextContext.qualifiedThirdGroups ?? []);
-        const thirdPlaceNote = (groupId: string) =>
-          qualifiedNext.has(groupId) ? ` and ${groupId} is in top-8 thirds` : "";
-        changedMatchDetails.forEach((detail) => {
-          if (!detail.before || !detail.after) {
-            return;
-          }
-          let reason = "";
-          if (
-            detail.assignedGroup &&
-            detail.nextAssignedGroup &&
-            detail.assignedGroup === detail.nextAssignedGroup &&
-            detail.previousThirdTeam !== detail.nextThirdTeam
-          ) {
-            reason = `Match ${detail.matchId} cleared because Group ${detail.assignedGroup} third-place team changed (${detail.previousThirdTeam} -> ${detail.nextThirdTeam})${thirdPlaceNote(
-              detail.assignedGroup
-            )}.`;
-          } else if (
-            detail.assignedGroup &&
-            detail.nextAssignedGroup &&
-            detail.assignedGroup !== detail.nextAssignedGroup
-          ) {
-            reason = `Match ${detail.matchId} cleared because third-place assignment changed from Group ${detail.assignedGroup} to Group ${detail.nextAssignedGroup} (combo ${previousContext.comboKey} -> ${nextContext.comboKey}).`;
-          } else {
-            const parts = [
-              describeSideChange(
-                detail.rawLabels?.homeLabel,
-                detail.before.home,
-                detail.after.home
-              ),
-              describeSideChange(
-                detail.rawLabels?.awayLabel,
-                detail.before.away,
-                detail.after.away
-              ),
-            ].filter(Boolean);
-            reason = `Match ${detail.matchId} cleared because ${parts.length ? parts.join(" and ") : "participants changed"}.`;
-          }
-          console.log(`[predictor] ${reason}`);
-        });
-      }
       return { nextWinners: next, clearedIds };
     },
     [clearKnockoutSelectionsByMatchIds, computeKnockoutContext, data.knockoutMatches, matchStageById]
@@ -5213,8 +5135,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         const { nextWinners, clearedIds } = computeClearedKnockoutSelections(
           prev,
           groupScores,
-          nextScores,
-          { logChanges: true }
+          nextScores
         );
         if (clearedIds.length > 0) {
           setAutoKnockoutWinners((currentAuto) => {
@@ -5703,11 +5624,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         mismatches.push({ matchId, engine, ui });
       }
     });
-    if (mismatches.length > 0) {
-      console.warn(
-        `[predictor] reset label mismatch ${JSON.stringify({ mismatches })}`
-      );
-    }
+    void mismatches;
   }, [
     computeKnockoutContext,
     data.knockoutMatches,
@@ -5782,9 +5699,6 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     );
   }, [knockoutMatchesByStage]);
 
-  const [showGroupStageContent, setShowGroupStageContent] = React.useState(false);
-  const [showKnockoutSection, setShowKnockoutSection] = React.useState(false);
-  const [showKnockoutContent, setShowKnockoutContent] = React.useState(false);
   const compactTight =
     compactKnockout &&
     knockoutContainerWidth !== null &&
@@ -7783,6 +7697,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
 
   React.useEffect(() => {
     if (isKnockoutBracketReady) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[predictor] knockout bracket ready");
+      }
       setShowKnockoutContent(true);
     }
   }, [isKnockoutBracketReady]);
@@ -8214,7 +8131,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       {showKnockoutSection && (
         <>
           <div className="h-px w-full bg-slate-200/80" />
-          <section className="relative space-y-3 sm:space-y-6">
+          <section className="relative">
             {showCompactModeHint && compactModeHintPosition && (
               <div
                 className={cn(
@@ -8234,12 +8151,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                   <span className="sm:whitespace-nowrap">Toggle compact mode to see team names and probabilities.</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowCompactModeHint(false);
-                      if (typeof window !== "undefined") {
-                        sessionStorage.setItem("compactModeHintDismissed", "true");
-                      }
-                    }}
+                    onClick={dismissCompactModeHint}
                     className="ml-1 flex h-4 w-4 items-center justify-center rounded hover:bg-slate-700 transition-colors pointer-events-auto"
                     aria-label="Dismiss hint"
                   >
@@ -8272,9 +8184,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                 )}
               </div>
             )}
-            <div>
-              <div className="flex flex-col gap-2 sm:gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+            <div className="space-y-3 sm:space-y-6">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <div className="flex items-end gap-2 sm:gap-3">
                     <span
                       className="w-2 rounded-full bg-blue-300"
@@ -8293,6 +8205,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                       onClick={() => {
                         hasUserSetCompactKnockout.current = true;
                         setCompactKnockout((prev) => !prev);
+                        if (showCompactModeHint) {
+                          dismissCompactModeHint();
+                        }
                       }}
                       className={cn(
                         "relative inline-flex h-6 w-14 items-center rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
@@ -8310,166 +8225,165 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                       </span>
                     </button>
                   </div>
-                </div>
-                <div className="flex min-h-[56px] flex-wrap items-center gap-2 sm:min-h-[64px]">
-                  {isKnockoutBracketReady && (
-                    <>
-                      <LoadingButton
-                        loading={Boolean(loadingKeys["section:knockouts"])}
-                        disabled={!canAutopredictKnockouts}
-                        onClick={() =>
-                          runAutopredictWithDelay(
-                            "section:knockouts",
-                            handleSectionKnockoutsAutopredict
-                          )
-                        }
-                        className={cn(
-                          "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                          canAutopredictKnockouts
-                            ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                            : "text-slate-500"
-                        )}
-                      >
-                        Auto-predict knockout
-                      </LoadingButton>
-                      <button
-                        type="button"
-                        disabled={!hasAnyKnockoutPredictions}
-                        onClick={handleSectionKnockoutsReset}
-                        className={cn(
-                          "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                          hasAnyKnockoutPredictions
-                            ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                            : "text-slate-500 cursor-default"
-                        )}
-                      >
-                        Reset knockout
-                      </button>
-                    </>
-                  )}
-                  {!isKnockoutBracketReady && (
-                    <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
-                      <span>
-                        All qualifier and group stage matches must be predicted.
-                      </span>
-                      <LoadingButton
-                        loading={Boolean(loadingKeys["knockout:resolve"])}
-                        disabled={!canAutopredictQualifiers && !canAutopredictGroups}
-                        onClick={() =>
-                          runAutopredictWithDelay("knockout:resolve", () => {
-                            if (hasUnpredictedQualifiers()) {
-                              pendingGroupsAfterQualifiers.current = true;
-                              handleSectionQualifiersAutopredict();
-                            }
-                            if (!hasUnpredictedQualifiers() && hasUnpredictedGroups()) {
-                              handleSectionGroupsAutopredict();
-                            }
-                          })
-                        }
-                        className={cn(
-                          "rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-red-200",
-                          canAutopredictQualifiers || canAutopredictGroups
-                            ? "text-red-700 hover:bg-red-100"
-                            : "text-red-300 cursor-default"
-                        )}
-                      >
-                        Auto-predict
-                      </LoadingButton>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            {showKnockoutContent && (
-              <>
-                <div className={cn(
-                  "overflow-x-scroll overflow-y-visible pb-2 knockout-scroll",
-                  compactKnockout && "max-w-[520px] lg:max-w-none mx-auto"
-                )} style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(203 213 225) rgb(241 245 249)' }}>
-                  <div
-                    ref={knockoutContainerRef}
-                    className="relative px-0.5 lg:px-2"
-                    style={{ 
-                      minWidth: `${knockoutMinBracketWidth}px`,
-                      maxWidth: compactKnockout ? "520px" : undefined,
-                      marginLeft: compactKnockout ? "auto" : undefined,
-                      marginRight: compactKnockout ? "auto" : undefined,
-                    }}
-                  >
-                    {!compactKnockout && (
-                      <div className="pointer-events-none absolute bottom-10 left-1/2 z-20 -translate-x-1/2">
-                        <div className="pointer-events-auto flex flex-col items-center gap-2">
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <LoadingButton
-                              loading={Boolean(loadingKeys.tournament)}
-                              disabled={!canAutopredictTournament}
-                              onClick={() =>
-                                runAutopredictWithDelay("tournament", handleAutopredict)
+                  <div className="flex min-h-[56px] flex-wrap items-center gap-2 sm:min-h-0">
+                    {isKnockoutBracketReady && (
+                      <>
+                        <LoadingButton
+                          loading={Boolean(loadingKeys["section:knockouts"])}
+                          disabled={!canAutopredictKnockouts}
+                          onClick={() =>
+                            runAutopredictWithDelay(
+                              "section:knockouts",
+                              handleSectionKnockoutsAutopredict
+                            )
+                          }
+                          className={cn(
+                            "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                            canAutopredictKnockouts
+                              ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                              : "text-slate-500"
+                          )}
+                        >
+                          Auto-predict knockout
+                        </LoadingButton>
+                        <button
+                          type="button"
+                          disabled={!hasAnyKnockoutPredictions}
+                          onClick={handleSectionKnockoutsReset}
+                          className={cn(
+                            "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                            hasAnyKnockoutPredictions
+                              ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                              : "text-slate-500 cursor-default"
+                          )}
+                        >
+                          Reset knockout
+                        </button>
+                      </>
+                    )}
+                    {!isKnockoutBracketReady && (
+                      <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
+                        <span>
+                          All qualifier and group stage matches must be predicted.
+                        </span>
+                        <LoadingButton
+                          loading={Boolean(loadingKeys["knockout:resolve"])}
+                          disabled={!canAutopredictQualifiers && !canAutopredictGroups}
+                          onClick={() =>
+                            runAutopredictWithDelay("knockout:resolve", () => {
+                              if (hasUnpredictedQualifiers()) {
+                                pendingGroupsAfterQualifiers.current = true;
+                                handleSectionQualifiersAutopredict();
                               }
-                              className={cn(
-                                "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                                canAutopredictTournament
-                                  ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                                  : "text-slate-500"
-                              )}
-                            >
-                              Auto-predict tournament
-                            </LoadingButton>
-                            <button
-                              type="button"
-                              disabled={!canResetTournament}
-                              onClick={handleResetAll}
-                              className={cn(
-                                "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                                canResetTournament
-                                  ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                                  : "text-slate-500 cursor-default"
-                              )}
-                            >
-                              Reset tournament
-                            </button>
-                          </div>
-                          <div className="flex min-h-9 items-center">
-                            {isTournamentComplete && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!shareLink) {
-                                    setShareStatus("error");
-                                    return;
-                                  }
-                                  if (navigator?.clipboard?.writeText) {
-                                    navigator.clipboard
-                                      .writeText(shareLink)
-                                      .then(() => setShareStatus("copied"))
-                                      .catch(() => setShareStatus("error"));
-                                    return;
-                                  }
-                                  const ok = window.prompt("Copy link to share", shareLink);
-                                  setShareStatus(ok ? "copied" : "error");
-                                }}
-                                className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
-                              >
-                                <svg
-                                  aria-hidden="true"
-                                  viewBox="0 0 24 24"
-                                  className="h-4 w-4 text-slate-600"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
-                                  <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
-                                </svg>
-                                {shareStatus === "copied" ? "Link copied" : "Share prediction"}
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                              if (!hasUnpredictedQualifiers() && hasUnpredictedGroups()) {
+                                handleSectionGroupsAutopredict();
+                              }
+                            })
+                          }
+                          className={cn(
+                            "rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-red-200",
+                            canAutopredictQualifiers || canAutopredictGroups
+                              ? "text-red-700 hover:bg-red-100"
+                              : "text-red-300 cursor-default"
+                          )}
+                        >
+                          Auto-predict
+                        </LoadingButton>
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+              {showKnockoutContent && (
+                <>
+                  <div className={cn(
+                    "overflow-x-scroll overflow-y-visible pb-2 knockout-scroll",
+                    compactKnockout && "max-w-[520px] lg:max-w-none mx-auto"
+                  )} style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(203 213 225) rgb(241 245 249)' }}>
+                    <div
+                      ref={knockoutContainerRef}
+                      className="relative px-0.5 lg:px-2"
+                      style={{ 
+                        minWidth: `${knockoutMinBracketWidth}px`,
+                        maxWidth: compactKnockout ? "520px" : undefined,
+                        marginLeft: compactKnockout ? "auto" : undefined,
+                        marginRight: compactKnockout ? "auto" : undefined,
+                      }}
+                    >
+                      {!compactKnockout && (
+                        <div className="pointer-events-none absolute bottom-10 left-1/2 z-20 -translate-x-1/2">
+                          <div className="pointer-events-auto flex flex-col items-center gap-2">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                              <LoadingButton
+                                loading={Boolean(loadingKeys.tournament)}
+                                disabled={!canAutopredictTournament}
+                                onClick={() =>
+                                  runAutopredictWithDelay("tournament", handleAutopredict)
+                                }
+                                className={cn(
+                                  "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                                  canAutopredictTournament
+                                    ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                                    : "text-slate-500"
+                                )}
+                              >
+                                Auto-predict tournament
+                              </LoadingButton>
+                              <button
+                                type="button"
+                                disabled={!canResetTournament}
+                                onClick={handleResetAll}
+                                className={cn(
+                                  "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                                  canResetTournament
+                                    ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                                    : "text-slate-500 cursor-default"
+                                )}
+                              >
+                                Reset tournament
+                              </button>
+                            </div>
+                            <div className="flex min-h-9 items-center">
+                              {isTournamentComplete && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!shareLink) {
+                                      setShareStatus("error");
+                                      return;
+                                    }
+                                    if (navigator?.clipboard?.writeText) {
+                                      navigator.clipboard
+                                        .writeText(shareLink)
+                                        .then(() => setShareStatus("copied"))
+                                        .catch(() => setShareStatus("error"));
+                                      return;
+                                    }
+                                    const ok = window.prompt("Copy link to share", shareLink);
+                                    setShareStatus(ok ? "copied" : "error");
+                                  }}
+                                  className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-white"
+                                >
+                                  <svg
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    className="h-4 w-4 text-slate-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L10.5 5.5" />
+                                    <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13.5 18.5" />
+                                  </svg>
+                                  {shareStatus === "copied" ? "Link copied" : "Share prediction"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     <svg
                       className="absolute inset-0 z-0 h-full w-full pointer-events-none"
                       aria-hidden="true"
@@ -9081,6 +8995,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                 )}
               </>
             )}
+          </div>
           </section>
         </>
       )}

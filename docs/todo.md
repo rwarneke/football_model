@@ -11,6 +11,8 @@
 * Bosnia and Herzogovina!!
 * Fickle team buttons
 * Fickle auto-predict on mobile for red box group stage
+* Logo too low
+* Loading slightly scrolled on predictor
 
 
 * More recent stuff!

@@ -49,7 +49,7 @@ export default function RootLayout({
           >
             <svg
               aria-hidden="true"
-              className="h-[18px] w-[18px]"
+              className="h-[20px] w-[20px]"
               viewBox="0 0 32 32"
               xmlns="http://www.w3.org/2000/svg"
             >
