@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { loadWorldCupPredictorDataClient } from "@/lib/world-cup-predictor-client";
 import { FLAG_COLORS } from "@/lib/flag-colors";
 import type {
   GroupDefinition,
@@ -11,7 +12,7 @@ import type {
   RoundOf32Combos,
   WinProbabilities,
   WorldCupPredictorData,
-} from "@/lib/world-cup-predictor";
+} from "@/lib/world-cup-predictor-types";
 
 type MatchScore = { home: number | null; away: number | null };
 type WinnerSelection = "home" | "away" | null;
@@ -4131,7 +4132,64 @@ function sortQualifiers(matches: QualifierMatch[]) {
   });
 }
 
-export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData }) {
+export function WorldCupPredictorPage({
+  data,
+}: {
+  data?: WorldCupPredictorData;
+}) {
+  const [loadedData, setLoadedData] = React.useState<WorldCupPredictorData | null>(
+    data ?? null
+  );
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (data) {
+      setLoadedData(data);
+      setLoadError(null);
+      return;
+    }
+    let canceled = false;
+    loadWorldCupPredictorDataClient()
+      .then((nextData) => {
+        if (canceled) {
+          return;
+        }
+        setLoadedData(nextData);
+        setLoadError(null);
+      })
+      .catch((error) => {
+        if (canceled) {
+          return;
+        }
+        setLoadError(
+          error instanceof Error ? error.message : "Failed to load predictor data."
+        );
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [data]);
+
+  if (loadError) {
+    return (
+      <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+        {loadError}
+      </div>
+    );
+  }
+
+  if (!loadedData) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        Loading predictor data...
+      </div>
+    );
+  }
+
+  return <WorldCupPredictorContent data={loadedData} />;
+}
+
+function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const [groupScores, setGroupScores] = React.useState<
     Record<string, MatchScore>
   >({});
