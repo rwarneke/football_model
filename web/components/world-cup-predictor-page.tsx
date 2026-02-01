@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { FLAG_COLORS } from "@/lib/flag-colors";
 import type {
@@ -1710,12 +1709,12 @@ function TeamFlag({
           isPlaceholder ? "bg-[#d9d9d9]" : "bg-ink-800"
         )}
       >
-        <Image
+        <img
           src={flagPath}
           alt={`${team} flag`}
-          fill
-          className="object-cover"
-          sizes="24px"
+          className="h-full w-full object-cover"
+          loading="eager"
+          decoding="async"
         />
       </div>
     );
@@ -3905,7 +3904,7 @@ function GroupStageCards({
             {groupsWithUnresolvedParticipants.has(entry.group.id) && (
               <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700">
                 <span>
-                  {qualifierPaths.length ? qualifierPaths.join(", ") : "Qualifier"} must be predicted to complete this group.
+                  {qualifierPaths.length ? qualifierPaths.join(", ") : "Qualifier"} must be predicted.
                 </span>
                 {showQualifierWarning && (
                   <LoadingButton
@@ -8110,7 +8109,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                 </button>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-h-[56px] flex-wrap items-center gap-2 sm:min-h-[64px]">
               {isKnockoutBracketReady && (
                 <>
                   <LoadingButton
@@ -8149,8 +8148,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               {!isKnockoutBracketReady && (
                 <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
                   <span>
-                    All qualifier and group stage matches must be predicted to
-                    complete the knockout bracket.
+                    All qualifier and group stage matches must be predicted.
                   </span>
                   <LoadingButton
                     loading={Boolean(loadingKeys["knockout:resolve"])}
