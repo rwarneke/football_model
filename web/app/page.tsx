@@ -5,13 +5,6 @@ export default function HomePage() {
   return (
     <main className="px-2 pb-16 pt-8 lg:px-6">
       <div className="flex w-full flex-col gap-10">
-        <header className="text-center space-y-4">
-          <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
-            TheBackPost
-          </h1>
-          <hr className="mx-auto h-px w-24 bg-slate-200" />
-        </header>
-
         <section className="grid gap-4 md:grid-cols-2">
           <Link
             className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-row sm:flex-wrap sm:gap-0 sm:items-stretch"

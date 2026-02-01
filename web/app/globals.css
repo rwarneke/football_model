@@ -9,6 +9,10 @@ body {
   color: var(--color-text);
 }
 
+.font-logo {
+  font-family: var(--font-logo);
+}
+
 .table-scroll::-webkit-scrollbar {
   height: 8px;
 }

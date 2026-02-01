@@ -40,8 +40,8 @@ export default async function WorldCupProbabilitiesRoute() {
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
             FIFA WORLD CUP 2026
           </p>
-          <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
-            Tournament Progression Chances
+          <h1 className="text-3xl font-semibold text-ebony md:text-4xl">
+            Progression Chances
           </h1>
           <p className="text-base text-ink-200">
             Each team's probability of reaching each stage of the 2026 FIFA
@@ -49,8 +49,6 @@ export default async function WorldCupProbabilitiesRoute() {
           </p>
           <div className="flex items-center gap-4 text-sm text-ink-400">
             <span>Updated {lastUpdated}</span>
-            <span className="h-1 w-1 rounded-lg bg-ink-600" />
-            <span>{rows.length} teams</span>
           </div>
         </header>
 

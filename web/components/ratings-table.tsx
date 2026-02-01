@@ -61,8 +61,13 @@ type RatingsTableProps = {
 
 export function RatingsTable({ data }: RatingsTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "rating", desc: true },
+    { id: "rank", desc: false },
   ]);
+  const defaultSortDescById: Record<string, boolean> = {
+    rating: true,
+    rating_attack: true,
+    rating_defense: true,
+  };
 
   const columns = React.useMemo<
     ColumnDef<RatingRow & { rank?: number }>[]
@@ -70,10 +75,10 @@ export function RatingsTable({ data }: RatingsTableProps) {
     () => [
       {
         id: "rank",
-        header: "Rank",
+        header: "#",
         accessorFn: (row, index) => row.rank ?? index + 1,
         sortingFn: (a, b, id) =>
-          Number(b.getValue(id) ?? 0) - Number(a.getValue(id) ?? 0),
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
         meta: { minWidthCh: 3 },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700">
@@ -133,6 +138,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
         accessorFn: (row) => row.rating ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
+        sortDescFirst: true,
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -153,6 +159,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
         accessorFn: (row) => row.rating_attack ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
+        sortDescFirst: true,
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -173,6 +180,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
         accessorFn: (row) => row.rating_defense ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
+        sortDescFirst: true,
         meta: { isRating: true },
         cell: ({ row }) => (
           <span className="text-xs sm:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
@@ -190,7 +198,20 @@ export function RatingsTable({ data }: RatingsTableProps) {
     data,
     columns,
     state: { sorting },
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      setSorting((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        const nextId = next[0]?.id;
+        if (!nextId) {
+          return prev;
+        }
+        if (prev[0]?.id !== nextId) {
+          return [{ id: nextId, desc: defaultSortDescById[nextId] ?? false }];
+        }
+        return next;
+      });
+    },
+    enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     enableMultiSort: true,
@@ -275,7 +296,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
                       cell.column.id === "rank"
                         ? "text-right w-[2.5rem] min-w-[2.5rem] sm:w-[3rem] sm:min-w-[3rem] pr-2 sm:pr-3"
                         : cell.column.id === "flag"
-                        ? "text-left w-[2rem] min-w-[2rem] sm:w-[3rem] sm:min-w-[3rem] pl-0.5 pr-1 sm:pl-1 sm:pr-2 overflow-hidden"
+                        ? "text-left w-[2rem] min-w-[2rem] sm:w-[3rem] sm:min-w-[3rem] pl-0.5 pr-1.5 sm:pl-1 sm:pr-2.5 overflow-hidden"
                         : cell.column.id === "team"
                         ? "text-left w-[10rem] min-w-[6rem] sm:min-w-[8rem] max-w-[10rem] pl-0.5 sm:pl-1 overflow-hidden"
                         : "text-right"

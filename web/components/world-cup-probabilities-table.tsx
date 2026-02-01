@@ -411,7 +411,7 @@ export function WorldCupProbabilitiesTable({
                       header.id === "flag"
                         ? "text-left w-[3rem] min-w-[3rem] pl-0.5 sm:pl-1 pr-1 sm:pr-2"
                         : header.id === "team"
-                        ? "text-left w-[10rem] min-w-[8rem] sm:min-w-[10rem] shrink-0"
+                        ? "text-left w-[10rem] min-w-[7rem] sm:min-w-[10rem] shrink-0"
                         : columnMeta?.isGroup
                         ? "text-center whitespace-nowrap min-w-[3ch] sm:min-w-[4ch]"
                         : header.id === "overall" ||
@@ -476,12 +476,14 @@ export function WorldCupProbabilitiesTable({
                     key={cell.id}
                     className={`px-1 sm:px-2 py-1.5 sm:py-2.5 ${
                       cell.column.id === "flag"
-                        ? "text-left w-[3rem] min-w-[3rem] pl-0.5 sm:pl-1 pr-1 sm:pr-2 py-1.5 sm:py-2.5 overflow-hidden"
+                        ? "text-left w-[3rem] min-w-[3rem] pl-0.5 sm:pl-1 pr-1.5 sm:pr-2.5 py-1.5 sm:py-2.5 overflow-hidden"
                         : cell.column.id === "team"
-                        ? "text-left w-[10rem] min-w-[8rem] sm:min-w-[10rem] shrink-0 pl-0.5 sm:pl-1"
+                        ? "text-left w-[10rem] min-w-[7rem] sm:min-w-[10rem] shrink-0 pl-0.5 sm:pl-1"
                         : columnMeta?.isGroup
                         ? "text-center min-w-[3ch] sm:min-w-[4ch]"
                         : "text-right"
+                    } ${
+                      columnMeta?.isProbability || columnMeta?.isRating ? "pl-4" : ""
                     } ${
                       cell.column.id === "flag"
                         ? "sticky left-0 z-10 bg-white"

@@ -88,12 +88,12 @@ export function SiteNav() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="md:hidden fixed left-4 top-3 z-[70] flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 text-slate-700 hover:bg-slate-100"
+        className="md:hidden fixed left-3.5 top-1.5 z-[70] flex h-9 w-9 items-center justify-center text-slate-900"
       >
         <span className="relative h-4 w-5">
-          <span className="absolute left-0 top-0 h-0.5 w-full rounded-full bg-slate-700" />
-          <span className="absolute left-0 top-[7px] h-0.5 w-full rounded-full bg-slate-700" />
-          <span className="absolute left-0 bottom-0 h-0.5 w-full rounded-full bg-slate-700" />
+          <span className="absolute left-0 top-0 h-[2px] w-full rounded-full bg-current" />
+          <span className="absolute left-0 top-[7px] h-[2px] w-full rounded-full bg-current" />
+          <span className="absolute left-0 bottom-0 h-[2px] w-full rounded-full bg-current" />
         </span>
       </button>
 
