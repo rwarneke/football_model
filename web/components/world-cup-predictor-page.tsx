@@ -3438,7 +3438,7 @@ function QualifierPathBracket({
               <div className="h-[56px] sm:h-[72px]" />
             )}
           </div>
-          <div className="grid w-fit grid-rows-[56px_auto] sm:grid-rows-[72px_auto] gap-3 sm:gap-4">
+          <div className="grid w-fit grid-rows-[56px_86px] sm:grid-rows-[72px_96px] gap-3 sm:gap-4">
             {final && (
               <KnockoutMatchCard
                 homeTeam={finalHome}
@@ -7711,6 +7711,12 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     {qualifierEntries.map(([path]) => {
                       const isActive = path === activeQualifierPathValue;
                       const isHighlighted = qualifierPathsWithCtaMatches.has(path);
+                      const [pathFirst, pathSecond, pathThird, ...pathRest] =
+                        path.split(" ");
+                      const thirdLine = [pathThird, ...pathRest].filter(Boolean).join(" ");
+                      const twoLine = [pathSecond, pathThird, ...pathRest]
+                        .filter(Boolean)
+                        .join(" ");
                       return (
                         <button
                           key={path}
@@ -7753,7 +7759,27 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                             }
                           }}
                         >
-                          {path}
+                          <span className="flex flex-col items-center leading-[1.05] sm:hidden">
+                            <span className="whitespace-nowrap">{pathFirst}</span>
+                            {pathSecond ? (
+                              <span className="whitespace-nowrap">{pathSecond}</span>
+                            ) : null}
+                            {thirdLine ? (
+                              <span className="whitespace-nowrap">{thirdLine}</span>
+                            ) : null}
+                          </span>
+                          <span className="hidden flex-col items-center leading-[1.1] sm:flex md:hidden">
+                            <span className="whitespace-nowrap">{pathFirst}</span>
+                            {twoLine ? (
+                              <span className="whitespace-nowrap">{twoLine}</span>
+                            ) : null}
+                          </span>
+                          <span className="hidden items-center gap-1 leading-none md:flex">
+                            <span className="whitespace-nowrap">{pathFirst}</span>
+                            {twoLine ? (
+                              <span className="whitespace-nowrap">{twoLine}</span>
+                            ) : null}
+                          </span>
                         </button>
                       );
                     })}
