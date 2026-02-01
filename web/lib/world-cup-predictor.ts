@@ -78,7 +78,22 @@ const NAME_MAP_FILES = [
   `${REFERENCE_DIR}/kaggle_team_to_canonical_name_map.csv`,
 ];
 
+const textCache = new Map<string, string>();
+const textInFlight = new Map<string, Promise<string>>();
+const jsonCache = new Map<string, unknown>();
+const jsonInFlight = new Map<string, Promise<unknown>>();
+let nameMapCache: Map<string, string> | null = null;
+let nameMapInFlight: Promise<Map<string, string>> | null = null;
+
 async function fetchText(filePath: string) {
+  const cached = textCache.get(filePath);
+  if (cached) {
+    return cached;
+  }
+  const inflight = textInFlight.get(filePath);
+  if (inflight) {
+    return inflight;
+  }
   const headerList = headers();
   const forwardedHost = headerList.get("x-forwarded-host");
   const hostValue = forwardedHost ?? headerList.get("host");
@@ -89,14 +104,32 @@ async function fetchText(filePath: string) {
   const host = hostValue.startsWith("0.0.0.0")
     ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
     : hostValue;
-  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Failed to load ${filePath}`);
+  const promise = (async () => {
+    const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Failed to load ${filePath}`);
+    }
+    const text = await res.text();
+    textCache.set(filePath, text);
+    return text;
+  })();
+  textInFlight.set(filePath, promise);
+  try {
+    return await promise;
+  } finally {
+    textInFlight.delete(filePath);
   }
-  return res.text();
 }
 
 async function fetchJson(filePath: string) {
+  const cached = jsonCache.get(filePath);
+  if (cached) {
+    return cached;
+  }
+  const inflight = jsonInFlight.get(filePath);
+  if (inflight) {
+    return inflight;
+  }
   const headerList = headers();
   const forwardedHost = headerList.get("x-forwarded-host");
   const hostValue = forwardedHost ?? headerList.get("host");
@@ -107,11 +140,21 @@ async function fetchJson(filePath: string) {
   const host = hostValue.startsWith("0.0.0.0")
     ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
     : hostValue;
-  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
-  if (!res.ok) {
-    return null;
+  const promise = (async () => {
+    const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
+    if (!res.ok) {
+      return null;
+    }
+    const data = await res.json();
+    jsonCache.set(filePath, data);
+    return data;
+  })();
+  jsonInFlight.set(filePath, promise);
+  try {
+    return await promise;
+  } finally {
+    jsonInFlight.delete(filePath);
   }
-  return res.json();
 }
 
 async function readCsv(filePath: string) {
@@ -131,6 +174,13 @@ async function readCsv(filePath: string) {
 }
 
 async function buildNameMap() {
+  if (nameMapCache) {
+    return nameMapCache;
+  }
+  if (nameMapInFlight) {
+    return nameMapInFlight;
+  }
+  const promise = (async () => {
   const map = new Map<string, string>();
   for (const filePath of NAME_MAP_FILES) {
     const { rows } = await readCsv(filePath);
@@ -142,7 +192,15 @@ async function buildNameMap() {
       }
     }
   }
-  return map;
+    nameMapCache = map;
+    return map;
+  })();
+  nameMapInFlight = promise;
+  try {
+    return await promise;
+  } finally {
+    nameMapInFlight = null;
+  }
 }
 
 function isSlotPlaceholder(name: string) {
