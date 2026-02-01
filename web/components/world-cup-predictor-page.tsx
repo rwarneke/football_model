@@ -7610,6 +7610,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const canAutopredictQualifiers = hasUnpredictedQualifiers();
   const canAutopredictGroups = hasUnpredictedGroups();
   const canAutopredictKnockouts = hasUnpredictedKnockouts();
+  const isGroupStageReady = !hasUnpredictedQualifiers();
   const canAutopredictTournament =
     canAutopredictQualifiers || canAutopredictGroups || canAutopredictKnockouts;
   const canResetTournament =
@@ -7913,37 +7914,63 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
               <h2 className="text-xl sm:text-2xl font-semibold text-ebony">Group stage</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <LoadingButton
-                loading={Boolean(loadingKeys["section:groups"])}
-                disabled={!canAutopredictGroups}
-                onClick={() =>
-                  runAutopredictWithDelay(
-                    "section:groups",
-                    handleSectionGroupsAutopredict
-                  )
-                }
-                className={cn(
-                  "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                  canAutopredictGroups
-                    ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                    : "text-slate-500"
-                )}
-              >
-                Auto-predict all groups
-              </LoadingButton>
-              <button
-                type="button"
-                disabled={!hasAnyGroupPredictions}
-                onClick={handleSectionGroupsReset}
-                className={cn(
-                  "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
-                  hasAnyGroupPredictions
-                    ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
-                    : "text-slate-500 cursor-default"
-                )}
-              >
-                Reset all groups
-              </button>
+              {isGroupStageReady ? (
+                <>
+                  <LoadingButton
+                    loading={Boolean(loadingKeys["section:groups"])}
+                    disabled={!canAutopredictGroups}
+                    onClick={() =>
+                      runAutopredictWithDelay(
+                        "section:groups",
+                        handleSectionGroupsAutopredict
+                      )
+                    }
+                    className={cn(
+                      "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                      canAutopredictGroups
+                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                        : "text-slate-500"
+                    )}
+                  >
+                    Auto-predict all groups
+                  </LoadingButton>
+                  <button
+                    type="button"
+                    disabled={!hasAnyGroupPredictions}
+                    onClick={handleSectionGroupsReset}
+                    className={cn(
+                      "rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-slate-200",
+                      hasAnyGroupPredictions
+                        ? "text-slate-600 hover:bg-slate-100 hover:text-slate-700"
+                        : "text-slate-500 cursor-default"
+                    )}
+                  >
+                    Reset all groups
+                  </button>
+                </>
+              ) : (
+                <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
+                  <span>All qualifiers must be predicted.</span>
+                  <LoadingButton
+                    loading={Boolean(loadingKeys["section:qualifiers"])}
+                    disabled={!canAutopredictQualifiers}
+                    onClick={() =>
+                      runAutopredictWithDelay(
+                        "section:qualifiers",
+                        handleSectionQualifiersAutopredict
+                      )
+                    }
+                    className={cn(
+                      "rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-red-200",
+                      canAutopredictQualifiers
+                        ? "text-red-700 hover:bg-red-100"
+                        : "text-red-300 cursor-default"
+                    )}
+                  >
+                    Auto-predict qualifiers
+                  </LoadingButton>
+                </div>
+              )}
             </div>
           </div>
         </div>
