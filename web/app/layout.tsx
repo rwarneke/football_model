@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bitter, Inter, Source_Code_Pro } from "next/font/google";
 import "./globals.css";
+import Link from "next/link";
 import { Suspense } from "react";
 import { SiteNav } from "@/components/site-nav";
 import { RouteLoadingBar } from "@/components/route-loading-bar";
@@ -32,16 +33,16 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <RouteLoadingBar />
         </Suspense>
-        <div className="fixed inset-x-0 top-0 z-[60] flex h-12 items-center justify-center border-b border-slate-200 bg-white md:hidden">
-          <span className="text-xl font-bold text-ebony font-logo">
+        <div className="fixed inset-x-0 top-0 z-[60] flex h-12 items-center justify-center border-b border-slate-200 bg-white">
+          <Link href="/" className="text-xl font-bold text-ebony font-logo">
             TheBackPost
-          </span>
+          </Link>
         </div>
         <div className="flex min-h-screen">
-          <aside className="relative z-[80] w-0 shrink-0 md:z-40 md:sticky md:top-0 md:h-screen md:w-auto md:border-r md:border-slate-200 md:bg-white">
+          <aside className="relative z-[80] w-0 shrink-0 md:z-40 md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:w-auto md:border-r md:border-slate-200 md:bg-white">
             <SiteNav />
           </aside>
-          <div className="flex-1 min-w-0 pt-12 md:pt-0">{children}</div>
+          <div className="flex-1 min-w-0 pt-12">{children}</div>
         </div>
       </body>
     </html>
