@@ -7,7 +7,7 @@ export default function HomePage() {
       <div className="flex w-full flex-col gap-10">
         <header className="text-center space-y-4">
           <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
-            Homepage
+            TheBackPost
           </h1>
           <hr className="mx-auto h-px w-24 bg-slate-200" />
         </header>
