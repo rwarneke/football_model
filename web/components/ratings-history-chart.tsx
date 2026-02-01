@@ -928,7 +928,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-ebony">Ratings history</h2>
-            <p className="text-sm text-ink-400">
+            <p className="hidden text-sm text-ink-400 sm:block">
               Drag across the chart area to zoom in on a time window.
             </p>
           </div>
@@ -956,7 +956,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
             </button>
             <button
               type="button"
-              className="rounded-lg border border-ink-700 px-3 py-1 text-sm text-ebony transition hover:bg-ink-800/60"
+              className="hidden rounded-lg border border-ink-700 px-3 py-1 text-sm text-ebony transition hover:bg-ink-800/60 sm:inline-flex"
               onClick={resetZoom}
             >
               Reset zoom
