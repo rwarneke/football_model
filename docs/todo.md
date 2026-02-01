@@ -5,10 +5,12 @@
 
 ## Design
 
-* Draw to remove tooltip (FIXED?)
 * Tooltip ugly
 * Unclickable logos
 * Minor spacing shifting everything on predictor
+* Bosnia and Herzogovina!!
+* Fickle team buttons
+* Fickle auto-predict on mobile for red box group stage
 
 
 * More recent stuff!

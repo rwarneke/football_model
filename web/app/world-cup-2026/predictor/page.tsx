@@ -16,7 +16,7 @@ export default async function WorldCupPredictorRoute() {
   });
 
   return (
-    <main className="px-2 pb-16 pt-8 lg:px-6">
+    <main className="px-2 pb-20 pt-8 sm:pb-16 lg:px-6">
       <div className="flex w-full flex-col gap-6 sm:gap-10">
         <header className="space-y-4">
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
