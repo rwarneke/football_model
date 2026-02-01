@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bitter, Inter, Source_Code_Pro } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
 import { SiteNav } from "@/components/site-nav";
 import { RouteLoadingBar } from "@/components/route-loading-bar";
 
@@ -28,7 +29,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${bitter.variable} ${sourceCodePro.variable}`}>
       <body className="min-h-screen bg-white text-ebony antialiased">
-        <RouteLoadingBar />
+        <Suspense fallback={null}>
+          <RouteLoadingBar />
+        </Suspense>
         <div className="fixed inset-x-0 top-0 z-[60] flex h-12 items-center justify-center border-b border-slate-200 bg-white md:hidden">
           <span className="text-xl font-bold text-ebony font-logo">
             TheBackPost
