@@ -3284,7 +3284,7 @@ function QualifierPathBracket({
                 : "text-slate-500 cursor-default"
             )}
           >
-            Reset
+            Reset qualifiers
           </button>
         </div>
       </div>
@@ -3897,7 +3897,7 @@ function GroupStageCards({
                       : "text-slate-500 cursor-default"
                   )}
                 >
-                  Reset
+                  Reset group
                 </button>
               </>
             )}
@@ -7683,7 +7683,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     : "text-slate-500 cursor-default"
                 )}
               >
-                Reset
+                Reset qualifiers
               </button>
             </div>
           </div>
@@ -7942,7 +7942,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                     : "text-slate-500 cursor-default"
                 )}
               >
-                Reset
+                Reset all groups
               </button>
             </div>
           </div>
@@ -8141,7 +8141,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                         : "text-slate-500 cursor-default"
                     )}
                   >
-                    Reset
+                    Reset knockout
                   </button>
                 </>
               )}
@@ -8222,7 +8222,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                           : "text-slate-500 cursor-default"
                       )}
                     >
-                      Reset
+                      Reset tournament
                     </button>
                   </div>
                   <div className="flex min-h-9 items-center">
@@ -8831,7 +8831,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                       : "text-slate-500 cursor-default"
                   )}
                 >
-                  Reset
+                  Reset tournament
                 </button>
               </div>
               <div className="flex min-h-9 items-center">
