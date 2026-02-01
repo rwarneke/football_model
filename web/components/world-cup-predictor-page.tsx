@@ -4159,6 +4159,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const roundOf32ListRef = React.useRef<HTMLDivElement | null>(null);
   const finalListRef = React.useRef<HTMLDivElement | null>(null);
   const [knockoutListHeight, setKnockoutListHeight] = React.useState<number | null>(null);
+  const [knockoutContainerWidth, setKnockoutContainerWidth] = React.useState<number | null>(null);
   const [knockoutCenters, setKnockoutCenters] = React.useState<Record<number, number>>(
     {}
   );
@@ -5706,6 +5707,33 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   const [showGroupStageContent, setShowGroupStageContent] = React.useState(false);
   const [showKnockoutSection, setShowKnockoutSection] = React.useState(false);
   const [showKnockoutContent, setShowKnockoutContent] = React.useState(false);
+  const compactTight =
+    compactKnockout &&
+    knockoutContainerWidth !== null &&
+    knockoutContainerWidth < 420;
+
+  React.useLayoutEffect(() => {
+    if (!showKnockoutContent) {
+      setKnockoutContainerWidth(null);
+      return;
+    }
+    const container = knockoutContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const update = () => {
+      const width = container.getBoundingClientRect().width;
+      setKnockoutContainerWidth((prev) => (prev === width ? prev : width));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(container);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      observer.disconnect();
+    };
+  }, [showKnockoutContent]);
 
   React.useEffect(() => {
     if (!pendingSharedKnockouts.current || !isKnockoutBracketReady) {
@@ -5971,8 +5999,8 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
           const isRound16ToQuarter = fromStage === "Round of 16" && toStage === "Quarterfinal";
           const isQuarterToSemi = fromStage === "Quarterfinal" && toStage === "Semifinal";
           const isSemiToFinal = fromStage === "Semifinal" && (toStage === "Final" || toStage === "Third place");
-          // In compact mode, subsequent rounds turn earlier (20px), R32→R16 uses fixed distance for true symmetry
-          const horizontalDistance = compactKnockout ? 20 : 30;
+          // In compact mode, tighten connector turn distance only when the layout is tight
+          const horizontalDistance = compactKnockout ? (compactTight ? 12 : 20) : 30;
           // For R32→R16 in compact mode, use a fixed distance for symmetry
           // In non-compact mode, use midpoint (which worked before)
           const r32ToR16TurnDistance = compactKnockout ? 8 : undefined;
@@ -6088,6 +6116,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     splitMatchesByStage,
     compactKnockout,
     showKnockoutContent,
+    compactTight,
   ]);
 
   React.useLayoutEffect(() => {
@@ -6193,6 +6222,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     knockoutCardHeight,
     compactKnockout,
     showKnockoutContent,
+    compactTight,
   ]);
 
 
@@ -6269,6 +6299,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     knockoutCardHeight,
     isSmallScreen,
     showKnockoutContent,
+    compactTight,
   ]);
 
   React.useLayoutEffect(() => {
@@ -6338,6 +6369,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
     compactKnockout,
     isSmallScreen,
     showKnockoutContent,
+    compactTight,
   ]);
 
   const handleAutopredict = React.useCallback(() => {
@@ -7634,13 +7666,13 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
   }, [knockoutWinners]);
 
   const knockoutBaseColumnWidth = compactKnockout ? 48 : isSmallScreen ? 152 : 200;
-  const knockoutBaseGap = compactKnockout ? 8 : 24;
-  const knockoutSfPosition = compactKnockout ? 3 : 2.8;
+  const knockoutBaseGap = compactKnockout ? (compactTight ? 6 : 8) : 24;
+  const knockoutSfPosition = compactKnockout ? (compactTight ? 2.75 : 3) : 2.8;
   const knockoutLeftBlockWidth =
     (knockoutSfPosition - 1) * (knockoutBaseColumnWidth + knockoutBaseGap) +
     knockoutBaseColumnWidth;
   const knockoutMinGapBetweenSFs = compactKnockout
-    ? knockoutBaseColumnWidth * 1.5
+    ? knockoutBaseColumnWidth * (compactTight ? 1.2 : 1.5)
     : knockoutBaseColumnWidth;
   const knockoutMinBracketWidth =
     knockoutLeftBlockWidth * 2 + knockoutMinGapBetweenSFs;
@@ -8390,7 +8422,7 @@ export function WorldCupPredictorPage({ data }: { data: WorldCupPredictorData })
                   return `${(pos - 1) * (baseColumnWidth + baseGap)}px`;
                 };
                 
-                const semifinalPosition = compactKnockout ? 3 : 2.8;
+                const semifinalPosition = sfPosition;
 
                 return (
                   <div 
