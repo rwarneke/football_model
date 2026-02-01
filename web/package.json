@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "generate:favicons": "node scripts/generate-favicons.mjs",
     "start": "next start",
     "lint": "next lint"
   },
@@ -29,6 +30,8 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.35",
     "postcss": "^8.4.40",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.9",
     "typescript": "^5.5.4"
   }

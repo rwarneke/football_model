@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { WorldCupPredictorPage } from "@/components/world-cup-predictor-page";
+
+export const metadata: Metadata = {
+  title: "World Cup 2026 Predictor",
+};
 
 export const dynamic = "force-static";
 export const revalidate = false;

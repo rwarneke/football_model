@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { WorldCupProbabilitiesPage } from "@/components/world-cup-probabilities-page";
 import { loadRatings } from "@/lib/ratings";
 import { loadWorldCupProbabilities } from "@/lib/world-cup";
+
+export const metadata: Metadata = {
+  title: "World Cup 2026 Progression Chances",
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "edge";

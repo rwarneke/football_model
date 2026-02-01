@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { RatingsPage } from "@/components/ratings-page";
 import { loadRatings } from "@/lib/ratings";
+
+export const metadata: Metadata = {
+  title: "International Football Team Ratings",
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "edge";

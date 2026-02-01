@@ -5,6 +5,12 @@
 
 ## Design
 
+* Draw to remove tooltip (FIXED?)
+* Tooltip ugly
+* Unclickable logos
+* Minor spacing shifting everything on predictor
+
+
 * More recent stuff!
     * more responsive group title positinoning on click
 

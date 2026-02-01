@@ -1888,6 +1888,7 @@ function MatchCard({
   showDivider,
   scoreMatrix,
   showHintRow,
+  onHintDismiss,
 }: {
   id: string | number;
   homeTeam: string;
@@ -1920,6 +1921,7 @@ function MatchCard({
   showDivider?: boolean;
   scoreMatrix?: number[][] | null;
   showHintRow?: boolean;
+  onHintDismiss?: () => void;
 }) {
   const homeInputRef = React.useRef<HTMLInputElement>(null);
   const awayInputRef = React.useRef<HTMLInputElement>(null);
@@ -1979,6 +1981,11 @@ function MatchCard({
 
   const [isDrawHovered, setIsDrawHovered] = React.useState(false);
   const [hintRowVisible, setHintRowVisible] = React.useState(false);
+  const dismissHint = React.useCallback(() => {
+    if (showHintRow && onHintDismiss) {
+      onHintDismiss();
+    }
+  }, [onHintDismiss, showHintRow]);
 
   React.useEffect(() => {
     if (!showHintRow) {
@@ -1989,6 +1996,12 @@ function MatchCard({
     const frame = requestAnimationFrame(() => setHintRowVisible(true));
     return () => cancelAnimationFrame(frame);
   }, [showHintRow]);
+
+  React.useEffect(() => {
+    if (showHintRow && hasScore) {
+      dismissHint();
+    }
+  }, [dismissHint, hasScore, showHintRow]);
 
   if (orientation === "horizontal" && showScore) {
     const isMobile = useMediaQuery("(max-width: 768px)");
@@ -2069,10 +2082,12 @@ function MatchCard({
       if (side === "home") {
         const sampled = sampleScoreForResult("home");
         setScores(sampled?.home ?? 2, sampled?.away ?? 1);
+        dismissHint();
         return;
       }
       const sampled = sampleScoreForResult("away");
       setScores(sampled?.home ?? 1, sampled?.away ?? 2);
+      dismissHint();
     };
 
     const handleDrawSelect = () => {
@@ -2085,6 +2100,7 @@ function MatchCard({
       }
       const sampled = sampleScoreForResult("draw");
       setScores(sampled?.home ?? 1, sampled?.away ?? 1);
+      dismissHint();
     };
 
     const homeIsWinner = isScoreSet && !isDraw && score.home !== null && score.away !== null && score.home > score.away;
@@ -2986,6 +3002,7 @@ function QualifierPathBracket({
     country?: string | null;
     neutralOverride?: boolean | null;
   }) => MatchProbabilityLabels;
+  onGroupHintDismiss?: () => void;
   showTitle?: boolean;
   embedded?: boolean;
   showHint?: boolean;
@@ -3776,6 +3793,7 @@ type GroupStageCardsProps = {
     country?: string | null;
     neutralOverride?: boolean | null;
   }) => MatchProbabilityLabels;
+  onGroupHintDismiss?: () => void;
   loadingKeys: Record<string, boolean>;
   runAutopredictWithDelay: (key: string, action: () => void) => void;
   handleGroupAutopredict: (groupId: string) => void;
@@ -3804,6 +3822,7 @@ function GroupStageCards({
   showGroupHint,
   groupsWithCtaMatches,
   getMatchProbabilityLabels,
+  onGroupHintDismiss,
   loadingKeys,
   runAutopredictWithDelay,
   handleGroupAutopredict,
@@ -3969,6 +3988,7 @@ function GroupStageCards({
                   })}
                   showDivider={false}
                   showHintRow={isHintMatch}
+                  onHintDismiss={isHintMatch ? onGroupHintDismiss : undefined}
                 />
               );
             })}
@@ -8103,11 +8123,11 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                 <div className="inline-flex flex-wrap items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
                   <span>All qualifiers must be predicted.</span>
                   <LoadingButton
-                    loading={Boolean(loadingKeys["section:qualifiers"])}
+                    loading={Boolean(loadingKeys["section:qualifiers-group-gate"])}
                     disabled={!canAutopredictQualifiers}
                     onClick={() =>
                       runAutopredictWithDelay(
-                        "section:qualifiers",
+                        "section:qualifiers-group-gate",
                         handleSectionQualifiersAutopredict
                       )
                     }
@@ -8152,9 +8172,10 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                 groupQualifierPaths={groupQualifierPaths}
                 showGroupHint={showGroupHint}
                 groupsWithCtaMatches={groupsWithCtaMatches}
-                getMatchProbabilityLabels={getMatchProbabilityLabels}
-                loadingKeys={loadingKeys}
-                runAutopredictWithDelay={runAutopredictWithDelay}
+              getMatchProbabilityLabels={getMatchProbabilityLabels}
+              onGroupHintDismiss={() => setShowGroupHint(false)}
+              loadingKeys={loadingKeys}
+              runAutopredictWithDelay={runAutopredictWithDelay}
                 handleGroupAutopredict={handleGroupAutopredict}
                 handleGroupReset={handleGroupReset}
                 handleQualifierAutopredict={handleQualifierAutopredict}

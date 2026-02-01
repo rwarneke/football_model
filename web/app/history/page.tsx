@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { RatingsHistoryChart } from "@/components/ratings-history-chart";
 import { loadRatingsHistory } from "@/lib/ratings";
+
+export const metadata: Metadata = {
+  title: "Historical International Football Team Ratings",
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "edge";
