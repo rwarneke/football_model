@@ -8,7 +8,7 @@ export default function WorldCupHomePage() {
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
             World Cup 2026
           </p>
-          <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
+          <h1 className="text-3xl font-semibold text-ebony md:text-4xl">
             World Cup 2026 Simulator
           </h1>
           <p className="text-base text-ink-200">

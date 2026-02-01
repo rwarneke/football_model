@@ -19,7 +19,7 @@ export default async function WorldCupPredictorRoute() {
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
             FIFA WORLD CUP 2026
           </p>
-          <h1 className="text-3xl sm:text-4xl font-semibold text-ebony md:text-5xl">
+          <h1 className="text-3xl font-semibold text-ebony md:text-4xl">
             Tournament Predictor
           </h1>
           <p className="text-base text-ink-200">

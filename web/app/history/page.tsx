@@ -19,7 +19,7 @@ export default async function HistoryPage() {
           <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
             Historical Ratings
           </p>
-          <h1 className="text-4xl font-semibold text-ebony md:text-5xl">
+          <h1 className="text-3xl font-semibold text-ebony md:text-4xl">
             Historical International Football Ratings
           </h1>
           <p className="text-base text-ink-200">
