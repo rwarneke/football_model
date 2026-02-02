@@ -67,7 +67,7 @@ export default function RootLayout({
           </Link>
         </div>
         <div className="flex min-h-screen">
-          <aside className="relative z-[80] w-0 shrink-0 md:z-40 md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:w-auto md:border-r md:border-slate-200 md:bg-white">
+          <aside className="relative z-[80] w-0 shrink-0 lg:z-40 lg:sticky lg:top-12 lg:h-[calc(100vh-3rem)] lg:w-auto lg:border-r lg:border-slate-200 lg:bg-white">
             <SiteNav />
           </aside>
           <div className="flex-1 min-w-0 pt-12">{children}</div>

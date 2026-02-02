@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 export type WorldCupProbabilities = {
   columns: string[];
   rows: Array<{
@@ -32,44 +35,31 @@ function flagFileName(team: string) {
   return `${team.replace(/ /g, "_")}.png`;
 }
 
-async function fetchText(filePath: string) {
-  const headerList = headers();
-  const forwardedHost = headerList.get("x-forwarded-host");
-  const hostValue = forwardedHost ?? headerList.get("host");
-  const proto = headerList.get("x-forwarded-proto") ?? "https";
-  if (!hostValue) {
-    throw new Error("Missing host header for data fetch");
-  }
-  const host = hostValue.startsWith("0.0.0.0")
-    ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
-    : hostValue;
-  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Failed to load ${filePath}`);
-  }
-  return res.text();
+const PUBLIC_DIR = path.join(process.cwd(), "public");
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object" && error !== null && "code" in error;
 }
 
-async function fetchOptionalText(filePath: string) {
-  const headerList = headers();
-  const forwardedHost = headerList.get("x-forwarded-host");
-  const hostValue = forwardedHost ?? headerList.get("host");
-  const proto = headerList.get("x-forwarded-proto") ?? "https";
-  if (!hostValue) {
-    return null;
+async function readPublicText(filePath: string) {
+  const normalized = filePath.replace(/^\/+/, "");
+  const fullPath = path.join(PUBLIC_DIR, normalized);
+  return readFile(fullPath, "utf8");
+}
+
+async function readOptionalPublicText(filePath: string) {
+  try {
+    return await readPublicText(filePath);
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
   }
-  const host = hostValue.startsWith("0.0.0.0")
-    ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
-    : hostValue;
-  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
-  if (!res.ok) {
-    return null;
-  }
-  return res.text();
 }
 
 export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities> {
-  const contents = await fetchText(DATA_FILE);
+  const contents = await readPublicText(DATA_FILE);
   const lines = contents.trim().split(/\r?\n/);
   if (lines.length <= 1) {
     return { columns: [], rows: [] };
@@ -89,7 +79,7 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
 
   let statusHeaders: string[] = [];
   const statusMap = new Map<string, Record<string, string | undefined>>();
-  const statusContents = await fetchOptionalText(STATUS_FILE);
+  const statusContents = await readOptionalPublicText(STATUS_FILE);
   if (statusContents) {
     const statusLines = statusContents.trim().split(/\r?\n/);
     statusHeaders = statusLines[0]?.split(",") ?? [];
@@ -108,7 +98,7 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
   const referenceDir = "/reference_data";
   const groupFile = `${referenceDir}/world_cup_2026_groups.csv`;
   const qualifiedFile = `${referenceDir}/world_cup_2026_qualified.csv`;
-  const groupContents = await fetchText(groupFile);
+  const groupContents = await readPublicText(groupFile);
   const groupLines = groupContents.trim().split(/\r?\n/);
   const groupHeaders = groupLines[0]?.split(",") ?? [];
   const groupRows = groupLines.slice(1).map((line) => {
@@ -123,7 +113,7 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
       .map((row) => [row.team as string, row.group as string])
   );
 
-  const qualifiedContents = await fetchText(qualifiedFile);
+  const qualifiedContents = await readPublicText(qualifiedFile);
   const qualifiedLines = qualifiedContents.trim().split(/\r?\n/);
   const qualifiedHeaders = qualifiedLines[0]?.split(",") ?? [];
   const qualifiedRows = qualifiedLines.slice(1).map((line) => {
@@ -139,7 +129,7 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
   );
 
   const remainingFile = `${referenceDir}/world_cup_2026_remaining_qualifiers.csv`;
-  const remainingContents = await fetchText(remainingFile);
+  const remainingContents = await readPublicText(remainingFile);
   const remainingLines = remainingContents.trim().split(/\r?\n/);
   const remainingHeaders = remainingLines[0]?.split(",") ?? [];
   const remainingRows = remainingLines.slice(1).map((line) => {
@@ -155,7 +145,7 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
   ];
   const nameMap = new Map<string, string>();
   for (const mapFile of mapFiles) {
-    const mapContents = await fetchText(mapFile);
+    const mapContents = await readPublicText(mapFile);
     const mapLines = mapContents.trim().split(/\r?\n/);
     const mapHeaders = mapLines[0]?.split(",") ?? [];
     const mapRows = mapLines.slice(1).map((line) => {
@@ -239,4 +229,3 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
 
   return { columns, rows };
 }
-import { headers } from "next/headers";

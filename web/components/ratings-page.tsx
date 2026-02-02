@@ -28,7 +28,7 @@ export function RatingsPage({ data }: RatingsPageProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex w-full flex-wrap items-center justify-end gap-3">
+      <div className="flex w-full flex-wrap items-center justify-start gap-3">
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}

@@ -13,6 +13,7 @@
 * Fickle auto-predict on mobile for red box group stage
 * Logo too low
 * Loading slightly scrolled on predictor
+* Compact mode?
 
 
 * More recent stuff!

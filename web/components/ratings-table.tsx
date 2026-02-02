@@ -122,7 +122,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
           return teamA.localeCompare(teamB);
         },
         cell: ({ row }) => (
-          <span className="block max-w-[10rem] truncate text-xs sm:text-sm font-medium text-slate-900">
+          <span className="block whitespace-nowrap text-xs sm:text-sm font-medium text-slate-900">
             {row.original.team}
           </span>
         ),
@@ -220,7 +220,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-full table-auto xl:table-fixed text-sm [--rating-col-width:clamp(5ch,7vw,9ch)] sm:[--rating-col-width:clamp(6ch,7vw,10ch)]">
+        <table className="w-full table-auto xl:table-fixed text-sm [--rating-col-width:clamp(6ch,9vw,14ch)] sm:[--rating-col-width:clamp(7ch,9vw,16ch)]">
           <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
@@ -245,7 +245,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : header.id === "flag"
                         ? "text-left w-[2rem] min-w-[2rem] sm:w-[3rem] sm:min-w-[3rem] pl-0.5 pr-1 sm:pl-1 sm:pr-2"
                         : header.id === "team"
-                        ? "text-left w-[10rem] min-w-[6rem] sm:min-w-[8rem] max-w-[10rem]"
+                        ? "text-left min-w-[8rem] sm:min-w-[10rem]"
                         : "text-right"
                     } px-1 sm:px-2 py-1.5 sm:py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
                       header.id === "rank"
@@ -265,6 +265,8 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : columnMeta?.isRating
                         ? {
                             minWidth: "var(--rating-col-width)",
+                            width: "var(--rating-col-width)",
+                            maxWidth: "var(--rating-col-width)",
                           }
                         : undefined
                     }
@@ -298,7 +300,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : cell.column.id === "flag"
                         ? "text-left w-[2rem] min-w-[2rem] sm:w-[3rem] sm:min-w-[3rem] pl-0.5 pr-1.5 sm:pl-1 sm:pr-2.5 overflow-hidden"
                         : cell.column.id === "team"
-                        ? "text-left w-[10rem] min-w-[6rem] sm:min-w-[8rem] max-w-[10rem] pl-0.5 sm:pl-1 overflow-hidden"
+                        ? "text-left min-w-[8rem] sm:min-w-[10rem] pl-0.5 sm:pl-1"
                         : "text-right"
                     } ${
                       cell.column.id === "rank"
@@ -318,6 +320,8 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : columnMeta?.isRating
                         ? {
                             minWidth: "var(--rating-col-width)",
+                            width: "var(--rating-col-width)",
+                            maxWidth: "var(--rating-col-width)",
                           }
                         : {}),
                     }}

@@ -88,7 +88,7 @@ export function SiteNav() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="md:hidden fixed left-3.5 top-1.5 z-[70] flex h-9 w-9 items-center justify-center text-slate-900"
+        className="lg:hidden fixed left-3.5 top-1.5 z-[70] flex h-9 w-9 items-center justify-center text-slate-900"
       >
         <span className="relative h-4 w-5">
           <span className="absolute left-0 top-0 h-[2px] w-full rounded-full bg-current" />
@@ -101,7 +101,7 @@ export function SiteNav() {
         <button
           type="button"
           aria-label="Close navigation"
-          className="fixed inset-0 z-[55] bg-black/20 md:hidden"
+          className="fixed inset-0 z-[55] bg-black/20 lg:hidden"
           onClick={() => setOpen(false)}
         />
       )}
@@ -110,18 +110,18 @@ export function SiteNav() {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          "fixed inset-y-0 left-0 z-[60] h-full overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 transition-[width] duration-200 md:static md:shadow-none md:ring-0",
+          "fixed inset-y-0 left-0 z-[60] h-full overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 transition-[width] duration-200 lg:static lg:shadow-none lg:ring-0",
           open ? "w-64" : "w-0",
-          open ? "md:w-64" : "md:w-20"
+          open ? "lg:w-64" : "lg:w-20"
         )}
       >
-        <div className="flex h-full flex-col gap-4 px-2 pt-16 pb-4 md:px-3 md:pt-4">
+        <div className="flex h-full flex-col gap-4 px-2 pt-16 pb-4 lg:px-3 lg:pt-4">
           <button
             type="button"
             onClick={() => setOpen((prev) => !prev)}
             aria-expanded={open}
             className={cn(
-              "hidden md:flex group items-center gap-3 rounded-lg px-2 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300",
+              "hidden lg:flex group items-center gap-3 rounded-lg px-2 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300",
               open ? "justify-start" : "justify-center"
             )}
           >
@@ -150,7 +150,7 @@ export function SiteNav() {
                   href={group.href}
                   onClick={handleNavSelect}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 md:px-2",
+                    "flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 lg:px-2",
                     isActive(group.href) && "bg-slate-100 text-slate-900",
                     open ? "justify-start" : "justify-center"
                   )}
@@ -168,7 +168,7 @@ export function SiteNav() {
                   </span>
                 </Link>
               ) : (
-                <div className={cn("flex items-center gap-3 px-2 md:px-2", open ? "justify-start" : "justify-center")}>
+                <div className={cn("flex items-center gap-3 px-2 lg:px-2", open ? "justify-start" : "justify-center")}>
                   <group.icon className="h-6 w-6 shrink-0 text-slate-700" />
                   <span
                     className={cn(
@@ -190,7 +190,7 @@ export function SiteNav() {
                       href={child.href}
                       onClick={handleNavSelect}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 md:px-2",
+                        "flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:px-2",
                         isActive(child.href) && "bg-slate-100 text-slate-900",
                         open ? "justify-start" : "justify-center"
                       )}

@@ -6,9 +6,6 @@ export const metadata: Metadata = {
   title: "International Football Team Ratings",
 };
 
-export const dynamic = "force-dynamic";
-export const runtime = "edge";
-
 export default async function CurrentRatingsPage() {
   const ratings = await loadRatings();
   const lastUpdated = new Date().toLocaleDateString("en-US", {

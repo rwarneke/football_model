@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { headers } from "next/headers";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 const ratingRowSchema = z.object({
   team: z.string().min(1),
@@ -44,26 +45,16 @@ function resolveFlagPath(team: string) {
   return `/flags/${fileName}`;
 }
 
-async function fetchText(filePath: string) {
-  const headerList = headers();
-  const forwardedHost = headerList.get("x-forwarded-host");
-  const hostValue = forwardedHost ?? headerList.get("host");
-  const proto = headerList.get("x-forwarded-proto") ?? "https";
-  if (!hostValue) {
-    throw new Error("Missing host header for data fetch");
-  }
-  const host = hostValue.startsWith("0.0.0.0")
-    ? hostValue.replace(/^0\.0\.0\.0/, "127.0.0.1")
-    : hostValue;
-  const res = await fetch(`${proto}://${host}${filePath}`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Failed to load ${filePath}`);
-  }
-  return res.text();
+const PUBLIC_DIR = path.join(process.cwd(), "public");
+
+async function readPublicText(filePath: string) {
+  const normalized = filePath.replace(/^\/+/, "");
+  const fullPath = path.join(PUBLIC_DIR, normalized);
+  return readFile(fullPath, "utf8");
 }
 
 export async function loadRatings(): Promise<RatingRow[]> {
-  const contents = await fetchText(DATA_FILE);
+  const contents = await readPublicText(DATA_FILE);
   const lines = contents.trim().split(/\r?\n/);
   if (lines.length <= 1) {
     return [];
@@ -104,7 +95,7 @@ export type RatingsHistoryPoint = {
 };
 
 export async function loadRatingsHistory() {
-  const contents = await fetchText(HISTORY_DATA_FILE);
+  const contents = await readPublicText(HISTORY_DATA_FILE);
   const lines = contents.trim().split(/\r?\n/);
   if (lines.length <= 1) {
     return { data: [], teams: [] };

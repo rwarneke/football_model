@@ -7,9 +7,6 @@ export const metadata: Metadata = {
   title: "World Cup 2026 Progression Chances",
 };
 
-export const dynamic = "force-dynamic";
-export const runtime = "edge";
-
 export default async function WorldCupProbabilitiesRoute() {
   const { columns, rows } = await loadWorldCupProbabilities();
   const ratings = await loadRatings();

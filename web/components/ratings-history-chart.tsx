@@ -196,6 +196,9 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
   const [pinnedTeam, setPinnedTeam] = React.useState<string | null>(null);
   const [dragZoomEnabled, setDragZoomEnabled] = React.useState(true);
   const chartWrapperRef = React.useRef<HTMLDivElement | null>(null);
+  const chartCardRef = React.useRef<HTMLDivElement | null>(null);
+  const [chartCardHeight, setChartCardHeight] = React.useState<number | null>(null);
+  const [isXl, setIsXl] = React.useState(false);
   const pinchRef = React.useRef<{
     startDistance: number;
     startCenter: { x: number; y: number };
@@ -208,6 +211,34 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
     xScale: { invert?: (value: number) => number | Date; domain: () => unknown[] };
     yScale: { invert?: (value: number) => number | Date; domain: () => unknown[] };
   } | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const mediaQuery = window.matchMedia("(min-width: 1280px)");
+    const handleChange = () => setIsXl(mediaQuery.matches);
+    handleChange();
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!isXl || !chartCardRef.current) {
+      setChartCardHeight(null);
+      return;
+    }
+    const element = chartCardRef.current;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const target = entry.target as HTMLElement;
+        const nextHeight = Math.round(target.getBoundingClientRect().height);
+        setChartCardHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isXl]);
 
   const visibleTeams = React.useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -923,8 +954,11 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
+    <div className="flex flex-col gap-6 xl:flex-row xl:items-stretch">
+      <div
+        ref={chartCardRef}
+        className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm xl:flex-[3] xl:self-start"
+      >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-ebony">Ratings history</h2>
@@ -988,7 +1022,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
                 onMouseLeave={dragZoomEnabled ? handlePointerLeave : undefined}
                 onClick={handleChartClick}
               >
-              <CartesianGrid stroke="var(--color-accent-light)" />
+              <CartesianGrid stroke="#d1d5db" />
               <XAxis
                 dataKey="date"
                 type="number"
@@ -999,14 +1033,19 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
                 domain={xDomain ?? ["dataMin", "dataMax"]}
                 allowDataOverflow
                 ticks={xTicks}
-                stroke="var(--color-accent-dark)"
+                stroke="#000000"
+                tick={{ fill: "#000000" }}
+                tickLine={{ stroke: "#000000" }}
+                axisLine={{ stroke: "#000000" }}
               />
               <YAxis
                 domain={yDomain ?? [0, 100]}
                 allowDataOverflow
                 ticks={yTicks}
-                stroke="var(--color-accent-dark)"
-                tick={{ fill: "var(--color-primary-dark)" }}
+                stroke="#000000"
+                tick={{ fill: "#000000" }}
+                tickLine={{ stroke: "#000000" }}
+                axisLine={{ stroke: "#000000" }}
                 tickMargin={6}
                 tickFormatter={(value: number) => Math.round(value).toString()}
                 allowDecimals={false}
@@ -1097,7 +1136,10 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
           </div>
         </div>
       </div>
-      <div className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
+      <div
+        className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm xl:flex-[2] xl:self-stretch xl:min-h-0"
+        style={isXl && chartCardHeight ? { height: chartCardHeight } : undefined}
+      >
         <div className="mb-3 flex flex-col gap-3 text-sm text-ink-400 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center justify-between gap-4">
             <span>{selectedTeams.length} selected</span>
@@ -1141,7 +1183,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
             className="w-full rounded-lg border border-ink-900 bg-white px-3 py-1 text-sm text-ebony placeholder:text-ink-900/60 md:w-64"
           />
         </div>
-        <div className="grid max-h-[320px] grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto pr-2 text-sm text-ebony md:grid-cols-3">
+        <div className="grid h-[320px] grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto pr-2 text-sm text-ebony md:grid-cols-3 xl:flex-1 xl:min-h-0 xl:h-auto">
           {visibleTeams.map((team) => (
             <label key={team} className="flex items-center gap-2">
               <input
