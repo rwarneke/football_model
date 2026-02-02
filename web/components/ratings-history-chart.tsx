@@ -966,10 +966,10 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
               Drag across the chart area to zoom in on a time window.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
             <button
               type="button"
-              className="rounded-lg border border-ink-700 px-3 py-1 text-sm text-ebony transition hover:bg-ink-800/60"
+              className="flex min-w-[9.5rem] items-center justify-center rounded-lg border border-ink-700 px-3 py-1 text-sm text-ebony transition hover:bg-ink-800/60"
               onClick={() => {
                 setSelectedTeams(teams);
                 setYDomain(null);
@@ -980,7 +980,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
             </button>
             <button
               type="button"
-              className="rounded-lg border border-ink-700 px-3 py-1 text-sm text-ebony transition hover:bg-ink-800/60"
+              className="flex min-w-[9.5rem] items-center justify-center rounded-lg border border-ink-700 px-3 py-1 text-sm text-ebony transition hover:bg-ink-800/60"
               onClick={() => {
                 setSelectedTeams([]);
                 setActivePreset("");
@@ -990,7 +990,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
             </button>
             <button
               type="button"
-              className="hidden rounded-lg border border-ink-700 px-3 py-1 text-sm text-ebony transition hover:bg-ink-800/60 sm:inline-flex"
+              className="hidden min-w-[9.5rem] items-center justify-center rounded-lg border border-ink-700 px-3 py-1 text-sm text-ebony transition hover:bg-ink-800/60 sm:inline-flex"
               onClick={resetZoom}
             >
               Reset zoom
@@ -1140,11 +1140,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
         className="relative flex flex-col gap-4 overflow-hidden rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm xl:flex-[2] xl:self-stretch xl:min-h-0"
         style={isXl && chartCardHeight ? { height: chartCardHeight } : undefined}
       >
-        <div className="mb-3 flex flex-col gap-3 text-sm text-ink-400 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center justify-between gap-4">
-            <span>{selectedTeams.length} selected</span>
-            <span>{teams.length} total teams</span>
-          </div>
+        <div className="mb-3 flex flex-col gap-3 text-sm text-ink-400 md:flex-row md:items-end md:justify-between">
           <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
             <label className="text-xs uppercase tracking-[0.2em] text-ink-400">
               Presets

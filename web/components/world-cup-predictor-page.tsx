@@ -3594,9 +3594,10 @@ function GroupTable({
           .group-table-mobile col:nth-child(4) { width: 20px !important; }
           .group-table-mobile col:nth-child(5) { width: 20px !important; }
           .group-table-mobile col:nth-child(6) { width: 20px !important; }
+          .group-table-mobile col:nth-child(7) { width: 24px !important; }
+          .group-table-mobile col:nth-child(8) { width: 24px !important; }
           .group-table-mobile col:nth-child(9) { width: 28px !important; }
           .group-table-mobile col:nth-child(10) { width: 32px !important; }
-          .group-table-mobile .group-table-gfga { display: none !important; }
         }
         @media (max-width: 359px) {
           .group-table-mobile col:nth-child(1) { width: 26px !important; }
@@ -3607,6 +3608,7 @@ function GroupTable({
           .group-table-mobile col:nth-child(6) { width: 18px !important; }
           .group-table-mobile col:nth-child(9) { width: 26px !important; }
           .group-table-mobile col:nth-child(10) { width: 30px !important; }
+          .group-table-mobile .group-table-gfga { display: none !important; }
         }
       `}} />
       {/* Qualifier markers overlay - positioned relative to table container */}
@@ -3886,7 +3888,7 @@ function GroupStageCards({
               Group {entry.group.id}
             </h3>
           )}
-          <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
+          <div className="flex min-h-[32px] items-center gap-1.5 text-xs sm:min-h-[36px] sm:gap-2">
             {!groupsWithUnresolvedParticipants.has(entry.group.id) && (
               <>
                 <LoadingButton
@@ -4317,12 +4319,16 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     if (typeof window === "undefined") {
       return;
     }
-    if (!showKnockoutContent || compactModeHintDismissed) {
+    if (!showKnockoutContent || compactModeHintDismissed || !compactKnockout) {
       if (process.env.NODE_ENV !== "production") {
         console.log("[predictor] compact hint: gated", {
           showKnockoutContent,
           compactModeHintDismissed,
+          compactKnockout,
         });
+      }
+      if (!compactKnockout) {
+        setShowCompactModeHint(false);
       }
       return;
     }
@@ -4330,7 +4336,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       console.log("[predictor] compact hint: show (knockout bracket appeared)");
     }
     setShowCompactModeHint(true);
-  }, [showKnockoutContent, compactModeHintDismissed]);
+  }, [showKnockoutContent, compactModeHintDismissed, compactKnockout]);
 
   // Auto-dismiss compact mode hint when any knockout team is selected (manually or automatically)
   React.useEffect(() => {
