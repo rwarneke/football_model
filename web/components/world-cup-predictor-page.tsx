@@ -4172,6 +4172,10 @@ export function WorldCupPredictorPage({
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
+
+  React.useEffect(() => {
     if (data) {
       setLoadedData(data);
       setLoadError(null);

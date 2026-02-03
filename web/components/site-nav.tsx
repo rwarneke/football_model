@@ -168,7 +168,19 @@ export function SiteNav() {
                   </span>
                 </Link>
               ) : (
-                <div className={cn("flex items-center gap-3 px-2 lg:px-2", open ? "justify-start" : "justify-center")}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!open) {
+                      setOpen(true);
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 px-2 lg:px-2 rounded-lg",
+                    open ? "justify-start" : "justify-center"
+                  )}
+                  aria-expanded={open}
+                >
                   <group.icon className="h-6 w-6 shrink-0 text-slate-700" />
                   <span
                     className={cn(
@@ -180,7 +192,7 @@ export function SiteNav() {
                   >
                     {group.label}
                   </span>
-                </div>
+                </button>
               )}
               {group.children && (
                 <div className={cn("flex flex-col gap-1", open ? "pl-9" : "pl-0")}>
