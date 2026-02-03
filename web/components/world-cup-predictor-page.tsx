@@ -2263,7 +2263,7 @@ function MatchCard({
       >
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 px-1">
           <div className="flex flex-col items-center gap-0">
-            <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
+            <svg className="h-2 w-4 -mb-px" viewBox="0 0 20 8" fill="none" aria-hidden="true">
               <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
             <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm text-center">
@@ -2271,7 +2271,7 @@ function MatchCard({
             </div>
           </div>
           <div className="flex flex-col items-center gap-0">
-            <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
+            <svg className="h-2 w-4 -mb-px" viewBox="0 0 20 8" fill="none" aria-hidden="true">
               <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
             <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm text-center">
@@ -2279,7 +2279,7 @@ function MatchCard({
             </div>
           </div>
           <div className="flex flex-col items-center gap-0">
-            <svg className="h-2 w-4" viewBox="0 0 20 8" fill="none" aria-hidden="true">
+            <svg className="h-2 w-4 -mb-px" viewBox="0 0 20 8" fill="none" aria-hidden="true">
               <path d="M0 8 L10 0 L20 8" fill="rgb(15 23 42)" />
             </svg>
             <div className="flex items-center justify-center gap-1 rounded-md bg-slate-900 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white shadow-sm text-center">
@@ -3326,7 +3326,7 @@ function QualifierPathBracket({
               className="absolute h-2 w-4"
               style={{
                 left: `${hintPosition.textX + 88}px`,
-                top: `${hintPosition.textY + (hintBox?.height ?? 44)}px`,
+                top: `${hintPosition.textY + (hintBox?.height ?? 44) - 1}px`,
                 transform: "translateX(-50%)",
               }}
               viewBox="0 0 20 8"
@@ -8186,7 +8186,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                 </div>
                 {compactModeHintArrowLeft !== null && (
                   <svg
-                    className="absolute top-full h-2 w-4 text-slate-900"
+                    className="absolute top-full -mt-px h-2 w-4 text-slate-900"
                     style={{
                       left: `${compactModeHintArrowLeft}px`,
                       transform: "translateX(-50%)",

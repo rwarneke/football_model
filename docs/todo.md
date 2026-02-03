@@ -6,14 +6,8 @@
 ## Design
 
 * Tooltip ugly
-* Unclickable logos
-* Minor spacing shifting everything on predictor
-* Bosnia and Herzogovina!!
-* Fickle team buttons
-* Fickle auto-predict on mobile for red box group stage
 * Logo too low
 * Loading slightly scrolled on predictor
-* Compact mode?
 
 
 * More recent stuff!
