@@ -3555,11 +3555,13 @@ function GroupTable({
   showTieInfo: boolean;
 }) {
   const tbodyRef = React.useRef<HTMLTableSectionElement>(null);
+  const tableRef = React.useRef<HTMLTableElement>(null);
   const [rowPositions, setRowPositions] = React.useState<number[]>([]);
+  const [headerHeight, setHeaderHeight] = React.useState(40);
 
   React.useEffect(() => {
-    if (!tbodyRef.current) return;
-    const rows = tbodyRef.current.querySelectorAll('tr');
+    if (!tbodyRef.current || !tableRef.current) return;
+    const rows = tbodyRef.current.querySelectorAll("tr");
     const positions: number[] = [];
     let currentTop = 0;
     rows.forEach((row) => {
@@ -3567,10 +3569,14 @@ function GroupTable({
       currentTop += row.getBoundingClientRect().height;
     });
     setRowPositions(positions);
+    if (rows.length > 0) {
+      const tableTop = tableRef.current.getBoundingClientRect().top;
+      const firstRowTop = rows[0].getBoundingClientRect().top;
+      const offset = Math.round(firstRowTop - tableTop);
+      setHeaderHeight((prev) => (prev === offset ? prev : offset));
+    }
   }, [rows]);
 
-  // Get header height
-  const headerHeight = 40; // Approximate, could be measured if needed
 
   return (
     <div className="w-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden relative">
@@ -3643,7 +3649,7 @@ function GroupTable({
         })}
       </div>
       <div className="overflow-x-auto lg:overflow-visible pb-px">
-        <table className="w-full table-fixed text-sm group-table-mobile">
+        <table ref={tableRef} className="w-full table-fixed text-sm group-table-mobile">
           <colgroup>
             <col style={{ width: "40px" }} />
             <col style={{ minWidth: "100px" }} />
@@ -7748,7 +7754,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                 Qualifier playoffs
               </h2>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-h-[32px] flex-wrap items-center gap-2">
               <LoadingButton
                 loading={Boolean(loadingKeys["section:qualifiers"])}
                 disabled={!canAutopredictQualifiers}
@@ -7947,7 +7953,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                   <col />
                   <col style={{ width: "120px" }} />
                 </colgroup>
-                <thead className="bg-slate-200 border-b border-slate-200">
+          <thead className="bg-slate-200 border-b border-slate-200">
                   <tr>
                     <th className="px-1 sm:px-2 py-1.5 sm:py-2.5 text-left text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                       Team
@@ -8007,7 +8013,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
               />
               <h2 className="text-xl sm:text-2xl font-semibold text-ebony">Group stage</h2>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-h-[32px] flex-wrap items-center gap-2">
               {isGroupStageReady ? (
                 <>
                   <LoadingButton
