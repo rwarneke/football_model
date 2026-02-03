@@ -122,47 +122,68 @@ export function WorldCupProbabilitiesTable({
   columns,
   rows,
 }: WorldCupProbabilitiesTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "Champion", desc: true },
-  ]);
+  const primarySortId = "Champion";
+
+  const standardDescForColumn = React.useCallback((columnId: string) => {
+    if (columnId === "team" || columnId === "group" || columnId === "flag") {
+      return false;
+    }
+    return true;
+  }, []);
 
   const tiebreakOrder = React.useMemo(() => {
     const priority = [
       "Champion",
-      "Runner up",
-      "Third place",
-      "Fourth place",
-      "Win round of 16",
-      "Win round of 32",
-      "Progress through group",
+      "Reach Final",
+      "Reach SF",
+      "Reach QF",
+      "Reach R16",
+      "Reach R32",
       "Qualify",
     ];
-    const remaining = columns.filter((column) => !priority.includes(column));
-    return [...priority.filter((col) => columns.includes(col)), ...remaining];
+    return priority.filter((col) => columns.includes(col));
   }, [columns]);
+
+  const primarySorting = React.useMemo(() => {
+    const tiebreaks = tiebreakOrder
+      .filter((id) => id !== primarySortId)
+      .map((id) => ({ id, desc: standardDescForColumn(id) }));
+    return [
+      { id: primarySortId, desc: standardDescForColumn(primarySortId) },
+      ...tiebreaks,
+    ];
+  }, [primarySortId, standardDescForColumn, tiebreakOrder]);
+
+  const [sorting, setSorting] = React.useState<SortingState>(() => primarySorting);
 
   const handleSortToggle = React.useCallback(
     (columnId: string) => {
       const primary = sorting[0];
       if (!primary || primary.id !== columnId) {
-        const tiebreaks = tiebreakOrder
-          .filter((id) => id !== columnId)
-          .map((id) => ({ id, desc: true }));
-        setSorting([{ id: columnId, desc: true }, ...tiebreaks]);
+        const nextDesc = standardDescForColumn(columnId);
+        if (columnId === primarySortId) {
+          setSorting(primarySorting);
+          return;
+        }
+        setSorting([{ id: columnId, desc: nextDesc }]);
         return;
       }
 
-      if (primary.desc) {
-        const tiebreaks = tiebreakOrder
-          .filter((id) => id !== columnId)
-          .map((id) => ({ id, desc: true }));
-        setSorting([{ id: columnId, desc: false }, ...tiebreaks]);
+      const standardDesc = standardDescForColumn(columnId);
+      if (primary.desc === standardDesc) {
+        const tiebreaks =
+          columnId === primarySortId
+            ? tiebreakOrder
+                .filter((id) => id !== columnId)
+                .map((id) => ({ id, desc: standardDescForColumn(id) }))
+            : [];
+        setSorting([{ id: columnId, desc: !standardDesc }, ...tiebreaks]);
         return;
       }
 
-      setSorting([]);
+      setSorting(primarySorting);
     },
-    [sorting, tiebreakOrder]
+    [primarySortId, primarySorting, sorting, standardDescForColumn, tiebreakOrder]
   );
 
   const tableColumns = React.useMemo<ColumnDef<TableRowData>[]>(
@@ -226,7 +247,7 @@ export function WorldCupProbabilitiesTable({
           });
           const normA = normalize(valueA);
           const normB = normalize(valueB);
-          const baseCompare = normB.base.localeCompare(normA.base);
+          const baseCompare = normA.base.localeCompare(normB.base);
           if (baseCompare !== 0) {
             return baseCompare;
           }

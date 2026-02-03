@@ -1179,7 +1179,7 @@ export function RatingsHistoryChart({ data, teams }: RatingsHistoryChartProps) {
             className="w-full rounded-lg border border-ink-900 bg-white px-3 py-1 text-sm text-ebony placeholder:text-ink-900/60 md:w-64"
           />
         </div>
-        <div className="grid h-[320px] grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto pr-2 text-sm text-ebony md:grid-cols-3 xl:flex-1 xl:min-h-0 xl:h-auto">
+        <div className="grid h-[320px] content-start grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto pr-2 text-sm text-ebony md:grid-cols-3 xl:flex-1 xl:min-h-0 xl:h-auto">
           {visibleTeams.map((team) => (
             <label key={team} className="flex items-center gap-2">
               <input

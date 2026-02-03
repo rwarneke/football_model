@@ -60,14 +60,46 @@ type RatingsTableProps = {
 };
 
 export function RatingsTable({ data }: RatingsTableProps) {
+  const primarySortId = "rating";
   const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "rank", desc: false },
+    { id: primarySortId, desc: true },
   ]);
-  const defaultSortDescById: Record<string, boolean> = {
-    rating: true,
-    rating_attack: true,
-    rating_defense: true,
-  };
+
+  const standardDescForColumn = React.useCallback((columnId: string) => {
+    if (columnId === "team" || columnId === "rank") {
+      return false;
+    }
+    return true;
+  }, []);
+
+  const primarySorting = React.useCallback(
+    () => [{ id: primarySortId, desc: standardDescForColumn(primarySortId) }],
+    [primarySortId, standardDescForColumn]
+  );
+
+  const handleSortToggle = React.useCallback(
+    (columnId: string) => {
+      const primary = sorting[0];
+      if (!primary || primary.id !== columnId) {
+        const nextDesc = standardDescForColumn(columnId);
+        if (columnId === primarySortId) {
+          setSorting(primarySorting());
+          return;
+        }
+        setSorting([{ id: columnId, desc: nextDesc }]);
+        return;
+      }
+
+      const standardDesc = standardDescForColumn(columnId);
+      if (primary.desc === standardDesc) {
+        setSorting([{ id: columnId, desc: !standardDesc }]);
+        return;
+      }
+
+      setSorting(primarySorting());
+    },
+    [primarySortId, primarySorting, sorting, standardDescForColumn]
+  );
 
   const columns = React.useMemo<
     ColumnDef<RatingRow & { rank?: number }>[]
@@ -198,20 +230,6 @@ export function RatingsTable({ data }: RatingsTableProps) {
     data,
     columns,
     state: { sorting },
-    onSortingChange: (updater) => {
-      setSorting((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
-        const nextId = next[0]?.id;
-        if (!nextId) {
-          return prev;
-        }
-        if (prev[0]?.id !== nextId) {
-          return [{ id: nextId, desc: defaultSortDescById[nextId] ?? false }];
-        }
-        return next;
-      });
-    },
-    enableSortingRemoval: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     enableMultiSort: true,
@@ -256,7 +274,11 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         ? "pl-0.5 sm:pl-1"
                         : ""
                     } ${isLastHeader ? "rounded-tr-xl" : ""}`}
-                    onClick={header.column.getToggleSortingHandler()}
+                    onClick={
+                      header.column.getCanSort()
+                        ? () => handleSortToggle(header.id)
+                        : undefined
+                    }
                     style={
                       columnMeta?.minWidthCh
                         ? {
