@@ -1,13 +1,21 @@
+import os
+import sys
 import pandas as pd
 import numpy as np
 import datetime as dt
 import matplotlib.pyplot as plt
 import seaborn as sns
 import math
+import json
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 from scipy.stats import gamma
 
 from src.model import Model
 from src.model_elo import EloModel
+from src.tournament import WorldCup2026
 
 ## Read in data ##
 
@@ -118,9 +126,148 @@ for attr in C:
         .astype("Int64")
     )
 for attr in C:
-    if c == "model":
+    if attr == "model":
         continue
     all_rankings[f"rank_diff_{attr}"] = all_rankings["rank_model"] - all_rankings[f"rank_{attr}"]
 
 all_ratings.to_csv("model_output/ratings_current.csv")
 df_history.to_csv("model_output/ratings_history.csv")
+df_history_sampled = df_history.groupby(pd.to_datetime(df_history.index).strftime("%Y")).last()
+df_history_sampled.to_csv("model_output/ratings_history_yearly.csv")
+
+## Simulations ##
+
+N = 100_000
+
+group_matches_df = pd.read_csv("reference_data/world_cup_2026_group_matches.csv")
+knockout_matches_df = pd.read_csv("reference_data/world_cup_2026_knockout_matches.csv")
+round_of_32_df = pd.read_csv("reference_data/world_cup_2026_round_of_32_combinations.csv")
+round_of_32_combos = {}
+for row in round_of_32_df.to_dict(orient="records"):
+    combo = str(row.get("combo", "")).strip()
+    round_of_32_combos[combo] = {
+        "1A": str(row.get("1A", "")).strip(),
+        "1B": str(row.get("1B", "")).strip(),
+        "1D": str(row.get("1D", "")).strip(),
+        "1E": str(row.get("1E", "")).strip(),
+        "1G": str(row.get("1G", "")).strip(),
+        "1I": str(row.get("1I", "")).strip(),
+        "1K": str(row.get("1K", "")).strip(),
+        "1L": str(row.get("1L", "")).strip(),
+    }
+
+t0 = WorldCup2026(
+    group_matches_df=group_matches_df,
+    knockout_matches_df=knockout_matches_df,
+    round_of_32_combos=round_of_32_combos,
+)
+t0.simulate(model, record_params=False)
+wc_teams = sorted(set(
+    t0.results_frame().home_team.tolist()
+    + t0.results_frame().away_team.tolist()
+))
+
+stage_counts = None
+won_group_counts = pd.Series(0, index=wc_teams, dtype=int)
+wc_team_set = set(wc_teams)
+
+for i in range(N):
+    t = WorldCup2026(
+        group_matches_df=group_matches_df,
+        knockout_matches_df=knockout_matches_df,
+        round_of_32_combos=round_of_32_combos,
+    )
+    t.simulate(model, random_state=i, record_params=False, fast_mode=True)
+    elim = t.stage_of_elimination()
+    if stage_counts is None:
+        stages = sorted(set(elim.values()))
+        stage_counts = pd.DataFrame(0, index=wc_teams, columns=stages, dtype=int)
+    for team, stage in elim.items():
+        if team in wc_team_set:
+            stage_counts.at[team, stage] += 1
+    won_group = t.won_group_stage()
+    for team, won in won_group.items():
+        if team in wc_team_set and won:
+            won_group_counts.at[team] += 1
+    if (i + 1) % 100 == 0 or i == N - 1:
+        print(f"\r{i+1 :7} / {N}", end="")
+print()
+
+ratings_with_wins = all_ratings.loc[wc_teams].sort_values("quality", ascending=False).join(stage_counts)
+wongroup = won_group_counts.infer_objects(copy=False).fillna(0).astype(int)
+wongroup.name = "Won group"
+ratings_with_wins = ratings_with_wins.join(wongroup.to_frame())
+
+ratings_with_wins["odds_champion"] = (N / ratings_with_wins["8. Champion"]).round(2)
+ratings_with_wins = ratings_with_wins.join(
+    pd.read_csv("reference_data/betfair.csv")
+    .replace({"Republic of Ireland": "Ireland", "Bosnia": "Bosnia and Herzegovina"})
+    .set_index("team")
+    .rename(columns={"odds": "odds_betfair"})
+)
+ratings_with_wins["kelly"] = (
+    100
+    * np.maximum(
+        0,
+        1 / ratings_with_wins["odds_champion"]
+        - (1 - 1 / ratings_with_wins["odds_champion"])
+        / (1 + 0.94 * (ratings_with_wins["odds_betfair"] - 1) - 1),
+    )
+).round(1)
+
+stage_probs_output = ratings_with_wins.copy()
+stage_probs_output["Qualify"] = (N - stage_probs_output["0. Qualifying"]) / N
+stage_probs_output["Win Group"] = stage_probs_output["Won group"] / N
+stage_probs_output["Reach R32"] = (
+    N - stage_probs_output[["0. Qualifying", "1. Group"]].sum(axis=1)
+) / N
+stage_probs_output["Reach R16"] = (
+    N
+    - stage_probs_output[["0. Qualifying", "1. Group", "2. Round of 32"]].sum(axis=1)
+) / N
+stage_probs_output["Reach QF"] = (
+    N
+    - stage_probs_output[
+        ["0. Qualifying", "1. Group", "2. Round of 32", "3. Round of 16"]
+    ].sum(axis=1)
+) / N
+stage_probs_output["Reach SF"] = (
+    N
+    - stage_probs_output[
+        [
+            "0. Qualifying",
+            "1. Group",
+            "2. Round of 32",
+            "3. Round of 16",
+            "4. Quarterfinal",
+        ]
+    ].sum(axis=1)
+) / N
+stage_probs_output["Reach Final"] = (
+    stage_probs_output[["7. Final", "8. Champion"]].sum(axis=1)
+) / N
+stage_probs_output["Champion"] = stage_probs_output["8. Champion"] / N
+stage_probs_output.iloc[:, -8:].to_csv("model_output/simulation_results.csv")
+
+## Win probabilities ##
+
+DATA = {}
+
+def extract(t1, t2, is_neutral):
+    s = pd.Series(
+        model.predict_match(t1, t2, requires_result=True, is_neutral=is_neutral)
+    )[["p_home", "p_draw", "p_away", "p_home_pens", "p_away_pens", "score_matrix"]].to_dict()
+    s["score_matrix"] = s["score_matrix"].tolist()
+    return s
+
+for team1 in wc_teams:
+    for team2 in wc_teams:
+        if team1 == team2:
+            continue
+        DATA.setdefault(team1, {})[team2] = {
+            "home": extract(team1, team2, False),
+            "neutral": extract(team1, team2, True),
+        }
+
+with open("model_output/win_probabilities.json", "w") as f:
+    json.dump(DATA, f)

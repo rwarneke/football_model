@@ -126,15 +126,19 @@ class Tournament:
         self.champion: Optional[str] = None
         self.record_params = False
         self._log_fact: Optional[np.ndarray] = None
+        self.fast_mode = False
+        self._elimination_stage: Optional[Dict[str, str]] = None
 
     def simulate(
         self,
         model: Model,
         random_state: Optional[int] = None,
         record_params: bool = False,
+        fast_mode: bool = False,
     ) -> "Tournament":
         rng = np.random.default_rng(random_state)
         self.record_params = bool(record_params)
+        self.fast_mode = bool(fast_mode)
         self._simulate(model, rng)
         self.finished = True
         return self
@@ -146,6 +150,18 @@ class Tournament:
         return pd.DataFrame([vars(m) for m in self.matches])
 
     def stage_of_elimination(self) -> Dict[str, str]:
+        if self.fast_mode and self._elimination_stage is not None:
+            stages = dict(self._elimination_stage)
+            if self.qualification_matches:
+                qualifying_teams = {
+                    t
+                    for m in self.qualification_matches
+                    for t in (m.home_team, m.away_team)
+                    if t
+                }
+                for team in sorted(qualifying_teams.difference(self.teams)):
+                    stages[team] = "0. Qualifying"
+            return stages
         res = self.results_frame()
         if res.empty:
             return {}
@@ -238,6 +254,10 @@ class WorldCup2026(Tournament):
         "Third place": 28,
         "Final": 29,
     }
+    _GROUP_MATCHES_CACHE: Dict[str, pd.DataFrame] = {}
+    _KNOCKOUT_MATCHES_CACHE: Dict[str, pd.DataFrame] = {}
+    _ROUND_OF_32_CACHE: Optional[Dict[str, Dict[str, str]]] = None
+    _GROUP_STAGE_SCHEDULE_CACHE: Dict[Tuple[str, str], List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]]] = {}
 
     def __init__(
         self,
@@ -252,6 +272,9 @@ class WorldCup2026(Tournament):
         host_team_countries: Optional[Dict[str, str]] = None,
         use_wikipedia_draw: bool = False,
         allow_group_simulation: bool = False,
+        group_matches_df: Optional[pd.DataFrame] = None,
+        knockout_matches_df: Optional[pd.DataFrame] = None,
+        round_of_32_combos: Optional[Dict[str, Dict[str, str]]] = None,
     ):
         self._provided_groups = groups
         self._provided_teams = teams
@@ -269,6 +292,9 @@ class WorldCup2026(Tournament):
         self.use_wikipedia_draw = bool(use_wikipedia_draw)
         self.allow_group_simulation = bool(allow_group_simulation)
         self._team_name_map: Optional[Dict[str, str]] = None
+        self._group_matches_df = group_matches_df
+        self._knockout_matches_df = knockout_matches_df
+        self._round_of_32_combos = round_of_32_combos
 
         if groups is not None:
             self.groups = {g: list(ts) for g, ts in groups.items()}
@@ -305,6 +331,9 @@ class WorldCup2026(Tournament):
         )
 
     def _simulate(self, model: Model, rng: np.random.Generator) -> None:
+        if self.fast_mode:
+            self._simulate_fast(model, rng)
+            return
         states: Dict[str, TeamSimState]
         if self._provided_groups:
             states = self._init_team_states(model, rng)
@@ -344,6 +373,45 @@ class WorldCup2026(Tournament):
         )
         self.matches.extend(knockout_results)
 
+    def _simulate_fast(self, model: Model, rng: np.random.Generator) -> None:
+        if self.record_params:
+            raise ValueError("fast_mode does not support record_params")
+        states: Dict[str, TeamSimState]
+        if self._provided_groups:
+            states = self._init_team_states(model, rng)
+        elif self._provided_teams:
+            states = self._init_team_states(model, rng, teams=self._provided_teams)
+            if self._needs_group_draw:
+                self.groups = self._resolve_groups(self._provided_teams, model)
+        else:
+            if not self.include_qualification:
+                raise ValueError("Qualification is required when no teams/groups are provided")
+            states, qualified, slot_winners = self._simulate_remaining_qualification(model, rng)
+            self.slot_winners = dict(slot_winners)
+            self.teams = list(qualified)
+            self.qualification_teams = list(qualified)
+            if self._needs_group_draw:
+                self.groups = self._resolve_groups(qualified, model, slot_winners)
+
+        if not self.groups:
+            raise ValueError("Groups not initialized for WorldCup2026")
+        self.teams = [t for ts in self.groups.values() for t in ts]
+
+        matches = self._group_stage_schedule_fast(model)
+        group_results, tables = self._simulate_group_stage_fast(model, rng, states, matches)
+        self.group_tables = {
+            g: pd.DataFrame.from_dict(stats, orient="index")
+            for g, stats in tables.items()
+        }
+        self.group_rankings = self._rank_groups_fast(group_results, tables, rng)
+
+        _qualifiers, _third_place, best_third = self._select_qualifiers(
+            self.group_rankings, rng
+        )
+        self._simulate_knockout_official_fast(
+            model, rng, states, self.group_rankings, best_third
+        )
+
     def _init_team_states(
         self,
         model: Model,
@@ -353,7 +421,37 @@ class WorldCup2026(Tournament):
     ) -> Dict[str, TeamSimState]:
         states: Dict[str, TeamSimState] = {}
         init_day = self.start_day if start_day is None else int(start_day)
-        for team in teams or self.teams:
+        team_list = list(teams or self.teams)
+        if self.fast_mode and team_list:
+            means = []
+            s00 = []
+            s01 = []
+            s11 = []
+            for team in team_list:
+                st = model.teams.get(team)
+                if st is None:
+                    raise ValueError(f"Team not in model: {team}")
+                means.append(st.m)
+                s00.append(st.sigma2[0, 0])
+                s01.append(st.sigma2[0, 1])
+                s11.append(st.sigma2[1, 1])
+            means = np.asarray(means, dtype=float)
+            s00 = np.asarray(s00, dtype=float)
+            s01 = np.asarray(s01, dtype=float)
+            s11 = np.asarray(s11, dtype=float)
+            l11 = np.sqrt(s00)
+            l21 = np.divide(s01, l11, out=np.zeros_like(s01), where=l11 != 0)
+            l22 = np.sqrt(np.maximum(s11 - l21 * l21, 0.0))
+            z = rng.standard_normal(size=(len(team_list), 2))
+            m0 = means[:, 0] + l11 * z[:, 0]
+            m1 = means[:, 1] + l21 * z[:, 0] + l22 * z[:, 1]
+            for idx, team in enumerate(team_list):
+                states[team] = TeamSimState(
+                    m=np.array([m0[idx], m1[idx]], dtype=float),
+                    last_day=init_day,
+                )
+            return states
+        for team in team_list:
             st = model.teams.get(team)
             if st is None:
                 raise ValueError(f"Team not in model: {team}")
@@ -375,9 +473,18 @@ class WorldCup2026(Tournament):
             delta_years = delta_days / 365.0
             step_var = model.variance_per_year * delta_years
             if step_var > 0.0:
-                cross = step_var * model.cross_var_ratio
-                cov = np.array([[step_var, cross], [cross, step_var]], dtype=float)
-                step = rng.multivariate_normal([0.0, 0.0], cov)
+                if self.fast_mode:
+                    cross = step_var * model.cross_var_ratio
+                    l11 = math.sqrt(step_var)
+                    l21 = 0.0 if l11 == 0.0 else cross / l11
+                    l22 = math.sqrt(max(step_var - l21 * l21, 0.0))
+                    z0 = rng.standard_normal()
+                    z1 = rng.standard_normal()
+                    step = np.array([l11 * z0, l21 * z0 + l22 * z1], dtype=float)
+                else:
+                    cross = step_var * model.cross_var_ratio
+                    cov = np.array([[step_var, cross], [cross, step_var]], dtype=float)
+                    step = rng.multivariate_normal([0.0, 0.0], cov)
                 state.m = state.m + step
         state.last_day = day
 
@@ -653,6 +760,107 @@ class WorldCup2026(Tournament):
             penalty_winner=pen_winner,
             winner=pen_winner,
         ))
+
+    def _simulate_match_fast(
+        self,
+        model: Model,
+        rng: np.random.Generator,
+        states: Dict[str, TeamSimState],
+        day: int,
+        match_date: Optional[pd.Timestamp],
+        home_team: str,
+        away_team: str,
+        stage: str,
+        group: Optional[str],
+        allow_draw: bool,
+        neutral_override: Optional[bool] = None,
+        stadium: Optional[str] = None,
+        city: Optional[str] = None,
+        country: Optional[str] = None,
+    ) -> Tuple[str, str, int, int, Optional[str], Optional[str]]:
+        self._advance_state(model, rng, states[home_team], day)
+        self._advance_state(model, rng, states[away_team], day)
+
+        home_advantage = False
+        away_advantage = False
+        neutral = True
+        if neutral_override is None:
+            if country:
+                match_country = str(country).strip()
+                home_country = self.host_team_countries.get(home_team, "")
+                away_country = self.host_team_countries.get(away_team, "")
+                if (
+                    home_country
+                    and match_country
+                    and home_country.casefold() == match_country.casefold()
+                ):
+                    home_advantage = True
+                if (
+                    away_country
+                    and match_country
+                    and away_country.casefold() == match_country.casefold()
+                ):
+                    away_advantage = True
+                if home_advantage and away_advantage:
+                    home_advantage = False
+                    away_advantage = False
+                elif home_advantage ^ away_advantage:
+                    neutral = False
+            elif self.host_teams:
+                home_is_host = home_team in self.host_teams
+                away_is_host = away_team in self.host_teams
+                if home_is_host ^ away_is_host:
+                    neutral = False
+                    home_advantage = home_is_host
+                    away_advantage = away_is_host
+        else:
+            neutral = bool(neutral_override)
+            if not neutral:
+                home_advantage = True
+        if away_advantage and not home_advantage:
+            home_team, away_team = away_team, home_team
+            home_advantage, away_advantage = away_advantage, home_advantage
+
+        mu_h_pre = states[home_team].m.copy()
+        mu_a_pre = states[away_team].m.copy()
+        m_h, m_a, lam_h, lam_a, nu, skilldiff = self._match_params(
+            model,
+            mu_h_pre,
+            mu_a_pre,
+            home_advantage,
+            away_advantage,
+            extra_time_mult=1.0,
+        )
+
+        home_90, away_90 = self._sample_score(rng, lam_h, lam_a, nu)
+
+        if allow_draw or home_90 != away_90:
+            winner = None
+            if home_90 > away_90:
+                winner = home_team
+            elif away_90 > home_90:
+                winner = away_team
+            return home_team, away_team, home_90, away_90, winner, group
+
+        m_h_et, m_a_et, lam_h_et, lam_a_et, nu_et, _ = self._match_params(
+            model,
+            states[home_team].m,
+            states[away_team].m,
+            home_advantage,
+            away_advantage,
+            extra_time_mult=model.extra_time_exp_score_mult,
+        )
+        home_et, away_et = self._sample_score(rng, lam_h_et, lam_a_et, nu_et)
+        home_120 = home_90 + home_et
+        away_120 = away_90 + away_et
+
+        if home_120 != away_120:
+            winner = home_team if home_120 > away_120 else away_team
+            return home_team, away_team, home_120, away_120, winner, group
+
+        p_home_pen = 1.0 / (1.0 + safe_exp(-model.shootout_skilldiff_coef * skilldiff))
+        pen_winner = home_team if rng.random() < p_home_pen else away_team
+        return home_team, away_team, home_120, away_120, pen_winner, group
 
     def _team_strength(self, state: TeamSimState) -> float:
         return float(state.m[0] + state.m[1])
@@ -943,10 +1151,19 @@ class WorldCup2026(Tournament):
         return df
 
     def _load_group_matches(self, model: Model) -> pd.DataFrame:
-        path = self.group_matches_path or WORLD_CUP_2026_GROUP_MATCHES_PATH
+        if self._group_matches_df is not None:
+            df = self._group_matches_df.copy()
+            path = self.group_matches_path or WORLD_CUP_2026_GROUP_MATCHES_PATH
+        else:
+            path = self.group_matches_path or WORLD_CUP_2026_GROUP_MATCHES_PATH
         if not path.exists():
             raise FileNotFoundError(f"Missing group matches file: {path}")
-        df = pd.read_csv(path)
+        cache_key = str(path.resolve())
+        if self._group_matches_df is None:
+            if self.fast_mode and cache_key in self._GROUP_MATCHES_CACHE:
+                df = self._GROUP_MATCHES_CACHE[cache_key].copy()
+            else:
+                df = pd.read_csv(path)
         required = {"date", "group", "home_team", "away_team", "city", "country"}
         missing = required.difference(df.columns)
         if missing:
@@ -964,11 +1181,28 @@ class WorldCup2026(Tournament):
                 return ""
             return self._canonicalize_team_name(team, model)
 
-        df["home_team"] = df["home_team"].apply(canonicalize)
-        df["away_team"] = df["away_team"].apply(canonicalize)
+        if self.fast_mode:
+            raw_teams = set(df["home_team"]).union(set(df["away_team"]))
+            placeholders = {t for t in raw_teams if self._is_slot_placeholder(t)}
+            non_placeholder = raw_teams.difference(placeholders).difference({""})
+            if non_placeholder.issubset(set(model.teams.keys())):
+                df["home_team"] = df["home_team"].astype(str)
+                df["away_team"] = df["away_team"].astype(str)
+            else:
+                df["home_team"] = df["home_team"].apply(canonicalize)
+                df["away_team"] = df["away_team"].apply(canonicalize)
+            if self._group_matches_df is None:
+                self._GROUP_MATCHES_CACHE[cache_key] = df.copy()
+        else:
+            df["home_team"] = df["home_team"].apply(canonicalize)
+            df["away_team"] = df["away_team"].apply(canonicalize)
         return df
 
     def _load_round_of_32_combinations(self) -> Dict[str, Dict[str, str]]:
+        if self._round_of_32_combos is not None:
+            return dict(self._round_of_32_combos)
+        if self.fast_mode and self._ROUND_OF_32_CACHE is not None:
+            return dict(self._ROUND_OF_32_CACHE)
         if not ROUND_OF_32_COMBINATIONS_PATH.exists():
             raise FileNotFoundError(
                 f"Missing round-of-32 combinations file: {ROUND_OF_32_COMBINATIONS_PATH}"
@@ -993,14 +1227,25 @@ class WorldCup2026(Tournament):
                 "1K": str(row.get("1K", "")).strip(),
                 "1L": str(row.get("1L", "")).strip(),
             }
+        if self.fast_mode:
+            self._ROUND_OF_32_CACHE = dict(combos)
         return combos
 
     def _load_knockout_matches(self) -> pd.DataFrame:
+        if self._knockout_matches_df is not None:
+            df = self._knockout_matches_df.copy()
+        else:
+            df = None
         if not KNOCKOUT_MATCHES_PATH.exists():
             raise FileNotFoundError(
                 f"Missing knockout matches file: {KNOCKOUT_MATCHES_PATH}"
             )
-        df = pd.read_csv(KNOCKOUT_MATCHES_PATH)
+        cache_key = str(KNOCKOUT_MATCHES_PATH.resolve())
+        if df is None:
+            if self.fast_mode and cache_key in self._KNOCKOUT_MATCHES_CACHE:
+                df = self._KNOCKOUT_MATCHES_CACHE[cache_key].copy()
+            else:
+                df = pd.read_csv(KNOCKOUT_MATCHES_PATH)
         required = {"match_id", "stage", "date", "home", "away", "city", "country"}
         missing = required.difference(df.columns)
         if missing:
@@ -1021,7 +1266,10 @@ class WorldCup2026(Tournament):
                 "Knockout matches file contains duplicate match_id values: "
                 f"{sorted(dupes)}"
             )
-        return df.sort_values("match_id")
+        df = df.sort_values("match_id")
+        if self.fast_mode and self._knockout_matches_df is None:
+            self._KNOCKOUT_MATCHES_CACHE[cache_key] = df.copy()
+        return df
 
     def _confederation_map(self, year: int = 2026) -> Dict[str, str]:
         conf = pd.read_csv(CONFEDERATIONS_PATH)
@@ -1610,6 +1858,115 @@ class WorldCup2026(Tournament):
 
         return results
 
+    def _simulate_knockout_official_fast(
+        self,
+        model: Model,
+        rng: np.random.Generator,
+        states: Dict[str, TeamSimState],
+        group_rankings: Dict[str, List[str]],
+        best_third: List[Dict],
+    ) -> None:
+        matches_df = self._load_knockout_matches()
+        combos = self._load_round_of_32_combinations()
+
+        third_place_by_group = {
+            group: ranking[2] for group, ranking in group_rankings.items()
+        }
+        third_place_groups = sorted([entry["group"] for entry in best_third])
+        combo_key = "".join(third_place_groups)
+        if combo_key not in combos:
+            raise ValueError(
+                f"Missing round-of-32 combo mapping for groups: {combo_key}"
+            )
+        third_place_assignments = combos[combo_key]
+
+        def resolve_group_placeholder(label: str) -> str:
+            if label.startswith("Winner Group "):
+                group = label.replace("Winner Group ", "").strip()
+                return group_rankings[group][0]
+            if label.startswith("Runner-up Group "):
+                group = label.replace("Runner-up Group ", "").strip()
+                return group_rankings[group][1]
+            if label.startswith("3rd Group "):
+                group = label.replace("3rd Group ", "").strip()
+                if len(group) == 1:
+                    return third_place_by_group[group]
+            raise ValueError(f"Unrecognized group placeholder: {label}")
+
+        results_by_match: Dict[int, Tuple[str, str, str]] = {}
+        elimination: Dict[str, str] = {team: "1. Group" for team in self.teams}
+        stage_labels = {
+            "Round of 32": "2. Round of 32",
+            "Round of 16": "3. Round of 16",
+            "Quarterfinal": "4. Quarterfinal",
+            "Third place": "6. Third place",
+            "Final": "7. Final",
+        }
+
+        for row in matches_df.itertuples(index=False):
+            home_label = str(row.home).strip()
+            away_label = str(row.away).strip()
+
+            def resolve_label(label: str, opponent_label: str) -> str:
+                if label.startswith("Winner Match "):
+                    match_id = int(label.replace("Winner Match ", "").strip())
+                    if match_id not in results_by_match:
+                        raise ValueError(f"Missing result for Match {match_id}")
+                    return results_by_match[match_id][2]
+                if label.startswith("Loser Match "):
+                    match_id = int(label.replace("Loser Match ", "").strip())
+                    if match_id not in results_by_match:
+                        raise ValueError(f"Missing result for Match {match_id}")
+                    home_team, away_team, winner = results_by_match[match_id]
+                    return away_team if winner == home_team else home_team
+                if label.startswith("3rd Group ") and opponent_label.startswith("Winner Group "):
+                    winner_group = opponent_label.replace("Winner Group ", "").strip()
+                    key = f"1{winner_group}"
+                    if key not in third_place_assignments:
+                        raise ValueError(f"Missing third-place assignment for {key}")
+                    third_group = third_place_assignments[key]
+                    return third_place_by_group[third_group]
+                return resolve_group_placeholder(label)
+
+            home_team = resolve_label(home_label, away_label)
+            away_team = resolve_label(away_label, home_label)
+
+            day = self._date_to_day(row.date)
+            home_team, away_team, _hs, _as, winner, _group = self._simulate_match_fast(
+                model,
+                rng,
+                states,
+                day=day,
+                match_date=pd.Timestamp(row.date),
+                home_team=home_team,
+                away_team=away_team,
+                stage=str(row.stage).strip(),
+                group=None,
+                allow_draw=False,
+                neutral_override=None,
+                stadium=getattr(row, "stadium", "") or "",
+                city=getattr(row, "city", "") or "",
+                country=getattr(row, "country", "") or "",
+            )
+            stage = str(row.stage).strip()
+            loser = away_team if winner == home_team else home_team
+            if stage == "Third place":
+                elimination[winner] = "6. Third place"
+                elimination[loser] = "5. Fourth place"
+            elif stage == "Final":
+                elimination[winner] = "8. Champion"
+                elimination[loser] = "7. Final"
+            else:
+                label = stage_labels.get(stage, f"0.{stage}")
+                elimination[winner] = label
+                elimination[loser] = label
+            results_by_match[int(row.match_id)] = (home_team, away_team, winner)
+
+        final_match = results_by_match.get(104)
+        if final_match:
+            self.champion = final_match[2]
+        self._elimination_stage = elimination
+
     def _simulate_qualification(
         self,
         model: Model,
@@ -1668,6 +2025,64 @@ class WorldCup2026(Tournament):
             )
         return matches
 
+    def _group_stage_schedule_fast(
+        self, model: Model
+    ) -> List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]]:
+        df = self._load_group_matches(model)
+        slot_winners = self.slot_winners or {}
+        cache_key = (
+            str((self.group_matches_path or WORLD_CUP_2026_GROUP_MATCHES_PATH).resolve()),
+            str(self.start_date),
+        )
+
+        def resolve_team(team: str) -> str:
+            if self._is_slot_placeholder(team):
+                if team not in slot_winners:
+                    raise ValueError(f"Group schedule includes unresolved slot: {team}")
+                return slot_winners[team]
+            return team
+
+        if (
+            self._group_matches_df is None
+            and cache_key in self._GROUP_STAGE_SCHEDULE_CACHE
+            and not df["home_team"].apply(self._is_slot_placeholder).any()
+            and not df["away_team"].apply(self._is_slot_placeholder).any()
+        ):
+            return list(self._GROUP_STAGE_SCHEDULE_CACHE[cache_key])
+
+        if df["home_team"].apply(self._is_slot_placeholder).any() or df["away_team"].apply(self._is_slot_placeholder).any():
+            df = df.copy()
+            df["home_team"] = df["home_team"].apply(resolve_team)
+            df["away_team"] = df["away_team"].apply(resolve_team)
+
+        df["day"] = df["date"].apply(self._date_to_day)
+        sort_cols = ["date"]
+        if "match_id" in df.columns:
+            sort_cols.append("match_id")
+        df = df.sort_values(sort_cols)
+
+        matches: List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]] = []
+        for row in df.itertuples(index=False):
+            matches.append(
+                (
+                    int(row.day),
+                    row.date,
+                    str(row.group),
+                    row.home_team,
+                    row.away_team,
+                    getattr(row, "stadium", "") or "",
+                    getattr(row, "city", "") or "",
+                    getattr(row, "country", "") or "",
+                )
+            )
+        if (
+            self._group_matches_df is None
+            and not df["home_team"].apply(self._is_slot_placeholder).any()
+            and not df["away_team"].apply(self._is_slot_placeholder).any()
+        ):
+            self._GROUP_STAGE_SCHEDULE_CACHE[cache_key] = list(matches)
+        return matches
+
     def _simulate_group_stage(
         self,
         model: Model,
@@ -1694,6 +2109,173 @@ class WorldCup2026(Tournament):
             )
             results.append(res)
         return results
+
+    def _simulate_group_stage_fast(
+        self,
+        model: Model,
+        rng: np.random.Generator,
+        states: Dict[str, TeamSimState],
+        matches: List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]],
+    ) -> Tuple[
+        List[Tuple[str, str, int, int, Optional[str], Optional[str]]],
+        Dict[str, Dict[str, Dict[str, int]]],
+    ]:
+        results: List[Tuple[str, str, int, int, Optional[str], Optional[str]]] = []
+        tables: Dict[str, Dict[str, Dict[str, int]]] = {
+            g: {t: {"points": 0, "gf": 0, "ga": 0, "gd": 0, "w": 0, "d": 0, "l": 0} for t in ts}
+            for g, ts in self.groups.items()
+        }
+        for day, match_date, group, home, away, stadium, city, country in matches:
+            home_team, away_team, hs, as_, winner, grp = self._simulate_match_fast(
+                model,
+                rng,
+                states,
+                day=day,
+                match_date=match_date,
+                home_team=home,
+                away_team=away,
+                stage="Group",
+                group=group,
+                allow_draw=True,
+                stadium=stadium,
+                city=city,
+                country=country,
+            )
+            results.append((home_team, away_team, hs, as_, winner, grp))
+            table = tables[group]
+            table[home_team]["gf"] += hs
+            table[home_team]["ga"] += as_
+            table[away_team]["gf"] += as_
+            table[away_team]["ga"] += hs
+            if hs > as_:
+                table[home_team]["points"] += 3
+                table[home_team]["w"] += 1
+                table[away_team]["l"] += 1
+            elif hs < as_:
+                table[away_team]["points"] += 3
+                table[away_team]["w"] += 1
+                table[home_team]["l"] += 1
+            else:
+                table[home_team]["points"] += 1
+                table[away_team]["points"] += 1
+                table[home_team]["d"] += 1
+                table[away_team]["d"] += 1
+        for group in tables:
+            for team in tables[group]:
+                tables[group][team]["gd"] = (
+                    tables[group][team]["gf"] - tables[group][team]["ga"]
+                )
+        return results, tables
+
+    def _rank_groups_fast(
+        self,
+        group_results: List[Tuple[str, str, int, int, Optional[str], Optional[str]]],
+        tables: Dict[str, Dict[str, Dict[str, int]]],
+        rng: np.random.Generator,
+    ) -> Dict[str, List[str]]:
+        results_by_group: Dict[str, List[Tuple[str, str, int, int]]] = {}
+        for home, away, hs, as_, _winner, group in group_results:
+            results_by_group.setdefault(group or "", []).append((home, away, hs, as_))
+
+        rankings: Dict[str, List[str]] = {}
+        for group, matches in results_by_group.items():
+            teams = self.groups[group]
+            table = tables[group]
+
+            def points_key(team: str) -> Tuple[int, int, int, float]:
+                stats = table[team]
+                return (stats["points"], stats["gd"], stats["gf"], rng.random())
+
+            ordered = sorted(teams, key=points_key, reverse=True)
+            ranked: List[str] = []
+            i = 0
+            while i < len(ordered):
+                cur = ordered[i]
+                tied = [cur]
+                i += 1
+                while i < len(ordered):
+                    nxt = ordered[i]
+                    if (
+                        table[cur]["points"] == table[nxt]["points"]
+                        and table[cur]["gd"] == table[nxt]["gd"]
+                        and table[cur]["gf"] == table[nxt]["gf"]
+                    ):
+                        tied.append(nxt)
+                        i += 1
+                    else:
+                        break
+                if len(tied) == 1:
+                    ranked.append(tied[0])
+                    continue
+                ranked.extend(self._head_to_head_rank_fast(tied, matches, table, rng))
+            rankings[group] = ranked
+        return rankings
+
+    def _head_to_head_rank_fast(
+        self,
+        tied: List[str],
+        matches: List[Tuple[str, str, int, int]],
+        overall_table: Dict[str, Dict[str, int]],
+        rng: np.random.Generator,
+    ) -> List[str]:
+        def head_to_head_table(teams: List[str]) -> Dict[str, Dict[str, int]]:
+            h2h = {t: {"points": 0, "gf": 0, "ga": 0, "gd": 0} for t in teams}
+            for home, away, hs, as_ in matches:
+                if home not in teams or away not in teams:
+                    continue
+                h2h[home]["gf"] += hs
+                h2h[home]["ga"] += as_
+                h2h[away]["gf"] += as_
+                h2h[away]["ga"] += hs
+                if hs > as_:
+                    h2h[home]["points"] += 3
+                elif hs < as_:
+                    h2h[away]["points"] += 3
+                else:
+                    h2h[home]["points"] += 1
+                    h2h[away]["points"] += 1
+            for team in h2h:
+                h2h[team]["gd"] = h2h[team]["gf"] - h2h[team]["ga"]
+            return h2h
+
+        def rank_overall(teams: List[str]) -> List[str]:
+            def key(team: str) -> Tuple[int, int, int, float]:
+                stats = overall_table[team]
+                return (stats["points"], stats["gd"], stats["gf"], rng.random())
+            return sorted(teams, key=key, reverse=True)
+
+        def rank_head_to_head(teams: List[str]) -> List[str]:
+            if len(teams) <= 1:
+                return list(teams)
+            h2h = head_to_head_table(teams)
+            pts = {t: h2h[t]["points"] for t in teams}
+            gd = {t: h2h[t]["gd"] for t in teams}
+            gf = {t: h2h[t]["gf"] for t in teams}
+            if len(set(pts.values())) == 1 and len(set(gd.values())) == 1 and len(set(gf.values())) == 1:
+                return rank_overall(teams)
+            def key(team: str) -> Tuple[int, int, int]:
+                return (h2h[team]["points"], h2h[team]["gd"], h2h[team]["gf"])
+            ordered = sorted(teams, key=key, reverse=True)
+            result: List[str] = []
+            i = 0
+            while i < len(ordered):
+                cur = ordered[i]
+                tied_block = [cur]
+                i += 1
+                while i < len(ordered):
+                    nxt = ordered[i]
+                    if key(cur) == key(nxt):
+                        tied_block.append(nxt)
+                        i += 1
+                    else:
+                        break
+                if len(tied_block) == 1:
+                    result.append(tied_block[0])
+                else:
+                    result.extend(rank_head_to_head(tied_block))
+            return result
+
+        return rank_head_to_head(list(tied))
 
     def _group_tables(
         self,

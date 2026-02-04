@@ -45,7 +45,7 @@ results = results_merged.loc[fil]
 corrections_path = MATCH_RESULTS_DIR / "results_corrections.csv"
 if corrections_path.exists():
     corrections = pd.read_csv(corrections_path, keep_default_na=False)
-    corrections = corrections.replace({"": np.nan})
+    corrections = corrections.replace({"": np.nan}).infer_objects(copy=False)
     corrections["date"] = pd.to_datetime(corrections["date"], errors="coerce")
 
     def parse_nullable_bool(val):
@@ -71,7 +71,10 @@ if corrections_path.exists():
     for col in ["home_score", "away_score", "neutral", "tournament"]:
         corr_col = f"{col}_corr"
         if corr_col in results.columns:
-            results[col] = results[corr_col].where(results[corr_col].notna(), results[col])
+            updated = results[corr_col].where(
+                results[corr_col].notna(), results[col]
+            )
+            results[col] = updated.infer_objects(copy=False)
             results = results.drop(columns=[corr_col])
 
     results["home_score"] = results["home_score"].astype("Int64")

@@ -1,0 +1,1 @@
+* Run `python -m match_results.generate.run` to pull and clean results

@@ -16,7 +16,7 @@ export type RatingRow = z.infer<typeof ratingRowSchema> & {
 
 const DATA_DIR = "/model_output";
 const DATA_FILE = `${DATA_DIR}/ratings_current.csv`;
-const HISTORY_DATA_FILE = `${DATA_DIR}/ratings_history.csv`;
+const HISTORY_DATA_FILE = `${DATA_DIR}/ratings_history_yearly.csv`;
 
 function toNumber(value: string | undefined) {
   if (!value) {
