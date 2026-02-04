@@ -241,6 +241,7 @@ export function WorldCupProbabilitiesTable({
         sortingFn: (a, b, id) => {
           const valueA = String(a.getValue(id) ?? "");
           const valueB = String(b.getValue(id) ?? "");
+          const isDesc = Boolean(sorting.find((entry) => entry.id === id)?.desc);
           const normalize = (value: string) => ({
             base: value.replace("*", ""),
             starred: value.includes("*"),
@@ -249,12 +250,14 @@ export function WorldCupProbabilitiesTable({
           const normB = normalize(valueB);
           const baseCompare = normA.base.localeCompare(normB.base);
           if (baseCompare !== 0) {
-            return baseCompare;
+            const desired = isDesc ? -baseCompare : baseCompare;
+            return isDesc ? -desired : desired;
           }
           if (normA.starred === normB.starred) {
             return 0;
           }
-          return normA.starred ? -1 : 1;
+          const desired = normA.starred ? 1 : -1;
+          return isDesc ? -desired : desired;
         },
         cell: ({ row }: { row: Row<TableRowData> }) => {
           const group = row.original.group ?? "";
@@ -391,7 +394,7 @@ export function WorldCupProbabilitiesTable({
         ),
       },
     ],
-    [columns]
+    [columns, sorting]
   );
 
   const table = useReactTable({
