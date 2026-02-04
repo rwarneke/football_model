@@ -130,10 +130,10 @@ for attr in C:
         continue
     all_rankings[f"rank_diff_{attr}"] = all_rankings["rank_model"] - all_rankings[f"rank_{attr}"]
 
-all_ratings.to_csv("model_output/ratings_current.csv")
-df_history.to_csv("model_output/ratings_history.csv")
+all_ratings.to_csv("model_output/ratings_current.csv", float_format="%.6f")
+df_history.to_csv("model_output/ratings_history.csv", float_format="%.6f")
 df_history_sampled = df_history.groupby(pd.to_datetime(df_history.index).strftime("%Y")).last()
-df_history_sampled.to_csv("model_output/ratings_history_yearly.csv")
+df_history_sampled.to_csv("model_output/ratings_history_yearly.csv", float_format="%.6f")
 
 ## Simulations ##
 
@@ -247,7 +247,10 @@ stage_probs_output["Reach Final"] = (
     stage_probs_output[["7. Final", "8. Champion"]].sum(axis=1)
 ) / N
 stage_probs_output["Champion"] = stage_probs_output["8. Champion"] / N
-stage_probs_output.iloc[:, -8:].to_csv("model_output/simulation_results.csv")
+stage_probs_output.iloc[:, -8:].to_csv(
+    "model_output/simulation_results.csv",
+    float_format="%.6f",
+)
 
 ## Win probabilities ##
 
