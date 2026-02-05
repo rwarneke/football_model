@@ -354,7 +354,12 @@ export function WorldCupProbabilitiesTable({
         id: column,
         header: () => {
           if (column === "Champion") {
-            return wrapHeaderLabel("Champion");
+            return (
+              <span className="whitespace-nowrap">
+                <span className="md:hidden">Champ.</span>
+                <span className="hidden md:inline">{wrapHeaderLabel("Champion")}</span>
+              </span>
+            );
           }
           if (column === "Win round of 16") {
             return wrapHeaderLabel("Win round of 16");
@@ -391,7 +396,12 @@ export function WorldCupProbabilitiesTable({
       })),
       {
         id: "overall",
-        header: () => wrapHeaderLabel("Overall"),
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">OVR.</span>
+            <span className="hidden md:inline">{wrapHeaderLabel("Overall")}</span>
+          </span>
+        ),
         accessorFn: (row) => row.ratingOverall ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
@@ -406,7 +416,12 @@ export function WorldCupProbabilitiesTable({
       },
       {
         id: "attack",
-        header: () => wrapHeaderLabel("Attack"),
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">Att.</span>
+            <span className="hidden md:inline">{wrapHeaderLabel("Attack")}</span>
+          </span>
+        ),
         accessorFn: (row) => row.ratingAttack ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
@@ -421,7 +436,12 @@ export function WorldCupProbabilitiesTable({
       },
       {
         id: "defense",
-        header: () => wrapHeaderLabel("Defense"),
+        header: () => (
+          <span className="whitespace-nowrap">
+            <span className="md:hidden">Def.</span>
+            <span className="hidden md:inline">{wrapHeaderLabel("Defense")}</span>
+          </span>
+        ),
         accessorFn: (row) => row.ratingDefense ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
@@ -456,7 +476,7 @@ export function WorldCupProbabilitiesTable({
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-full table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)]">
+        <table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)]">
           <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">

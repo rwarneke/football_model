@@ -163,7 +163,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
         id: "rating",
         header: () => (
           <span className="whitespace-nowrap">
-            <span className="md:hidden">OVR</span>
+            <span className="md:hidden">OVR.</span>
             <span className="hidden md:inline">Overall</span>
           </span>
         ),
@@ -184,7 +184,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
         id: "rating_attack",
         header: () => (
           <span className="whitespace-nowrap">
-            <span className="md:hidden">ATT</span>
+            <span className="md:hidden">ATT.</span>
             <span className="hidden md:inline">Attack</span>
           </span>
         ),
@@ -205,7 +205,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
         id: "rating_defense",
         header: () => (
           <span className="whitespace-nowrap">
-            <span className="md:hidden">DEF</span>
+            <span className="md:hidden">DEF.</span>
             <span className="hidden md:inline">Defense</span>
           </span>
         ),
