@@ -2,3 +2,7 @@ venv/
 node_modules/
 *.DS_Store
 *.pyc
+model_output/simulation_runs.jsonl
+model_output/simulation_runs_meta.json
+model_output/ratings_history.csv
+web/public/model_output/ratings_history.csv

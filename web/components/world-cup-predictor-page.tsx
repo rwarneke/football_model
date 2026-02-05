@@ -177,7 +177,7 @@ const HOST_TEAM_COUNTRIES: Record<string, string> = {
 };
 const HOST_TEAMS = new Set(["USA", "Canada", "Mexico"]);
 const TIEBREAK_TOOLTIP =
-  "Table order has been chosen randomly but would be determined by Fair Play Points in reality.";
+  "Tiebreakers have been chosen randomly but would be determined by Fair Play Points in reality.";
 
 type MatchProbabilityValues = {
   home: number | null;
