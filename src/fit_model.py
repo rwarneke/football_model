@@ -70,7 +70,27 @@ def main():
     )
 
     model = Model()
-    model.fit(results.iloc[::])
+    total_matches = int(len(results))
+    progress_every = max(1, total_matches // 20)
+
+    def _fit_progress(done, total, row):
+        if total <= 0:
+            return
+        pct = (done / total) * 100
+        if row is None:
+            message = f"[fit] 0/{total} (0.0%) starting"
+            print(message, end="\r", flush=True)
+            return
+        date = pd.Timestamp(row.date).date()
+        message = (
+            f"[fit] {done}/{total} ({pct:.1f}%) {date} {row.home_team} vs {row.away_team}"
+        )
+        if done >= total:
+            print(message)
+        else:
+            print(message, end="\r", flush=True)
+
+    model.fit(results.iloc[::], progress_cb=_fit_progress, progress_every=progress_every)
 
     df_state = model.export_state_df()
     df_mu = model.export_mu_df()

@@ -39,10 +39,6 @@ const percentFormatter = new Intl.NumberFormat("en", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
-const percentFormatterTwoDp = new Intl.NumberFormat("en", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 const ratingFormatter = new Intl.NumberFormat("en", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
@@ -73,14 +69,11 @@ function formatProbability(value: number, status: "G" | "U" | "I") {
   if (!Number.isFinite(value)) {
     return "";
   }
-  if (value < 0.0001) {
-    return "<0.01%";
+  if (value < 0.001) {
+    return "<0.1%";
   }
-  if (value < 0.00995) {
-    return `${percentFormatterTwoDp.format(value * 100)}%`;
-  }
-  if (value >= 0.9995) {
-    return ">99.9%";
+  if (value >= 0.999) {
+    return ">99.9";
   }
   return `${percentFormatter.format(value * 100)}%`;
 }

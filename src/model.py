@@ -223,7 +223,7 @@ class Model:
             s[1, 1] = max(s[1, 1], self.variance_min)
         return s
 
-    def fit(self, results):
+    def fit(self, results, progress_cb=None, progress_every=1000):
         assert not self.is_fit
 
         if not isinstance(results, pd.DataFrame):
@@ -349,7 +349,13 @@ class Model:
         games_played = {}
         hga_year = None
 
-        for row in df.itertuples():
+        total_matches = int(len(df))
+        if progress_cb is not None:
+            if progress_every is None or progress_every < 1:
+                progress_every = 1
+            progress_cb(0, total_matches, None)
+
+        for idx, row in enumerate(df.itertuples(), start=1):
             t = pd.Timestamp(row.date).date()
             extra_time_info = None
             if self.hga_rw_var_per_year > 0.0:
@@ -383,6 +389,11 @@ class Model:
                 if self.use_extra_time_updates
                 else False
             )
+
+            if progress_cb is not None and (
+                idx == 1 or idx == total_matches or idx % progress_every == 0
+            ):
+                progress_cb(idx, total_matches, row)
             
             # init
             home_confed = row.home_confederation if has_confed else None

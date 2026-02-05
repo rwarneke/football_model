@@ -163,7 +163,7 @@ def main():
     model_path = os.environ.get("SIM_MODEL_PATH", "model_output/model.pkl")
     output_path = os.environ.get("SIM_OUTPUT_PATH", "model_output/simulation_runs.jsonl")
     meta_path = os.environ.get("SIM_META_PATH", "model_output/simulation_runs_meta.json")
-    n_sims = int(os.environ.get("SIM_N", "100000"))
+    n_sims = int(os.environ.get("SIM_N", "10000"))
     workers = int(os.environ.get("SIM_WORKERS", "8"))
     chunk_size = int(os.environ.get("SIM_CHUNK_SIZE", str(math.ceil(n_sims / workers))))
 
@@ -249,7 +249,8 @@ def main():
             for line in lines:
                 out_f.write(line + "\n")
             completed += chunk_done
-            print(f"\r{completed:7} / {n_sims}", end="")
+            pct = (completed / n_sims) * 100 if n_sims else 100.0
+            print(f"\r{completed:7} / {n_sims} ({pct:5.1f}%)", end="", flush=True)
     print()
 
 
