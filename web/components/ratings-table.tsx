@@ -154,7 +154,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
           return teamA.localeCompare(teamB);
         },
         cell: ({ row }) => (
-          <span className="block whitespace-nowrap text-xs sm:text-sm font-medium text-slate-900">
+          <span className="block max-w-[7rem] sm:max-w-[14rem] overflow-hidden text-ellipsis whitespace-nowrap text-xs sm:text-sm font-medium text-slate-900">
             {row.original.team}
           </span>
         ),
@@ -238,7 +238,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-full table-auto xl:table-fixed text-sm [--rating-col-width:clamp(6ch,9vw,14ch)] sm:[--rating-col-width:clamp(7ch,9vw,16ch)]">
+        <table className="w-max min-w-full table-auto text-sm [--rating-col-width:clamp(6ch,9vw,14ch)] sm:[--rating-col-width:clamp(7ch,9vw,16ch)] [--rank-col-width:2.5rem] sm:[--rank-col-width:3rem] [--flag-col-width:2rem] sm:[--flag-col-width:3rem] [--team-col-min:8rem] sm:[--team-col-min:12rem]">
           <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
@@ -259,17 +259,17 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : "cursor-default"
                     } ${
                       header.id === "rank"
-                        ? "text-right w-[2.5rem] min-w-[2.5rem] sm:w-[3rem] sm:min-w-[3rem] pr-2 sm:pr-3"
+                        ? "text-right w-[var(--rank-col-width)] min-w-[var(--rank-col-width)] pr-2 sm:pr-3"
                         : header.id === "flag"
-                        ? "text-left w-[2rem] min-w-[2rem] sm:w-[3rem] sm:min-w-[3rem] pl-0.5 pr-1 sm:pl-1 sm:pr-2"
+                        ? "text-left w-[var(--flag-col-width)] min-w-[var(--flag-col-width)] pl-0.5 pr-1 sm:pl-1 sm:pr-2"
                         : header.id === "team"
-                        ? "text-left min-w-[8rem] sm:min-w-[10rem]"
+                        ? "text-left min-w-[var(--team-col-min)]"
                         : "text-right"
                     } px-1 sm:px-2 py-1.5 sm:py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
                       header.id === "rank"
                         ? "sticky left-0 z-10 bg-slate-200 rounded-tl-xl pr-2 sm:pr-3"
                         : header.id === "flag"
-                        ? "sticky left-[2.5rem] sm:left-[3rem] z-10 bg-slate-200"
+                        ? "sticky left-[var(--rank-col-width)] z-10 bg-slate-200"
                         : header.id === "team"
                         ? "pl-0.5 sm:pl-1"
                         : ""
@@ -318,17 +318,17 @@ export function RatingsTable({ data }: RatingsTableProps) {
                     key={cell.id}
                     className={`px-1 sm:px-2 py-1.5 sm:py-2.5 ${
                       cell.column.id === "rank"
-                        ? "text-right w-[2.5rem] min-w-[2.5rem] sm:w-[3rem] sm:min-w-[3rem] pr-2 sm:pr-3"
+                        ? "text-right w-[var(--rank-col-width)] min-w-[var(--rank-col-width)] pr-2 sm:pr-3"
                         : cell.column.id === "flag"
-                        ? "text-left w-[2rem] min-w-[2rem] sm:w-[3rem] sm:min-w-[3rem] pl-0.5 pr-1.5 sm:pl-1 sm:pr-2.5 overflow-hidden"
+                        ? "text-left w-[var(--flag-col-width)] min-w-[var(--flag-col-width)] pl-0.5 pr-1.5 sm:pl-1 sm:pr-2.5 overflow-hidden"
                         : cell.column.id === "team"
-                        ? "text-left min-w-[8rem] sm:min-w-[10rem] pl-0.5 sm:pl-1"
+                        ? "text-left min-w-[var(--team-col-min)] pl-0.5 sm:pl-1"
                         : "text-right"
                     } ${
                       cell.column.id === "rank"
                         ? "sticky left-0 z-10 bg-white"
                         : cell.column.id === "flag"
-                        ? "sticky left-[2.5rem] sm:left-[3rem] z-10 bg-white"
+                        ? "sticky left-[var(--rank-col-width)] z-10 bg-white"
                         : ""
                     }`}
                     style={{

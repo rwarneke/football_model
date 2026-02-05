@@ -12,11 +12,13 @@ const ratingRowSchema = z.object({
 
 export type RatingRow = z.infer<typeof ratingRowSchema> & {
   flagPath: string | null;
+  confederation: string | null;
 };
 
 const DATA_DIR = "/model_output";
 const DATA_FILE = `${DATA_DIR}/ratings_current.csv`;
 const HISTORY_DATA_FILE = `${DATA_DIR}/ratings_history_yearly.csv`;
+const CONFEDERATIONS_FILE = "/reference_data/confederations.csv";
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -45,6 +47,13 @@ function resolveFlagPath(team: string) {
   return `/flags/${fileName}`;
 }
 
+type ConfederationEntry = {
+  team: string;
+  confederation: string;
+  startYear: number | null;
+  endYear: number | null;
+};
+
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 
 async function readPublicText(filePath: string) {
@@ -53,8 +62,100 @@ async function readPublicText(filePath: string) {
   return readFile(fullPath, "utf8");
 }
 
+function parseYear(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildConfederationsMap(contents: string) {
+  const lines = contents.trim().split(/\r?\n/);
+  if (lines.length <= 1) {
+    return new Map<string, ConfederationEntry[]>();
+  }
+  const headers = lines[0]?.split(",") ?? [];
+  const entries = lines.slice(1).flatMap((line) => {
+    if (!line.trim()) {
+      return [];
+    }
+    const values = line.split(",");
+    const record = Object.fromEntries(
+      headers.map((header, index) => [header, values[index]])
+    ) as Record<string, string | undefined>;
+    const team = record.team?.trim();
+    const confederation = record.confederation?.trim();
+    if (!team || !confederation) {
+      return [];
+    }
+    return [
+      {
+        team,
+        confederation,
+        startYear: parseYear(record.start_year),
+        endYear: parseYear(record.end_year),
+      } satisfies ConfederationEntry,
+    ];
+  });
+
+  const map = new Map<string, ConfederationEntry[]>();
+  for (const entry of entries) {
+    const list = map.get(entry.team);
+    if (list) {
+      list.push(entry);
+    } else {
+      map.set(entry.team, [entry]);
+    }
+  }
+  return map;
+}
+
+function entryStartValue(entry: ConfederationEntry) {
+  return entry.startYear ?? Number.NEGATIVE_INFINITY;
+}
+
+function entryEndValue(entry: ConfederationEntry) {
+  return entry.endYear ?? Number.POSITIVE_INFINITY;
+}
+
+function pickConfederation(
+  entries: ConfederationEntry[],
+  year: number
+): ConfederationEntry | null {
+  if (!entries.length) {
+    return null;
+  }
+  const hasYear = Number.isFinite(year);
+  const inRange = hasYear
+    ? entries.filter(
+        (entry) =>
+          entryStartValue(entry) <= year && entryEndValue(entry) >= year
+      )
+    : [];
+  const candidates = inRange.length ? inRange : entries;
+
+  return (
+    candidates.reduce<ConfederationEntry | null>((best, entry) => {
+      if (!best) {
+        return entry;
+      }
+      const startDelta = entryStartValue(entry) - entryStartValue(best);
+      if (startDelta !== 0) {
+        return startDelta > 0 ? entry : best;
+      }
+      const endDelta = entryEndValue(entry) - entryEndValue(best);
+      return endDelta > 0 ? entry : best;
+    }, null) ?? null
+  );
+}
+
 export async function loadRatings(): Promise<RatingRow[]> {
-  const contents = await readPublicText(DATA_FILE);
+  const [contents, confederationsContents] = await Promise.all([
+    readPublicText(DATA_FILE),
+    readPublicText(CONFEDERATIONS_FILE),
+  ]);
+  const confederationsMap = buildConfederationsMap(confederationsContents);
   const lines = contents.trim().split(/\r?\n/);
   if (lines.length <= 1) {
     return [];
@@ -78,9 +179,18 @@ export async function loadRatings(): Promise<RatingRow[]> {
       return null;
     }
 
+    const confederation =
+      confederationsMap.size > 0
+        ? pickConfederation(
+            confederationsMap.get(parsed.data.team) ?? [],
+            parsed.data.year
+          )?.confederation ?? null
+        : null;
+
     return {
       ...parsed.data,
       flagPath: resolveFlagPath(parsed.data.team),
+      confederation,
     } satisfies RatingRow;
   });
 
