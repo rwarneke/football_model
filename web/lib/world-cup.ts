@@ -7,6 +7,8 @@ export type WorldCupProbabilities = {
     team: string;
     flagPath: string;
     group: string | null;
+    opponentProbabilities: OpponentProbabilities;
+    groupRankProbabilities: GroupRankProbabilities;
     values: Record<string, number>;
     statuses: Record<string, ProbabilityStatus>;
   }>;
@@ -14,8 +16,19 @@ export type WorldCupProbabilities = {
 
 export type ProbabilityStatus = "G" | "U" | "I";
 
+export type OpponentProbabilities = {
+  R32: Record<string, number>;
+  R16: Record<string, number>;
+  QF: Record<string, number>;
+  SF: Record<string, number>;
+  Final: Record<string, number>;
+};
+
+export type GroupRankProbabilities = Record<string, number>;
+
 const DATA_FILE = "/model_output/simulation_results.csv";
 const STATUS_FILE = "/model_output/simulation_results_status.csv";
+const TEAM_PROB_FILE = "/model_output/simulation_team_probabilities.json";
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -56,6 +69,10 @@ async function readOptionalPublicText(filePath: string) {
     }
     throw error;
   }
+}
+
+function emptyOpponentProbabilities(): OpponentProbabilities {
+  return { R32: {}, R16: {}, QF: {}, SF: {}, Final: {} };
 }
 
 export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities> {
@@ -161,6 +178,37 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
     }
   }
 
+  const opponentMap = new Map<string, OpponentProbabilities>();
+  const groupRankMap = new Map<string, GroupRankProbabilities>();
+  const teamProbContents = await readOptionalPublicText(TEAM_PROB_FILE);
+  if (teamProbContents) {
+    const parsed = JSON.parse(teamProbContents) as Record<
+      string,
+      Record<string, Record<string, number> | undefined>
+    >;
+    for (const [team, record] of Object.entries(parsed)) {
+      const getMap = (key: string) => {
+        const value = record?.[key];
+        if (!value || typeof value !== "object") {
+          return {};
+        }
+        return Object.fromEntries(
+          Object.entries(value).filter(
+            ([, probability]) => typeof probability === "number"
+          )
+        );
+      };
+      opponentMap.set(team, {
+        R32: getMap("R32_opponent_probability"),
+        R16: getMap("R16_opponent_probability"),
+        QF: getMap("QF_opponent_probability"),
+        SF: getMap("SF_opponent_probability"),
+        Final: getMap("Final_opponent_probability"),
+      });
+      groupRankMap.set(team, getMap("group_stage_rank_probability"));
+    }
+  }
+
   const pathGroupMap = new Map<string, string>();
   for (const row of groupRows) {
     const team = row.team ?? "";
@@ -222,6 +270,8 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
       team,
       flagPath: `/flags/${flagFileName(team)}`,
       group: groupLabel,
+      opponentProbabilities: opponentMap.get(team) ?? emptyOpponentProbabilities(),
+      groupRankProbabilities: groupRankMap.get(team) ?? {},
       values: columnValues,
       statuses: columnStatuses,
     };

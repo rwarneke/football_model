@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { GroupRankProbabilities, OpponentProbabilities } from "@/lib/world-cup";
 type TableRowData = {
   team: string;
   flagPath: string;
@@ -26,6 +27,8 @@ type TableRowData = {
   ratingOverall?: number;
   ratingAttack?: number;
   ratingDefense?: number;
+  opponentProbabilities: OpponentProbabilities;
+  groupRankProbabilities: GroupRankProbabilities;
   values: Record<string, number>;
   statuses: Record<string, "G" | "U" | "I">;
 };
@@ -44,6 +47,11 @@ const ratingFormatter = new Intl.NumberFormat("en", {
   maximumFractionDigits: 1,
 });
 
+const STAGES = ["R32", "R16", "QF", "SF", "Final"] as const;
+const MAX_OPPONENTS = 5;
+const OPPONENT_THRESHOLD = 0.001;
+const OPPONENT_CELL_MIN = "min-w-[2.5rem]";
+
 const ACCENT_DARK_RGB = "16, 185, 129";
 
 const SKIP_INITIALS = new Set(["and", "of", "the"]);
@@ -57,6 +65,16 @@ function teamInitials(team: string) {
     .slice(0, 3)
     .toUpperCase();
   return letters || team.slice(0, 2).toUpperCase();
+}
+
+function wrapHeaderLabel(label: string) {
+  const words = label.split(" ").filter(Boolean);
+  const content = words.join("\n");
+  return (
+    <span className="block w-full whitespace-pre-line 2xl:whitespace-nowrap">
+      {content}
+    </span>
+  );
 }
 
 function formatProbability(value: number, status: "G" | "U" | "I") {
@@ -76,6 +94,10 @@ function formatProbability(value: number, status: "G" | "U" | "I") {
     return ">99.9";
   }
   return `${percentFormatter.format(value * 100)}%`;
+}
+
+function formatOpponentProbability(value: number) {
+  return formatProbability(value, "U");
 }
 
 function probabilityBackground(value: number) {
@@ -118,11 +140,65 @@ function ratingBackground(value: number) {
   return { backgroundColor: `rgba(${ACCENT_DARK_RGB}, ${alpha})` };
 }
 
+function flagPathForTeam(team: string) {
+  return `/flags/${team.replace(/ /g, "_")}.png`;
+}
+
+type OpponentEntry = { team: string; probability: number };
+
+function buildOpponentColumn(opponents: Record<string, number>) {
+  const entries: OpponentEntry[] = Object.entries(opponents)
+    .filter(([, value]) => Number.isFinite(value) && value > 0)
+    .map(([team, probability]) => ({ team, probability }));
+  entries.sort((a, b) => b.probability - a.probability);
+  const top = entries
+    .filter((entry) => entry.probability >= OPPONENT_THRESHOLD)
+    .slice(0, MAX_OPPONENTS);
+  const total = entries.reduce((sum, entry) => sum + entry.probability, 0);
+  const topTotal = top.reduce((sum, entry) => sum + entry.probability, 0);
+  return { top, other: Math.max(0, total - topTotal), total };
+}
+
+const GROUP_POSITIONS = ["1", "2", "3", "4"];
+
+function formatGroupPositionLabel(position: string) {
+  if (position === "1") return "1st";
+  if (position === "2") return "2nd";
+  if (position === "3") return "3rd";
+  return `${position}th`;
+}
+
+function OpponentCell({ entry }: { entry?: OpponentEntry }) {
+  if (!entry) {
+    return <span className="text-xs text-slate-400">—</span>;
+  }
+  const formatted = formatOpponentProbability(entry.probability);
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <span className={`flex ${OPPONENT_CELL_MIN} shrink-0 justify-center`}>
+        <span className="relative h-3.5 w-5 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+          <Image
+            src={flagPathForTeam(entry.team)}
+            alt={`${entry.team} flag`}
+            fill
+            className="object-cover"
+            sizes="20px"
+          />
+        </span>
+      </span>
+      <span className={`${OPPONENT_CELL_MIN} text-xs xl:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap text-right`}>
+        {formatted}
+      </span>
+    </div>
+  );
+}
+
 export function WorldCupProbabilitiesTable({
   columns,
   rows,
 }: WorldCupProbabilitiesTableProps) {
   const primarySortId = "Champion";
+  const [expandedTeam, setExpandedTeam] = React.useState<string | null>(null);
 
   const standardDescForColumn = React.useCallback((columnId: string) => {
     if (columnId === "team" || columnId === "group" || columnId === "flag") {
@@ -215,7 +291,7 @@ export function WorldCupProbabilitiesTable({
       },
       {
         id: "team",
-        header: "Team",
+        header: () => wrapHeaderLabel("Team"),
         accessorFn: (row) => row.team,
         sortingFn: (a, b, id) => {
           const teamA = String(a.getValue(id) ?? "").toLowerCase();
@@ -278,38 +354,18 @@ export function WorldCupProbabilitiesTable({
         id: column,
         header: () => {
           if (column === "Champion") {
-            return (
-              <span className="whitespace-nowrap">
-                <span className="xl:hidden">Champ.</span>
-                <span className="hidden xl:inline">Champion</span>
-              </span>
-            );
+            return wrapHeaderLabel("Champion");
           }
           if (column === "Win round of 16") {
-            return (
-              <span className="whitespace-nowrap">
-                <span className="xl:hidden">R16</span>
-                <span className="hidden xl:inline">Win round of 16</span>
-              </span>
-            );
+            return wrapHeaderLabel("Win round of 16");
           }
           if (column === "Win round of 32") {
-            return (
-              <span className="whitespace-nowrap">
-                <span className="xl:hidden">R32</span>
-                <span className="hidden xl:inline">Win round of 32</span>
-              </span>
-            );
+            return wrapHeaderLabel("Win round of 32");
           }
           if (column === "Qualify") {
-            return (
-              <span className="whitespace-nowrap">
-                <span className="xl:hidden">Qual.</span>
-                <span className="hidden xl:inline">Qualify</span>
-              </span>
-            );
+            return wrapHeaderLabel("Qualify");
           }
-          return column;
+          return wrapHeaderLabel(column);
         },
         accessorFn: (row: TableRowData) => row.values[column],
         meta: {
@@ -335,12 +391,7 @@ export function WorldCupProbabilitiesTable({
       })),
       {
         id: "overall",
-        header: () => (
-          <span className="whitespace-nowrap">
-            <span className="xl:hidden">OVR.</span>
-            <span className="hidden xl:inline">Overall</span>
-          </span>
-        ),
+        header: () => wrapHeaderLabel("Overall"),
         accessorFn: (row) => row.ratingOverall ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
@@ -355,12 +406,7 @@ export function WorldCupProbabilitiesTable({
       },
       {
         id: "attack",
-        header: () => (
-          <span className="whitespace-nowrap">
-            <span className="xl:hidden">Att.</span>
-            <span className="hidden xl:inline">Attack</span>
-          </span>
-        ),
+        header: () => wrapHeaderLabel("Attack"),
         accessorFn: (row) => row.ratingAttack ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
@@ -375,12 +421,7 @@ export function WorldCupProbabilitiesTable({
       },
       {
         id: "defense",
-        header: () => (
-          <span className="whitespace-nowrap">
-            <span className="xl:hidden">Def.</span>
-            <span className="hidden xl:inline">Defense</span>
-          </span>
-        ),
+        header: () => wrapHeaderLabel("Defense"),
         accessorFn: (row) => row.ratingDefense ?? Number.NaN,
         sortingFn: (a, b, id) =>
           Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
@@ -410,11 +451,12 @@ export function WorldCupProbabilitiesTable({
   const groupBase = (value: string | null | undefined) =>
     String(value ?? "").replace(/\*/g, "");
   const lastProbabilityId = columns[columns.length - 1];
+  const columnCount = table.getAllLeafColumns().length;
 
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)]">
+        <table className="w-full table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)]">
           <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">
@@ -443,7 +485,7 @@ export function WorldCupProbabilitiesTable({
                           header.id === "defense"
                         ? "text-right whitespace-nowrap"
                         : "text-right"
-                    } px-1 xl:px-2 py-1.5 xl:py-2.5 text-[10px] xl:text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
+                    } px-1 xl:px-2 py-1.5 xl:py-2.5 text-[10px] xl:text-[11px] font-semibold uppercase tracking-wide text-slate-600 whitespace-normal 2xl:whitespace-nowrap ${
                       header.id === "flag"
                         ? "sticky left-0 z-10 bg-slate-200 rounded-tl-xl"
                         : ""
@@ -462,7 +504,7 @@ export function WorldCupProbabilitiesTable({
                         : undefined
                     }
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <span className="block w-full">
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
@@ -482,64 +524,273 @@ export function WorldCupProbabilitiesTable({
                 index < allRows.length - 1 &&
                 groupBase(row.original.group) !==
                   groupBase(allRows[index + 1]?.original.group);
+              const isExpanded = expandedTeam === row.original.team;
               return (
-                <TableRow
-                  key={row.id}
-                  className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
-                >
-                {row.getVisibleCells().map((cell) => {
-                  const columnMeta = cell.column.columnDef.meta as
-                    | {
-                        minWidthCh?: number;
-                        isGroup?: boolean;
-                        isProbability?: boolean;
-                        isRating?: boolean;
-                      }
-                    | undefined;
-                  return (
-                  <TableCell
-                    key={cell.id}
-                    className={`px-1 xl:px-2 py-1.5 xl:py-2.5 ${
-                      cell.column.id === "flag"
-                        ? "text-left w-[3rem] min-w-[3rem] pl-0.5 xl:pl-1 pr-1.5 xl:pr-2.5 py-1.5 xl:py-2.5 overflow-hidden"
-                        : cell.column.id === "team"
-                        ? "text-left w-[10rem] min-w-[7rem] xl:min-w-[10rem] shrink-0 pl-0.5 xl:pl-1"
-                        : columnMeta?.isGroup
-                        ? "text-center min-w-[3ch] xl:min-w-[4ch]"
-                        : "text-right"
-                    } ${
-                      columnMeta?.isProbability || columnMeta?.isRating ? "pl-4" : ""
-                    } ${
-                      cell.column.id === "flag"
-                        ? "sticky left-0 z-10 bg-white"
-                        : ""
-                    } ${
-                      isGroupEnd ? "border-b-2 border-slate-200" : ""
-                    }`}
-                    style={{
-                      ...(columnMeta?.isProbability
-                        ? probabilityBackground(cell.getValue<number>())
-                        : {}),
-                      ...(columnMeta?.isRating
-                        ? ratingBackground(cell.getValue<number>())
-                        : {}),
-                      ...(columnMeta?.minWidthCh
-                        ? {
-                            minWidth: `${columnMeta.minWidthCh}ch`,
-                          }
-                        : columnMeta?.isProbability || columnMeta?.isRating
-                        ? {
-                            minWidth: "var(--prob-col-width)",
-                            maxWidth: "calc(var(--prob-col-width) * 2)",
-                          }
-                        : {}),
-                    }}
+                <React.Fragment key={row.id}>
+                  <TableRow
+                    className={`border-b border-slate-100 transition-colors hover:bg-slate-50/70 ${
+                      isExpanded ? "bg-slate-50/70" : ""
+                    } cursor-pointer`}
+                    onClick={() =>
+                      setExpandedTeam((current) =>
+                        current === row.original.team ? null : row.original.team
+                      )
+                    }
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                );
-                })}
-                </TableRow>
+                    {row.getVisibleCells().map((cell) => {
+                      const columnMeta = cell.column.columnDef.meta as
+                        | {
+                            minWidthCh?: number;
+                            isGroup?: boolean;
+                            isProbability?: boolean;
+                            isRating?: boolean;
+                          }
+                        | undefined;
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          className={`px-1 xl:px-2 py-1.5 xl:py-2.5 ${
+                            cell.column.id === "flag"
+                              ? "text-left w-[3rem] min-w-[3rem] pl-0.5 xl:pl-1 pr-1.5 xl:pr-2.5 py-1.5 xl:py-2.5 overflow-hidden"
+                              : cell.column.id === "team"
+                              ? "text-left w-[10rem] min-w-[7rem] xl:min-w-[10rem] shrink-0 pl-0.5 xl:pl-1"
+                              : columnMeta?.isGroup
+                              ? "text-center min-w-[3ch] xl:min-w-[4ch]"
+                              : "text-right"
+                          } ${
+                            columnMeta?.isProbability || columnMeta?.isRating ? "pl-4" : ""
+                          } ${
+                            cell.column.id === "flag"
+                              ? "sticky left-0 z-10 bg-white"
+                              : ""
+                          } ${
+                            isGroupEnd ? "border-b-2 border-slate-200" : ""
+                          }`}
+                          style={{
+                            ...(columnMeta?.isProbability
+                              ? probabilityBackground(cell.getValue<number>())
+                              : {}),
+                            ...(columnMeta?.isRating
+                              ? ratingBackground(cell.getValue<number>())
+                              : {}),
+                            ...(columnMeta?.minWidthCh
+                              ? {
+                                  minWidth: `${columnMeta.minWidthCh}ch`,
+                                }
+                              : columnMeta?.isProbability || columnMeta?.isRating
+                              ? {
+                                  minWidth: "var(--prob-col-width)",
+                                  maxWidth: "calc(var(--prob-col-width) * 2)",
+                                }
+                              : {}),
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                  {isExpanded ? (
+                    <TableRow>
+                      <TableCell colSpan={columnCount} className="p-4">
+                        <div className="rounded-lg bg-white p-4">
+                          <div className="flex items-center justify-center pb-3">
+                            <div className="inline-flex items-center gap-4 border-b border-slate-200 pb-2 px-3">
+                            <span className="relative h-6 w-9 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.12)]">
+                              {row.original.flagPath ? (
+                                <Image
+                                  src={row.original.flagPath}
+                                  alt={`${row.original.team} flag`}
+                                  fill
+                                  className="object-cover"
+                                  sizes="36px"
+                                />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase text-slate-500">
+                                  {teamInitials(row.original.team)}
+                                </span>
+                              )}
+                            </span>
+                            <div>
+                              <p className="text-base font-semibold text-slate-800">
+                                {row.original.team}
+                              </p>
+                            </div>
+                            </div>
+                          </div>
+                          <p className="text-center text-sm font-semibold text-slate-600 pb-3">
+                            CHAMPION:{" "}
+                            {formatProbability(
+                              row.original.values["Champion"] ?? Number.NaN,
+                              "U"
+                            )}
+                          </p>
+                          <div className="space-y-6">
+                            <div>
+                              <div className="pb-3">
+                                <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+                                  Group Rank
+                                </p>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full table-fixed border-collapse text-center">
+                                  <thead>
+                                    <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500">
+                                      {GROUP_POSITIONS.map((position) => (
+                                        <th key={position} className="py-2 font-semibold">
+                                          {formatGroupPositionLabel(position)}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      {GROUP_POSITIONS.map((position) => (
+                                        <td key={position} className="py-2">
+                                          <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
+                                            {formatOpponentProbability(
+                                              row.original.groupRankProbabilities[position] ?? 0
+                                            )}
+                                          </span>
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="pb-3">
+                                <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+                                  Knockout Opponents
+                                </p>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full table-fixed border-collapse text-center">
+                                  <thead>
+                                    <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500">
+                                      {STAGES.map((stage) => (
+                                        <th key={stage} className="py-2 font-semibold">
+                                          {stage}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {(() => {
+                                      const columnsByStage = Object.fromEntries(
+                                        STAGES.map((stage) => [
+                                          stage,
+                                          buildOpponentColumn(
+                                            row.original.opponentProbabilities[stage]
+                                          ),
+                                        ])
+                                      ) as Record<
+                                        (typeof STAGES)[number],
+                                        ReturnType<typeof buildOpponentColumn>
+                                      >;
+                                      const maxTopRows = Math.max(
+                                        0,
+                                        ...STAGES.map(
+                                          (stage) => columnsByStage[stage].top.length
+                                        )
+                                      );
+                                      const maxRows = maxTopRows + 1;
+                                      const rowsByRank = Array.from(
+                                        { length: maxRows },
+                                        (_, rank) => ({
+                                          key: `rank-${rank + 1}`,
+                                          entries: Object.fromEntries(
+                                            STAGES.map((stage) => [
+                                              stage,
+                                              columnsByStage[stage].top[rank],
+                                            ])
+                                          ) as Record<
+                                            (typeof STAGES)[number],
+                                            OpponentEntry | undefined
+                                          >,
+                                        })
+                                      );
+                                      const totalRow = {
+                                        key: "total",
+                                        values: Object.fromEntries(
+                                          STAGES.map((stage) => [
+                                            stage,
+                                            columnsByStage[stage].total,
+                                          ])
+                                        ) as Record<(typeof STAGES)[number], number>,
+                                      };
+
+                                      return (
+                                        <>
+                                          {rowsByRank.map((rowData, rowIndex) => (
+                                            <tr
+                                              key={rowData.key}
+                                              className={`border-b ${
+                                                rowIndex === rowsByRank.length - 1
+                                                  ? "border-slate-200"
+                                                  : "border-slate-100"
+                                              }`}
+                                            >
+                                              {STAGES.map((stage) => (
+                                                <td key={stage} className="py-2">
+                                                  {rowIndex <
+                                                  columnsByStage[stage].top.length ? (
+                                                    <OpponentCell entry={rowData.entries[stage]} />
+                                                  ) : rowIndex ===
+                                                    columnsByStage[stage].top.length ? (
+                                                    <div className="flex items-center justify-center gap-2">
+                                                      <span
+                                                        className={`${OPPONENT_CELL_MIN} text-[10px] uppercase tracking-wide text-slate-400 text-center`}
+                                                      >
+                                                        Other
+                                                      </span>
+                                                      <span
+                                                        className={`${OPPONENT_CELL_MIN} text-xs xl:text-sm font-mono tabular-nums text-slate-600 whitespace-nowrap text-right`}
+                                                      >
+                                                        {formatOpponentProbability(
+                                                          columnsByStage[stage].other
+                                                        )}
+                                                      </span>
+                                                    </div>
+                                                  ) : (
+                                                    <span className="text-xs text-slate-300">—</span>
+                                                  )}
+                                                </td>
+                                              ))}
+                                            </tr>
+                                          ))}
+                                          <tr>
+                                            {STAGES.map((stage) => (
+                                              <td key={stage} className="py-2">
+                                                <div className="flex items-center justify-center gap-2">
+                                                  <span
+                                                    className={`${OPPONENT_CELL_MIN} text-[10px] uppercase tracking-wide text-slate-500 text-center`}
+                                                  >
+                                                    Total
+                                                  </span>
+                                                  <span
+                                                    className={`${OPPONENT_CELL_MIN} text-xs xl:text-sm font-mono tabular-nums text-slate-800 whitespace-nowrap text-right`}
+                                                  >
+                                                    {formatOpponentProbability(totalRow.values[stage])}
+                                                  </span>
+                                                </div>
+                                              </td>
+                                            ))}
+                                          </tr>
+                                        </>
+                                      );
+                                    })()}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </React.Fragment>
               );
             })}
           </tbody>
