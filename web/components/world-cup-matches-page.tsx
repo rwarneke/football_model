@@ -669,9 +669,9 @@ export function WorldCupMatchesPageClient({
                           <div className="text-[10px] uppercase tracking-wide text-slate-500">
                             Score Matrix
                           </div>
-                          <div className="mt-2 overflow-x-auto">
-                            <div className="min-w-full w-max">
-                              <div className="grid grid-cols-[1.5rem_repeat(6,3rem)] gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                          <div className="mt-2 w-full overflow-x-auto">
+                            <div className="min-w-full w-full">
+                              <div className="grid w-full min-w-[22rem] grid-cols-[1.5rem_repeat(6,minmax(0,1fr))] gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
                                 <div className="bg-slate-50 px-1 py-1 text-center font-semibold uppercase text-slate-500">
                                   H/A
                                 </div>
