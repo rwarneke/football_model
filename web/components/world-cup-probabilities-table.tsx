@@ -330,6 +330,13 @@ export function WorldCupProbabilitiesTable({
             return isDesc ? -desired : desired;
           }
           if (normA.starred === normB.starred) {
+            for (const key of tiebreakOrder) {
+              const probA = Number(a.original.values[key] ?? 0);
+              const probB = Number(b.original.values[key] ?? 0);
+              if (probA !== probB) {
+                return isDesc ? probA - probB : probB - probA;
+              }
+            }
             return 0;
           }
           const desired = normA.starred ? 1 : -1;
@@ -455,7 +462,7 @@ export function WorldCupProbabilitiesTable({
         ),
       },
     ],
-    [columns, sorting]
+    [columns, sorting, tiebreakOrder]
   );
 
   const table = useReactTable({
