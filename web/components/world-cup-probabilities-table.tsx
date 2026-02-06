@@ -36,6 +36,7 @@ type TableRowData = {
 type WorldCupProbabilitiesTableProps = {
   columns: string[];
   rows: TableRowData[];
+  probabilityMode: "percent" | "decimal";
 };
 
 const percentFormatter = new Intl.NumberFormat("en", {
@@ -77,7 +78,33 @@ function wrapHeaderLabel(label: string) {
   );
 }
 
-function formatProbability(value: number, status: "G" | "U" | "I") {
+function formatDecimalOdds(value: number) {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+  if (value <= 0) {
+    return ">$1000";
+  }
+  const odds = 1 / value;
+  if (odds > 1000) {
+    return ">$1000";
+  }
+  let fractionDigits = 0;
+  if (odds < 1.0095) {
+    fractionDigits = 3;
+  } else if (odds < 10) {
+    fractionDigits = 2;
+  } else if (odds < 100) {
+    fractionDigits = 1;
+  }
+  return `$${odds.toFixed(fractionDigits)}`;
+}
+
+function formatProbability(
+  value: number,
+  status: "G" | "U" | "I",
+  mode: "percent" | "decimal"
+) {
   if (status === "G") {
     return "✓";
   }
@@ -86,6 +113,9 @@ function formatProbability(value: number, status: "G" | "U" | "I") {
   }
   if (!Number.isFinite(value)) {
     return "";
+  }
+  if (mode === "decimal") {
+    return formatDecimalOdds(value);
   }
   if (value < 0.001) {
     return "<0.1%";
@@ -96,8 +126,8 @@ function formatProbability(value: number, status: "G" | "U" | "I") {
   return `${percentFormatter.format(value * 100)}%`;
 }
 
-function formatOpponentProbability(value: number) {
-  return formatProbability(value, "U");
+function formatOpponentProbability(value: number, mode: "percent" | "decimal") {
+  return formatProbability(value, "U", mode);
 }
 
 function probabilityBackground(value: number) {
@@ -168,11 +198,17 @@ function formatGroupPositionLabel(position: string) {
   return `${position}th`;
 }
 
-function OpponentCell({ entry }: { entry?: OpponentEntry }) {
+function OpponentCell({
+  entry,
+  probabilityMode,
+}: {
+  entry?: OpponentEntry;
+  probabilityMode: "percent" | "decimal";
+}) {
   if (!entry) {
     return <span className="text-xs text-slate-400">—</span>;
   }
-  const formatted = formatOpponentProbability(entry.probability);
+  const formatted = formatOpponentProbability(entry.probability, probabilityMode);
   return (
     <div className="flex items-center justify-center gap-2">
       <span className={`flex ${OPPONENT_CELL_MIN} shrink-0 justify-center`}>
@@ -196,6 +232,7 @@ function OpponentCell({ entry }: { entry?: OpponentEntry }) {
 export function WorldCupProbabilitiesTable({
   columns,
   rows,
+  probabilityMode,
 }: WorldCupProbabilitiesTableProps) {
   const primarySortId = "Champion";
   const [expandedTeam, setExpandedTeam] = React.useState<string | null>(null);
@@ -388,7 +425,7 @@ export function WorldCupProbabilitiesTable({
         cell: ({ row }: { row: Row<TableRowData> }) => {
           const value = row.original.values[column];
           const status = row.original.statuses[column] ?? "U";
-          const formatted = formatProbability(value, status);
+          const formatted = formatProbability(value, status, probabilityMode);
           if (formatted === "✓" || formatted === "✕") {
             return (
               <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-700">
@@ -462,7 +499,7 @@ export function WorldCupProbabilitiesTable({
         ),
       },
     ],
-    [columns, sorting, tiebreakOrder]
+    [columns, probabilityMode, sorting, tiebreakOrder]
   );
 
   const table = useReactTable({
@@ -649,7 +686,8 @@ export function WorldCupProbabilitiesTable({
                             CHAMPION:{" "}
                             {formatProbability(
                               row.original.values["Champion"] ?? Number.NaN,
-                              "U"
+                              "U",
+                              probabilityMode
                             )}
                           </p>
                           <div className="space-y-6">
@@ -676,7 +714,8 @@ export function WorldCupProbabilitiesTable({
                                         <td key={position} className="py-2">
                                           <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
                                             {formatOpponentProbability(
-                                              row.original.groupRankProbabilities[position] ?? 0
+                                              row.original.groupRankProbabilities[position] ?? 0,
+                                              probabilityMode
                                             )}
                                           </span>
                                         </td>
@@ -763,7 +802,10 @@ export function WorldCupProbabilitiesTable({
                                                 <td key={stage} className="py-2">
                                                   {rowIndex <
                                                   columnsByStage[stage].top.length ? (
-                                                    <OpponentCell entry={rowData.entries[stage]} />
+                                                    <OpponentCell
+                                                      entry={rowData.entries[stage]}
+                                                      probabilityMode={probabilityMode}
+                                                    />
                                                   ) : rowIndex ===
                                                     columnsByStage[stage].top.length ? (
                                                     <div className="flex items-center justify-center gap-2">
@@ -776,7 +818,8 @@ export function WorldCupProbabilitiesTable({
                                                         className={`${OPPONENT_CELL_MIN} text-xs xl:text-sm font-mono tabular-nums text-slate-600 whitespace-nowrap text-right`}
                                                       >
                                                         {formatOpponentProbability(
-                                                          columnsByStage[stage].other
+                                                          columnsByStage[stage].other,
+                                                          probabilityMode
                                                         )}
                                                       </span>
                                                     </div>
@@ -799,7 +842,10 @@ export function WorldCupProbabilitiesTable({
                                                   <span
                                                     className={`${OPPONENT_CELL_MIN} text-xs xl:text-sm font-mono tabular-nums text-slate-800 whitespace-nowrap text-right`}
                                                   >
-                                                    {formatOpponentProbability(totalRow.values[stage])}
+                                                    {formatOpponentProbability(
+                                                      totalRow.values[stage],
+                                                      probabilityMode
+                                                    )}
                                                   </span>
                                                 </div>
                                               </td>
