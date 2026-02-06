@@ -4,7 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Home, Trophy, ArrowUpDown, Clock, Percent, Shuffle, Globe } from "lucide-react";
+import {
+  Home,
+  Trophy,
+  ArrowUpDown,
+  Clock,
+  Percent,
+  Shuffle,
+  Globe,
+  List,
+} from "lucide-react";
 
 type NavIcon = React.ComponentType<{ className?: string }>;
 
@@ -35,6 +44,7 @@ const navGroups: NavGroup[] = [
     label: "FIFA World Cup 2026",
     icon: Trophy,
     children: [
+      { label: "Upcoming matches", href: "/world-cup-2026/matches", icon: List },
       { label: "Progression chances", href: "/world-cup-2026/probabilities", icon: Percent },
       { label: "Tournament predictor", href: "/world-cup-2026/predictor", icon: Shuffle },
     ],

@@ -1128,7 +1128,6 @@ const FIFA_CODES: Record<string, string> = {
   "Colombia": "COL",
   "Croatia": "CRO",
   "Curacao": "CUW",
-  "Czech Republic": "CZE",
   "Czechia": "CZE",
   "Denmark": "DEN",
   "DR Congo": "COD",

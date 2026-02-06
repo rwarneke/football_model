@@ -42,7 +42,7 @@ export default function HomePage() {
           >
             <div className="flex-1 sm:basis-1/2 sm:shrink-0 sm:pr-3">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
-                Trends
+                Ratings
               </p>
               <h2 className="mt-3 text-lg font-semibold">Ratings history</h2>
               <p className="mt-2 text-sm text-ink-300">
@@ -78,6 +78,31 @@ export default function HomePage() {
               <Image
                 src="/img/preview-probabilities.png"
                 alt="Preview of stage probabilities"
+                fill
+                sizes="(min-width: 768px) 18rem, 100vw"
+                className="object-cover object-left-top"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_18%,rgba(255,255,255,0)_82%,rgba(255,255,255,0.45)_100%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_18%,rgba(255,255,255,0)_82%,rgba(255,255,255,0.45)_100%)]" />
+            </div>
+          </Link>
+          <Link
+            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-row sm:flex-wrap sm:gap-0 sm:items-stretch"
+            href="/world-cup-2026/matches"
+          >
+            <div className="flex-1 sm:basis-1/2 sm:shrink-0 sm:pr-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
+                World Cup 2026
+              </p>
+              <h2 className="mt-3 text-lg font-semibold">Matches</h2>
+              <p className="mt-2 text-sm text-ink-300">
+                Upcoming fixtures with probabilities and score grids.
+              </p>
+            </div>
+            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 sm:basis-1/2 sm:min-w-[240px] sm:flex-1 sm:self-center">
+              <Image
+                src="/img/preview-matches.png"
+                alt="Preview of World Cup matches"
                 fill
                 sizes="(min-width: 768px) 18rem, 100vw"
                 className="object-cover object-left-top"
