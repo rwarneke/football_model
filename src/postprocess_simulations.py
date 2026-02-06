@@ -217,6 +217,10 @@ def main():
     os.makedirs(public_output_dir, exist_ok=True)
     shutil.copy2(os.path.join(output_dir, "simulation_results.csv"), public_output_dir)
     shutil.copy2(team_prob_path, public_output_dir)
+    for filename in ("ratings_current.csv", "ratings_history_yearly.csv"):
+        source = os.path.join(output_dir, filename)
+        if os.path.exists(source):
+            shutil.copy2(source, public_output_dir)
 
 
 if __name__ == "__main__":
