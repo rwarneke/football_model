@@ -3,7 +3,13 @@
 import * as React from "react";
 import Image from "next/image";
 import type { WorldCupMatch } from "@/lib/world-cup-matches";
-import type { WinProbabilities } from "@/lib/world-cup-predictor-types";
+import type { WinProbabilities, WinProbabilityEntry } from "@/lib/world-cup-predictor-types";
+import { buildScoreMatrix } from "@/lib/score-matrix";
+import {
+  isCompactWinProbabilities,
+  parseCompactEntry,
+  resolveCompactEntry,
+} from "@/lib/win-probabilities";
 
 type MatchProbabilityValues = {
   home: number | null;
@@ -94,13 +100,29 @@ function resolveProbabilityEntry({
   awayTeam: string;
   country?: string | null;
   neutralOverride?: boolean | null;
-}) {
+}): { entry: WinProbabilityEntry; flipped: boolean } | null {
   const { neutral, advantage } = resolveMatchNeutrality({
     homeTeam,
     awayTeam,
     country,
     neutralOverride,
   });
+  if (isCompactWinProbabilities(probabilities)) {
+    if (neutral) {
+      const entry = resolveCompactEntry(probabilities, homeTeam, awayTeam, true);
+      return entry ? { entry: parseCompactEntry(entry), flipped: false } : null;
+    }
+    if (advantage === "home") {
+      const entry = resolveCompactEntry(probabilities, homeTeam, awayTeam, false);
+      return entry ? { entry: parseCompactEntry(entry), flipped: false } : null;
+    }
+    if (advantage === "away") {
+      const entry = resolveCompactEntry(probabilities, awayTeam, homeTeam, false);
+      return entry ? { entry: parseCompactEntry(entry), flipped: true } : null;
+    }
+    return null;
+  }
+
   if (neutral) {
     const entry = probabilities[homeTeam]?.[awayTeam]?.neutral;
     return entry ? { entry, flipped: false } : null;
@@ -117,14 +139,7 @@ function resolveProbabilityEntry({
 }
 
 function selectProbabilityValues(
-  entry: {
-    p_home?: number;
-    p_draw?: number;
-    p_away?: number;
-    p_home_pens?: number;
-    p_away_pens?: number;
-    score_matrix?: number[][];
-  } | undefined,
+  entry: WinProbabilityEntry | undefined,
   allowDraw: boolean
 ): MatchProbabilityValues | null {
   if (!entry) {
@@ -222,12 +237,31 @@ function resolveMatchScoreMatrix({
     country,
     neutralOverride,
   });
-  if (!resolved?.entry?.score_matrix) {
+  if (!resolved) {
     return null;
   }
-  return resolved.flipped
-    ? transposeScoreMatrix(resolved.entry.score_matrix)
-    : resolved.entry.score_matrix;
+  if (resolved.entry.score_matrix) {
+    return resolved.flipped
+      ? transposeScoreMatrix(resolved.entry.score_matrix)
+      : resolved.entry.score_matrix;
+  }
+  if (
+    resolved.entry.nu === undefined ||
+    resolved.entry.lam_home === undefined ||
+    resolved.entry.lam_away === undefined
+  ) {
+    return null;
+  }
+  const maxGoals = isCompactWinProbabilities(probabilities)
+    ? probabilities.max_goals ?? 8
+    : 8;
+  const matrix = buildScoreMatrix({
+    nu: resolved.entry.nu,
+    lamH: resolved.entry.lam_home,
+    lamA: resolved.entry.lam_away,
+    maxGoals,
+  });
+  return resolved.flipped ? transposeScoreMatrix(matrix) : matrix;
 }
 
 function sumScoreMatrix(matrix: number[][]) {

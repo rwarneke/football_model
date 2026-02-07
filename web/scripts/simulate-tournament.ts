@@ -6,24 +6,20 @@
 
 import fs from "fs";
 import path from "path";
+import { buildScoreMatrix } from "../lib/score-matrix";
+import {
+  isCompactWinProbabilities,
+  parseCompactEntry,
+  resolveCompactEntry,
+} from "../lib/win-probabilities";
+import type {
+  WinProbabilities,
+  WinProbabilityEntry,
+} from "../lib/world-cup-predictor-types";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-type WinProbabilityEntry = {
-  p_home?: number;
-  p_draw?: number;
-  p_away?: number;
-  p_home_pens?: number;
-  p_away_pens?: number;
-  score_matrix?: number[][];
-};
-
-type WinProbabilities = Record<
-  string,
-  Record<string, { home?: WinProbabilityEntry; neutral?: WinProbabilityEntry }>
->;
 
 type GroupDefinition = { id: string; teams: string[] };
 type GroupMatch = {
@@ -72,6 +68,7 @@ type GroupTableRow = {
 
 const REFERENCE_DIR = path.resolve(__dirname, "..", "..", "reference_data");
 const MODEL_OUTPUT_DIR = path.resolve(__dirname, "..", "..", "model_output");
+const PUBLIC_MODEL_OUTPUT_DIR = path.resolve(__dirname, "..", "public", "model_output");
 
 const HOST_TEAMS = new Set(["USA", "Canada", "Mexico"]);
 const HOST_TEAM_COUNTRIES: Record<string, string> = {
@@ -265,13 +262,29 @@ function resolveProbabilityEntry({
   awayTeam: string;
   country?: string | null;
   neutralOverride?: boolean | null;
-}) {
+}): { entry: WinProbabilityEntry; flipped: boolean } | null {
   const { neutral, advantage } = resolveMatchNeutrality({
     homeTeam,
     awayTeam,
     country,
     neutralOverride,
   });
+  if (isCompactWinProbabilities(probabilities)) {
+    if (neutral) {
+      const entry = resolveCompactEntry(probabilities, homeTeam, awayTeam, true);
+      return entry ? { entry: parseCompactEntry(entry), flipped: false } : null;
+    }
+    if (advantage === "home") {
+      const entry = resolveCompactEntry(probabilities, homeTeam, awayTeam, false);
+      return entry ? { entry: parseCompactEntry(entry), flipped: false } : null;
+    }
+    if (advantage === "away") {
+      const entry = resolveCompactEntry(probabilities, awayTeam, homeTeam, false);
+      return entry ? { entry: parseCompactEntry(entry), flipped: true } : null;
+    }
+    return null;
+  }
+
   if (neutral) {
     const entry = probabilities[homeTeam]?.[awayTeam]?.neutral;
     return entry ? { entry, flipped: false } : null;
@@ -320,10 +333,29 @@ function resolveMatchScoreMatrix({
     country,
     neutralOverride,
   });
-  if (!resolved?.entry?.score_matrix) return null;
-  return resolved.flipped
-    ? transposeScoreMatrix(resolved.entry.score_matrix)
-    : resolved.entry.score_matrix;
+  if (!resolved) return null;
+  if (resolved.entry.score_matrix) {
+    return resolved.flipped
+      ? transposeScoreMatrix(resolved.entry.score_matrix)
+      : resolved.entry.score_matrix;
+  }
+  if (
+    resolved.entry.nu === undefined ||
+    resolved.entry.lam_home === undefined ||
+    resolved.entry.lam_away === undefined
+  ) {
+    return null;
+  }
+  const maxGoals = isCompactWinProbabilities(probabilities)
+    ? probabilities.max_goals ?? 8
+    : 8;
+  const matrix = buildScoreMatrix({
+    nu: resolved.entry.nu,
+    lamH: resolved.entry.lam_home,
+    lamA: resolved.entry.lam_away,
+    maxGoals,
+  });
+  return resolved.flipped ? transposeScoreMatrix(matrix) : matrix;
 }
 
 function resolveMatchProbabilities({
@@ -388,7 +420,7 @@ function sampleScoreMatrix(scoreMatrix: number[][]): MatchScore | null {
       const value = row[j];
       if (!Number.isFinite(value) || value <= 0) continue;
       cumulative += value;
-      if (cumulative >= target) return { home: i, away: j };
+      if (cumulative >= target) return { home: Math.min(i, 31), away: Math.min(j, 31) };
     }
   }
   return { home: 0, away: 0 };
@@ -940,8 +972,19 @@ function main() {
     csvLines.push(`${team},${count},${prob}`);
   }
   fs.writeFileSync(outputPath, csvLines.join("\n"));
+  fs.mkdirSync(PUBLIC_MODEL_OUTPUT_DIR, { recursive: true });
+  fs.copyFileSync(
+    outputPath,
+    path.join(PUBLIC_MODEL_OUTPUT_DIR, "web_simulation_results.csv")
+  );
 
   console.log(`\nResults written to: ${outputPath}`);
+  console.log(
+    `\nPublic copy written to: ${path.join(
+      PUBLIC_MODEL_OUTPUT_DIR,
+      "web_simulation_results.csv"
+    )}`
+  );
   console.log(`\nTop 10 Champions:`);
   for (const [team, count] of sorted.slice(0, 10)) {
     const pct = ((count / N) * 100).toFixed(2);

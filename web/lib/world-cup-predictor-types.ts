@@ -48,12 +48,24 @@ export type WinProbabilityEntry = {
   p_home_pens?: number;
   p_away_pens?: number;
   score_matrix?: number[][];
+  nu?: number;
+  lam_home?: number;
+  lam_away?: number;
 };
 
-export type WinProbabilities = Record<
+export type LegacyWinProbabilities = Record<
   string,
   Record<string, { home?: WinProbabilityEntry; neutral?: WinProbabilityEntry }>
 >;
+
+export type CompactWinProbabilities = {
+  version: number;
+  max_goals: number;
+  teams: string[];
+  entries: number[][];
+};
+
+export type WinProbabilities = LegacyWinProbabilities | CompactWinProbabilities;
 
 export type WorldCupPredictorData = {
   groups: GroupDefinition[];

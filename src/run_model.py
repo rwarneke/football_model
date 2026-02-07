@@ -2,6 +2,9 @@ import os
 import sys
 import json
 import math
+import shutil
+import gzip
+import re
 import datetime as dt
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -14,8 +17,9 @@ from scipy.stats import gamma
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
+PUBLIC_MODEL_OUTPUT_DIR = os.path.join(ROOT_DIR, "web", "public", "model_output")
 
-from src.model import Model
+from src.model import Model, MAX_GOALS
 from src.model_elo import EloModel
 from src.tournament import WorldCup2026
 
@@ -430,26 +434,112 @@ def main():
 
     ## Win probabilities ##
 
-    DATA = {}
+    def _load_name_map():
+        mapping = {}
+        for filename in (
+            "reference_data/fifa_member_to_canonical_name_map.csv",
+            "reference_data/kaggle_team_to_canonical_name_map.csv",
+        ):
+            if not os.path.exists(filename):
+                continue
+            df = pd.read_csv(filename)
+            for _, row in df.iterrows():
+                original = str(row.get("original_name", "")).strip()
+                replacement = str(row.get("replacement_name", "")).strip()
+                if original and replacement:
+                    mapping[original] = replacement
+        return mapping
 
-    def extract(t1, t2, is_neutral):
-        s = pd.Series(
-            model.predict_match(t1, t2, requires_result=True, is_neutral=is_neutral)
-        )[["p_home", "p_draw", "p_away", "p_home_pens", "p_away_pens", "score_matrix"]].to_dict()
-        s["score_matrix"] = s["score_matrix"].tolist()
-        return s
+    name_map = _load_name_map()
 
-    for team1 in wc_teams:
-        for team2 in wc_teams:
+    def _is_placeholder(name: str) -> bool:
+        return bool(re.search(r"\bwinner$", name, re.IGNORECASE))
+
+    def _normalize_name(raw: str) -> str:
+        trimmed = str(raw).strip()
+        if not trimmed or trimmed.lower() == "nan":
+            return ""
+        if _is_placeholder(trimmed):
+            return trimmed
+        return name_map.get(trimmed, trimmed)
+
+    extra_teams = set()
+    groups_df = pd.read_csv("reference_data/world_cup_2026_groups.csv")
+    for team in groups_df.get("team", []):
+        name = _normalize_name(team)
+        if name and not _is_placeholder(name):
+            extra_teams.add(name)
+    qualifiers_df = pd.read_csv("reference_data/world_cup_2026_remaining_qualifiers.csv")
+    for col in ("home_team", "away_team"):
+        for team in qualifiers_df.get(col, []):
+            name = _normalize_name(team)
+            if name and not _is_placeholder(name):
+                extra_teams.add(name)
+
+    teams = sorted(wc_teams)
+    if extra_teams:
+        teams = sorted(set(teams).union(extra_teams))
+    team_ids = {team: idx for idx, team in enumerate(teams)}
+
+    def round_sig(value, sig=7):
+        if value is None:
+            return None
+        if isinstance(value, (int, np.integer)):
+            return float(value)
+        if not np.isfinite(value):
+            return float(value)
+        if value == 0:
+            return 0.0
+        return float(f"{float(value):.{sig}g}")
+
+    def extract_entry(t1, t2, is_neutral):
+        output = model.predict_match(t1, t2, requires_result=True, is_neutral=is_neutral)
+        return [
+            int(team_ids[t1]),
+            int(team_ids[t2]),
+            1 if is_neutral else 0,
+            round_sig(output.get("nu", 0.0)),
+            round_sig(output.get("lam_home", 0.0)),
+            round_sig(output.get("lam_away", 0.0)),
+            round_sig(output.get("p_home", 0.0)),
+            round_sig(output.get("p_draw", 0.0)),
+            round_sig(output.get("p_away", 0.0)),
+            round_sig(output.get("p_home_pens", 0.0)),
+            round_sig(output.get("p_away_pens", 0.0)),
+        ]
+
+    entries = []
+    for team1 in teams:
+        for team2 in teams:
             if team1 == team2:
                 continue
-            DATA.setdefault(team1, {})[team2] = {
-                "home": extract(team1, team2, False),
-                "neutral": extract(team1, team2, True),
-            }
+            entries.append(extract_entry(team1, team2, False))
+            entries.append(extract_entry(team1, team2, True))
+
+    payload = {
+        "version": 2,
+        "max_goals": int(MAX_GOALS),
+        "teams": teams,
+        "entries": entries,
+    }
 
     with open("model_output/win_probabilities.json", "w") as f:
-        json.dump(DATA, f)
+        json.dump(payload, f, separators=(",", ":"))
+
+    os.makedirs(PUBLIC_MODEL_OUTPUT_DIR, exist_ok=True)
+    for filename in (
+        "ratings_current.csv",
+        "ratings_history_yearly.csv",
+        "simulation_results.csv",
+        "win_probabilities.json",
+    ):
+        source = os.path.join("model_output", filename)
+        if os.path.exists(source):
+            shutil.copy2(source, PUBLIC_MODEL_OUTPUT_DIR)
+            if filename == "win_probabilities.json":
+                gzip_path = os.path.join(PUBLIC_MODEL_OUTPUT_DIR, f"{filename}.gz")
+                with open(source, "rb") as f_in, gzip.open(gzip_path, "wb", compresslevel=9) as f_out:
+                    shutil.copyfileobj(f_in, f_out)
 
 
 if __name__ == "__main__":
