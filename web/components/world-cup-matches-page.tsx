@@ -383,6 +383,90 @@ function formatProbabilityLabel(
   return mode === "decimal" ? formatDecimalOdds(value) : formatPercent(value, forceDecimal);
 }
 
+function parseProbabilityLabel(label?: string | null) {
+  if (!label) {
+    return null;
+  }
+  if (label === "<0.1%") {
+    return 0.05;
+  }
+  const match = label.match(/(\d+(?:\.\d+)?)%/);
+  if (!match) {
+    return null;
+  }
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return Math.max(0, Math.min(100, value));
+}
+
+function formatNormalizedPercent(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "--";
+  }
+  if (value > 0 && value < 0.1) {
+    return "<0.1%";
+  }
+  if (value !== Math.round(value)) {
+    return `${value.toFixed(1)}%`;
+  }
+  return `${Math.round(value)}%`;
+}
+
+function normalizeProbabilitySegments(values: {
+  home: number | null;
+  draw: number | null;
+  away: number | null;
+}) {
+  const { home, draw, away } = values;
+  if (home === null || draw === null || away === null) {
+    return null;
+  }
+  const raw = [home, draw, away];
+  const hasDecimal = raw.some((v) => v !== Math.round(v));
+  if (hasDecimal) {
+    const rounded = raw.map((value) => Number(value.toFixed(1)));
+    const total = rounded.reduce((sum, value) => sum + value, 0);
+    const remainder = Number((100 - total).toFixed(1));
+    if (Math.abs(remainder) >= 0.05) {
+      rounded[1] = Math.max(0, Number((rounded[1] + remainder).toFixed(1)));
+    }
+    return { home: rounded[0], draw: rounded[1], away: rounded[2] };
+  }
+  const rounded = raw.map((value) => Math.round(value));
+  const total = rounded.reduce((sum, value) => sum + value, 0);
+  const remainder = 100 - total;
+  if (remainder !== 0) {
+    rounded[1] = Math.max(0, rounded[1] + remainder);
+  }
+  return { home: rounded[0], draw: rounded[1], away: rounded[2] };
+}
+
+function normalizeTwoSegments(values: { home: number | null; away: number | null }) {
+  const { home, away } = values;
+  if (home === null || away === null) {
+    return null;
+  }
+  const hasDecimal = home !== Math.round(home) || away !== Math.round(away);
+  if (hasDecimal) {
+    const roundedHome = Number(home.toFixed(1));
+    const roundedAway = Number(away.toFixed(1));
+    const remainder = Number((100 - roundedHome - roundedAway).toFixed(1));
+    return {
+      home: Math.max(0, Number((roundedHome + remainder).toFixed(1))),
+      away: roundedAway,
+    };
+  }
+  const roundedHome = Math.round(home);
+  const roundedAway = Math.round(away);
+  const remainder = 100 - (roundedHome + roundedAway);
+  return {
+    home: Math.max(0, roundedHome + remainder),
+    away: roundedAway,
+  };
+}
+
 function formatDateHeading(date: string) {
   const parsed = new Date(`${date}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) {
@@ -496,24 +580,53 @@ export function WorldCupMatchesPageClient({
                   shownValues?.draw,
                   shownValues?.away,
                 ]);
-                const homeLabel = formatProbabilityLabel(
+                const homeLabelRaw = formatProbabilityLabel(
                   shownValues?.home ?? null,
                   probabilityMode,
                   useDecimal
                 );
-                const drawLabel = allowDraw
+                const drawLabelRaw = allowDraw
                   ? formatProbabilityLabel(shownValues?.draw ?? null, probabilityMode, useDecimal)
                   : null;
-                const awayLabel = formatProbabilityLabel(
+                const awayLabelRaw = formatProbabilityLabel(
                   shownValues?.away ?? null,
                   probabilityMode,
                   useDecimal
                 );
-                const homePercent = Math.max(0, Math.min(100, (shownValues?.home ?? 0) * 100));
+                const normalizedShown = probabilityMode === "percent" && allowDraw
+                  ? normalizeProbabilitySegments({
+                      home: parseProbabilityLabel(homeLabelRaw),
+                      draw: parseProbabilityLabel(drawLabelRaw ?? undefined),
+                      away: parseProbabilityLabel(awayLabelRaw),
+                    })
+                  : null;
+                const homeLabel =
+                  probabilityMode === "percent" && normalizedShown
+                    ? formatNormalizedPercent(normalizedShown.home)
+                    : homeLabelRaw;
+                const drawLabel =
+                  allowDraw && probabilityMode === "percent" && normalizedShown
+                    ? formatNormalizedPercent(normalizedShown.draw)
+                    : allowDraw
+                      ? drawLabelRaw
+                      : null;
+                const awayLabel =
+                  probabilityMode === "percent" && normalizedShown
+                    ? formatNormalizedPercent(normalizedShown.away)
+                    : awayLabelRaw;
+                const homePercent =
+                  probabilityMode === "percent" && normalizedShown
+                    ? Math.max(0, Math.min(100, normalizedShown.home))
+                    : Math.max(0, Math.min(100, (shownValues?.home ?? 0) * 100));
                 const drawPercent = allowDraw
-                  ? Math.max(0, Math.min(100, (shownValues?.draw ?? 0) * 100))
+                  ? probabilityMode === "percent" && normalizedShown
+                    ? Math.max(0, Math.min(100, normalizedShown.draw))
+                    : Math.max(0, Math.min(100, (shownValues?.draw ?? 0) * 100))
                   : 0;
-                const awayPercent = Math.max(0, Math.min(100, (shownValues?.away ?? 0) * 100));
+                const awayPercent =
+                  probabilityMode === "percent" && normalizedShown
+                    ? Math.max(0, Math.min(100, normalizedShown.away))
+                    : Math.max(0, Math.min(100, (shownValues?.away ?? 0) * 100));
                 const ninetyUseDecimal = shouldUseDecimalPrecision([
                   ninetyValues?.home,
                   ninetyValues?.draw,
@@ -523,51 +636,79 @@ export function WorldCupMatchesPageClient({
                   fullTimeValues?.home,
                   fullTimeValues?.away,
                 ]);
-                const ninetyHomeLabel = formatProbabilityLabel(
+                const ninetyHomeLabelRaw = formatProbabilityLabel(
                   ninetyValues?.home ?? null,
                   probabilityMode,
                   ninetyUseDecimal
                 );
-                const ninetyDrawLabel = formatProbabilityLabel(
+                const ninetyDrawLabelRaw = formatProbabilityLabel(
                   ninetyValues?.draw ?? null,
                   probabilityMode,
                   ninetyUseDecimal
                 );
-                const ninetyAwayLabel = formatProbabilityLabel(
+                const ninetyAwayLabelRaw = formatProbabilityLabel(
                   ninetyValues?.away ?? null,
                   probabilityMode,
                   ninetyUseDecimal
                 );
-                const fullTimeHomeLabel = formatProbabilityLabel(
+                const fullTimeHomeLabelRaw = formatProbabilityLabel(
                   fullTimeValues?.home ?? null,
                   probabilityMode,
                   fullTimeUseDecimal
                 );
-                const fullTimeAwayLabel = formatProbabilityLabel(
+                const fullTimeAwayLabelRaw = formatProbabilityLabel(
                   fullTimeValues?.away ?? null,
                   probabilityMode,
                   fullTimeUseDecimal
                 );
-                const ninetyHomePercent = Math.max(
-                  0,
-                  Math.min(100, (ninetyValues?.home ?? 0) * 100)
-                );
-                const ninetyDrawPercent = Math.max(
-                  0,
-                  Math.min(100, (ninetyValues?.draw ?? 0) * 100)
-                );
-                const ninetyAwayPercent = Math.max(
-                  0,
-                  Math.min(100, (ninetyValues?.away ?? 0) * 100)
-                );
-                const fullTimeHomePercent = Math.max(
-                  0,
-                  Math.min(100, (fullTimeValues?.home ?? 0) * 100)
-                );
-                const fullTimeAwayPercent = Math.max(
-                  0,
-                  Math.min(100, (fullTimeValues?.away ?? 0) * 100)
-                );
+                const normalizedNinety = probabilityMode === "percent"
+                  ? normalizeProbabilitySegments({
+                      home: parseProbabilityLabel(ninetyHomeLabelRaw),
+                      draw: parseProbabilityLabel(ninetyDrawLabelRaw),
+                      away: parseProbabilityLabel(ninetyAwayLabelRaw),
+                    })
+                  : null;
+                const normalizedFullTime = probabilityMode === "percent"
+                  ? normalizeTwoSegments({
+                      home: parseProbabilityLabel(fullTimeHomeLabelRaw),
+                      away: parseProbabilityLabel(fullTimeAwayLabelRaw),
+                    })
+                  : null;
+                const ninetyHomeLabel =
+                  probabilityMode === "percent" && normalizedNinety
+                    ? formatNormalizedPercent(normalizedNinety.home)
+                    : ninetyHomeLabelRaw;
+                const ninetyDrawLabel =
+                  probabilityMode === "percent" && normalizedNinety
+                    ? formatNormalizedPercent(normalizedNinety.draw)
+                    : ninetyDrawLabelRaw;
+                const ninetyAwayLabel =
+                  probabilityMode === "percent" && normalizedNinety
+                    ? formatNormalizedPercent(normalizedNinety.away)
+                    : ninetyAwayLabelRaw;
+                const fullTimeHomeLabel =
+                  probabilityMode === "percent" && normalizedFullTime
+                    ? formatNormalizedPercent(normalizedFullTime.home)
+                    : fullTimeHomeLabelRaw;
+                const fullTimeAwayLabel =
+                  probabilityMode === "percent" && normalizedFullTime
+                    ? formatNormalizedPercent(normalizedFullTime.away)
+                    : fullTimeAwayLabelRaw;
+                const ninetyHomePercent = probabilityMode === "percent" && normalizedNinety
+                  ? Math.max(0, Math.min(100, normalizedNinety.home))
+                  : Math.max(0, Math.min(100, (ninetyValues?.home ?? 0) * 100));
+                const ninetyDrawPercent = probabilityMode === "percent" && normalizedNinety
+                  ? Math.max(0, Math.min(100, normalizedNinety.draw))
+                  : Math.max(0, Math.min(100, (ninetyValues?.draw ?? 0) * 100));
+                const ninetyAwayPercent = probabilityMode === "percent" && normalizedNinety
+                  ? Math.max(0, Math.min(100, normalizedNinety.away))
+                  : Math.max(0, Math.min(100, (ninetyValues?.away ?? 0) * 100));
+                const fullTimeHomePercent = probabilityMode === "percent" && normalizedFullTime
+                  ? Math.max(0, Math.min(100, normalizedFullTime.home))
+                  : Math.max(0, Math.min(100, (fullTimeValues?.home ?? 0) * 100));
+                const fullTimeAwayPercent = probabilityMode === "percent" && normalizedFullTime
+                  ? Math.max(0, Math.min(100, normalizedFullTime.away))
+                  : Math.max(0, Math.min(100, (fullTimeValues?.away ?? 0) * 100));
                 const scoreMatrix = resolveMatchScoreMatrix({
                   probabilities: winProbabilities,
                   homeTeam: match.home,

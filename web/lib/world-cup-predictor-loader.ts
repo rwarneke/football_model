@@ -15,13 +15,6 @@ const KNOCKOUT_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_knockout_matches.
 const ROUND_OF_32_FILE = `${REFERENCE_DIR}/world_cup_2026_round_of_32_combinations.csv`;
 const WIN_PROBABILITIES_FILE = "/model_output/win_probabilities.json";
 const QUALIFIERS_FILE = `${REFERENCE_DIR}/world_cup_2026_remaining_qualifiers.csv`;
-const NAME_MAP_FILES = [
-  `${REFERENCE_DIR}/fifa_member_to_canonical_name_map.csv`,
-  `${REFERENCE_DIR}/kaggle_team_to_canonical_name_map.csv`,
-];
-
-let nameMapCache: Map<string, string> | null = null;
-let nameMapInFlight: Promise<Map<string, string>> | null = null;
 
 async function readCsv(
   filePath: string,
@@ -42,41 +35,11 @@ async function readCsv(
   return { headers, rows };
 }
 
-async function buildNameMap(fetchTextFn: (path: string) => Promise<string>) {
-  if (nameMapCache) {
-    return nameMapCache;
-  }
-  if (nameMapInFlight) {
-    return nameMapInFlight;
-  }
-  const promise = (async () => {
-    const map = new Map<string, string>();
-    for (const filePath of NAME_MAP_FILES) {
-      const { rows } = await readCsv(filePath, fetchTextFn);
-      for (const row of rows) {
-        const original = row.original_name?.trim();
-        const replacement = row.replacement_name?.trim();
-        if (original && replacement) {
-          map.set(original, replacement);
-        }
-      }
-    }
-    nameMapCache = map;
-    return map;
-  })();
-  nameMapInFlight = promise;
-  try {
-    return await promise;
-  } finally {
-    nameMapInFlight = null;
-  }
-}
-
 function isSlotPlaceholder(name: string) {
   return /\bwinner$/i.test(name.trim());
 }
 
-function normalizeName(raw: string, nameMap: Map<string, string>): string {
+function normalizeName(raw: string): string {
   const trimmed = raw?.trim() ?? "";
   if (!trimmed || trimmed.toLowerCase() === "nan") {
     return "";
@@ -84,7 +47,7 @@ function normalizeName(raw: string, nameMap: Map<string, string>): string {
   if (isSlotPlaceholder(trimmed)) {
     return trimmed;
   }
-  return nameMap.get(trimmed) ?? trimmed;
+  return trimmed;
 }
 
 function resolveFlagPath(team: string) {
@@ -99,8 +62,6 @@ export async function loadWorldCupPredictorDataWithFetchers(
   fetchTextFn: (path: string) => Promise<string>,
   fetchJsonFn: (path: string) => Promise<unknown>
 ): Promise<WorldCupPredictorData> {
-  const nameMap = await buildNameMap(fetchTextFn);
-
   const groupRows = (await readCsv(GROUPS_FILE, fetchTextFn)).rows;
   const groupsMap = new Map<string, string[]>();
   for (const row of groupRows) {
@@ -108,7 +69,7 @@ export async function loadWorldCupPredictorDataWithFetchers(
     if (!group) {
       continue;
     }
-    const team = normalizeName(row.team ?? "", nameMap);
+    const team = normalizeName(row.team ?? "");
     if (!groupsMap.has(group)) {
       groupsMap.set(group, []);
     }
@@ -128,8 +89,8 @@ export async function loadWorldCupPredictorDataWithFetchers(
       id: Number(row.match_id),
       date: row.date,
       group: row.group?.trim() ?? "",
-      homeTeam: normalizeName(row.home_team ?? "", nameMap),
-      awayTeam: normalizeName(row.away_team ?? "", nameMap),
+      homeTeam: normalizeName(row.home_team ?? ""),
+      awayTeam: normalizeName(row.away_team ?? ""),
       stadium: row.stadium?.trim() ?? "",
       city: row.city?.trim() ?? "",
       country: row.country?.trim() ?? "",
@@ -175,8 +136,8 @@ export async function loadWorldCupPredictorDataWithFetchers(
     stage: row.stage?.trim() ?? "",
     path: row.path?.trim() ?? "",
     round: row.round?.trim() ?? "",
-    homeTeam: normalizeName(row.home_team ?? "", nameMap),
-    awayTeam: normalizeName(row.away_team ?? "", nameMap),
+    homeTeam: normalizeName(row.home_team ?? ""),
+    awayTeam: normalizeName(row.away_team ?? ""),
     homeSource: row.home_source?.trim() ?? "",
     awaySource: row.away_source?.trim() ?? "",
     winnerSlot: row.winner_slot?.trim() ?? "",
