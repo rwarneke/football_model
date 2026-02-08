@@ -154,7 +154,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
           return teamA.localeCompare(teamB);
         },
         cell: ({ row }) => (
-          <span className="block max-w-[7rem] sm:max-w-[14rem] overflow-hidden text-ellipsis whitespace-nowrap text-xs sm:text-sm font-medium text-slate-900">
+          <span className="block w-full truncate text-xs sm:text-sm font-medium text-slate-900">
             {row.original.team}
           </span>
         ),
@@ -238,7 +238,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-max min-w-full table-auto text-sm [--rating-col-width:clamp(6ch,9vw,14ch)] sm:[--rating-col-width:clamp(7ch,9vw,16ch)] [--rank-col-width:2.5rem] sm:[--rank-col-width:3rem] [--flag-col-width:2rem] sm:[--flag-col-width:3rem] [--team-col-min:8rem] sm:[--team-col-min:12rem]">
+        <table className="w-max min-w-full table-auto text-sm [--rating-col-width:clamp(6ch,9vw,14ch)] sm:[--rating-col-width:clamp(7ch,9vw,16ch)] [--rank-col-width:2.5rem] sm:[--rank-col-width:3rem] [--flag-col-width:2rem] sm:[--flag-col-width:3rem] [--team-col-width:8rem] sm:[--team-col-width:12rem] md:[--team-col-width:14rem] lg:[--team-col-width:16rem]">
           <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
@@ -263,7 +263,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : header.id === "flag"
                         ? "text-left w-[var(--flag-col-width)] min-w-[var(--flag-col-width)] pl-0.5 pr-1 sm:pl-1 sm:pr-2"
                         : header.id === "team"
-                        ? "text-left min-w-[var(--team-col-min)]"
+                        ? "text-left w-[var(--team-col-width)] min-w-[var(--team-col-width)] max-w-[var(--team-col-width)]"
                         : "text-right"
                     } px-1 sm:px-2 py-1.5 sm:py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
                       header.id === "rank"
@@ -322,7 +322,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
                         : cell.column.id === "flag"
                         ? "text-left w-[var(--flag-col-width)] min-w-[var(--flag-col-width)] pl-0.5 pr-1.5 sm:pl-1 sm:pr-2.5 overflow-hidden"
                         : cell.column.id === "team"
-                        ? "text-left min-w-[var(--team-col-min)] pl-0.5 sm:pl-1"
+                        ? "text-left w-[var(--team-col-width)] min-w-[var(--team-col-width)] max-w-[var(--team-col-width)] pl-0.5 sm:pl-1"
                         : "text-right"
                     } ${
                       cell.column.id === "rank"
