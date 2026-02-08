@@ -719,7 +719,11 @@ export function WorldCupMatchesPageClient({
                 const scoreGrid = scoreMatrix ? buildScoreGrid(scoreMatrix) : null;
 
                 return (
-                  <div key={`${match.id}-${match.home}-${match.away}`} className="min-w-0">
+                  <div
+                    key={`${match.id}-${match.home}-${match.away}`}
+                    id={`match-${match.id}`}
+                    className="min-w-0 scroll-mt-24"
+                  >
                     <div className="h-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
                       <div className="space-y-1">
                         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">

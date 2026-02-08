@@ -27,7 +27,7 @@ export default async function WorldCupMatchesPage() {
             FIFA WORLD CUP 2026
           </p>
           <h1 className="text-3xl font-semibold text-ebony md:text-4xl">
-            All Matches
+            Match Predictions
           </h1>
           <div className="flex items-center gap-4 text-sm text-ink-400">
             <span>Updated {lastUpdated}</span>
