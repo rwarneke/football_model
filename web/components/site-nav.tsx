@@ -44,7 +44,7 @@ const navGroups: NavGroup[] = [
     label: "FIFA World Cup 2026",
     icon: Trophy,
     children: [
-      { label: "Upcoming matches", href: "/world-cup-2026/matches", icon: List },
+      { label: "Match predictions", href: "/world-cup-2026/matches", icon: List },
       { label: "Progression chances", href: "/world-cup-2026/probabilities", icon: Percent },
       { label: "Tournament predictor", href: "/world-cup-2026/predictor", icon: Shuffle },
     ],
