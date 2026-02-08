@@ -67,12 +67,12 @@ export default function RootLayout({
             <span className="relative top-[2px]">TheBackPost</span>
           </Link>
         </div>
-        <div className="app-scroll h-[100svh] overflow-y-auto">
-          <div className="flex min-h-[100svh]">
-            <aside className="relative z-[80] w-0 shrink-0 lg:z-[80] lg:sticky lg:top-0 lg:h-screen lg:w-auto lg:border-r lg:border-slate-200 lg:bg-white">
-              <SiteNav />
-            </aside>
-            <div className="flex-1 min-w-0 pt-12">{children}</div>
+        <div className="flex min-h-[100svh]">
+          <aside className="relative z-[80] w-0 shrink-0 lg:z-[80] lg:sticky lg:top-0 lg:h-screen lg:w-auto lg:border-r lg:border-slate-200 lg:bg-white">
+            <SiteNav />
+          </aside>
+          <div className="app-scroll h-[100svh] flex-1 min-w-0 overflow-y-auto pt-12">
+            {children}
           </div>
         </div>
       </body>
