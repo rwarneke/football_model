@@ -96,7 +96,7 @@ export default async function HomePage() {
             <div className="flex flex-col gap-4">
               <h2 className="text-lg font-semibold">International football team ratings</h2>
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-                <div className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.25rem)] sm:grid-cols-[3rem_2rem_1fr_repeat(3,4rem)] bg-slate-50 pl-1.5 sm:pl-3 pr-0 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.25rem)] lg:grid-cols-[3rem_2rem_1fr_repeat(3,4rem)] bg-slate-50 pl-1.5 lg:pl-3 pr-0 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   <span>#</span>
                   <span />
                   <span>Team</span>
@@ -108,7 +108,7 @@ export default async function HomePage() {
                   {topRatings.map((row, index) => (
                     <div
                       key={`${row.team}-${row.year}`}
-                      className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.25rem)] sm:grid-cols-[3rem_2rem_1fr_repeat(3,4rem)] items-stretch pl-1.5 sm:pl-3 pr-0 text-xs text-slate-700"
+                      className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.25rem)] lg:grid-cols-[3rem_2rem_1fr_repeat(3,4rem)] items-stretch pl-1.5 lg:pl-3 pr-0 text-xs text-slate-700"
                     >
                       <div className="flex items-center py-1.5 font-mono tabular-nums text-slate-500">
                         {index + 1}
@@ -167,7 +167,7 @@ export default async function HomePage() {
             <div className="flex flex-col gap-4">
               <h2 className="text-lg font-semibold">2026 World Cup Progression Chances</h2>
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-                <div className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.5rem)] sm:grid-cols-[3rem_2rem_1fr_repeat(3,4.25rem)] bg-slate-50 pl-1.5 sm:pl-3 pr-0 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.5rem)] lg:grid-cols-[3rem_2rem_1fr_repeat(3,4.25rem)] bg-slate-50 pl-1.5 lg:pl-3 pr-0 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   <span>#</span>
                   <span />
                   <span>Team</span>
@@ -188,7 +188,7 @@ export default async function HomePage() {
                   {topStageRows.map((row, index) => (
                     <div
                       key={`${row.team}-${index}`}
-                      className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.5rem)] sm:grid-cols-[3rem_2rem_1fr_repeat(3,4.25rem)] items-stretch pl-1.5 sm:pl-3 pr-0 text-xs text-slate-700"
+                      className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.5rem)] lg:grid-cols-[3rem_2rem_1fr_repeat(3,4.25rem)] items-stretch pl-1.5 lg:pl-3 pr-0 text-xs text-slate-700"
                     >
                       <div className="flex items-center py-1.5 font-mono tabular-nums text-slate-500">
                         {index + 1}
