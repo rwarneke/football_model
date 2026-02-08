@@ -31,13 +31,13 @@ function ratingBackground(value: number) {
   }
   const clamped = Math.max(0, Math.min(value, 100));
   let alpha = 0;
-  if (clamped <= 50) {
-    alpha = (clamped / 50) * 0.05;
+  if (clamped <= 40) {
+    alpha = (clamped / 40) * 0.1;
   } else if (clamped <= 90) {
-    alpha = 0.05 + ((clamped - 50) / 40) * 0.18;
+    alpha = 0.1 + ((clamped - 40) / 50) * 0.3;
   } else {
     const scaled = (clamped - 90) / 10;
-    alpha = 0.3 + Math.pow(scaled, 1.4) * 0.25;
+    alpha = 0.4 + scaled * 0.3;
   }
   return { backgroundColor: `rgba(${ACCENT_DARK_RGB}, ${alpha})` };
 }
