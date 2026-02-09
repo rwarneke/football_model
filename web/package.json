@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/check-favicon.mjs && next build",
     "generate:favicons": "node scripts/generate-favicons.mjs",
     "start": "next start",
     "lint": "next lint"
