@@ -30,8 +30,8 @@ const percentFormatter = new Intl.NumberFormat("en", {
 const ACCENT_DARK_RGB = "16, 185, 129";
 const ACCENT_LIGHT_RGB = "147, 197, 253";
 const HOST_TEAM_COUNTRIES: Record<string, string> = {
-  USA: "United States",
-  "United States": "United States",
+  USA: "USA",
+  "United States": "USA",
   Canada: "Canada",
   Mexico: "Mexico",
 };

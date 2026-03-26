@@ -72,8 +72,8 @@ const PUBLIC_MODEL_OUTPUT_DIR = path.resolve(__dirname, "..", "public", "model_o
 
 const HOST_TEAMS = new Set(["USA", "Canada", "Mexico"]);
 const HOST_TEAM_COUNTRIES: Record<string, string> = {
-  USA: "United States",
-  "United States": "United States",
+  USA: "USA",
+  "United States": "USA",
   Canada: "Canada",
   Mexico: "Mexico",
 };

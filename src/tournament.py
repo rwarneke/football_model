@@ -316,8 +316,8 @@ class WorldCup2026(Tournament):
         self.host_teams = set(ordered_hosts)
         self.host_teams_ordered = ordered_hosts
         default_host_countries = {
-            "USA": "United States",
-            "United States": "United States",
+            "USA": "USA",
+            "United States": "USA",
             "Canada": "Canada",
             "Mexico": "Mexico",
         }

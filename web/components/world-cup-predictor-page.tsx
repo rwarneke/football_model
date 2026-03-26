@@ -177,8 +177,8 @@ const ConfettiAnimation: React.FC<{ duration: number; champion: string }> = ({ d
 };
 
 const HOST_TEAM_COUNTRIES: Record<string, string> = {
-  USA: "United States",
-  "United States": "United States",
+  USA: "USA",
+  "United States": "USA",
   Canada: "Canada",
   Mexico: "Mexico",
 };
