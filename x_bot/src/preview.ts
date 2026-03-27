@@ -1,7 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildScoreMatrix } from "./score-matrix.js";
-import type { MatchProbabilityValues, WorldCupMatch } from "./types.js";
+import type {
+  MatchProbabilityValues,
+  PreviewBuildOptions,
+  WorldCupMatch,
+} from "./types.js";
 import {
   isPlaceholderLabel,
   loadMatches,
@@ -93,6 +97,10 @@ function formatLocation(match: WorldCupMatch) {
   return match.city || match.country || "TBD";
 }
 
+function formatVenue(match: WorldCupMatch) {
+  return match.stadium?.trim() || "TBD";
+}
+
 function formatScoreBucket(value: number, maxIndex: number) {
   return value === maxIndex ? `${value}+` : `${value}`;
 }
@@ -172,7 +180,11 @@ function postHeaderLine(match: WorldCupMatch, teamToFifaCode: Map<string, string
   return `${homeFlag} ${match.home} vs. ${match.away} ${awayFlag}`;
 }
 
-function buildPostText(match: WorldCupMatch, teamToFifaCode: Map<string, string>) {
+function buildPostText(
+  match: WorldCupMatch,
+  teamToFifaCode: Map<string, string>,
+  options?: PreviewBuildOptions
+) {
   const allowDraw = Boolean(match.group);
   const scoreMatrix = resolveMatchScoreMatrix(match);
   const ninetyValues = resolveMatchProbabilities({
@@ -198,8 +210,13 @@ function buildPostText(match: WorldCupMatch, teamToFifaCode: Map<string, string>
     postHeaderLine(match, teamToFifaCode),
     competitionLabel(match),
     `${formatMatchDate(match.date)} · ${formatLocation(match)}`,
-    "",
   ];
+
+  if (options?.variant) {
+    lines.push(`Venue: ${formatVenue(match)}`);
+  }
+
+  lines.push("");
 
   if (!allowDraw) {
     lines.push("After 90'");
@@ -218,7 +235,11 @@ function buildPostText(match: WorldCupMatch, teamToFifaCode: Map<string, string>
   const likelyScoreline = mostLikelyScoreline(scoreMatrix);
   if (likelyScoreline) {
     lines.push("");
-    lines.push(`Most likely score (after 90'): ${likelyScoreline}`);
+    lines.push(
+      options?.variant
+        ? `Most likely after 90': ${likelyScoreline}`
+        : `Most likely score (after 90'): ${likelyScoreline}`
+    );
   }
 
   return {
@@ -233,7 +254,11 @@ function targetPostTimeForMatch(matchDate: string) {
   return new Date(matchMidnightUtc.getTime() - 48 * 60 * 60 * 1000);
 }
 
-export function loadDueMatchPreviews(now = new Date(), windowHours = 1) {
+export function loadDueMatchPreviews(
+  now = new Date(),
+  windowHours = 1,
+  options?: PreviewBuildOptions
+) {
   const teamToFifaCode = loadTeamToFifaCode();
   return loadMatches()
     .filter((match) => !isPlaceholderLabel(match.home) && !isPlaceholderLabel(match.away))
@@ -243,7 +268,7 @@ export function loadDueMatchPreviews(now = new Date(), windowHours = 1) {
       return deltaMs <= 0 && deltaMs > -windowHours * 60 * 60 * 1000;
     })
     .map((match) => {
-      const generated = buildPostText(match, teamToFifaCode);
+      const generated = buildPostText(match, teamToFifaCode, options);
       const scheduledAt = targetPostTimeForMatch(match.date);
       return {
         match,
@@ -260,6 +285,13 @@ export function loadDueMatchPreviews(now = new Date(), windowHours = 1) {
 }
 
 export function loadPreviewForMatchId(matchId: string) {
+  return loadPreviewForMatchIdWithOptions(matchId);
+}
+
+export function loadPreviewForMatchIdWithOptions(
+  matchId: string,
+  options?: PreviewBuildOptions
+) {
   const teamToFifaCode = loadTeamToFifaCode();
   const match = loadMatches().find((item) => item.id === matchId);
   if (!match) {
@@ -268,7 +300,7 @@ export function loadPreviewForMatchId(matchId: string) {
   if (isPlaceholderLabel(match.home) || isPlaceholderLabel(match.away)) {
     throw new Error(`Match ${matchId} still contains placeholder teams.`);
   }
-  const generated = buildPostText(match, teamToFifaCode);
+  const generated = buildPostText(match, teamToFifaCode, options);
   const scheduledAt = targetPostTimeForMatch(match.date);
   return {
     match,

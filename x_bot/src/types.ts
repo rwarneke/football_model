@@ -29,6 +29,10 @@ export type MatchPreview = {
   dedupeKey: string;
 };
 
+export type PreviewBuildOptions = {
+  variant?: boolean;
+};
+
 export type CompactWinProbabilities = {
   version: number;
   max_goals?: number;
