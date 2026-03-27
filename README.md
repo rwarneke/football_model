@@ -6,10 +6,16 @@ Normal usage:
 
 This runs the full update pipeline end to end:
 * pull and clean recent match results
+* merge any temporary rows from `match_results/manual_results.csv` and `match_results/manual_shootouts.csv`
 * sync `reference_data/` into `web/public/reference_data/`
 * fit the model
 * run 10,000 tournament simulations
 * postprocess the simulation outputs into website data
+
+Manual match overlays are deduped on `date + home_team + away_team`, after team
+names are normalized through the existing canonical-name maps. If the same
+match later appears in the upstream source, the upstream row takes precedence
+automatically, so the match is not double-counted.
 
 ## Manual steps
 
@@ -48,6 +54,28 @@ After refreshing `match_results/results_clean.csv`, run the rest of the pipeline
    * `model_output/simulation_team_probabilities.json`
 
    It also copies those files, plus the ratings CSVs, into `web/public/model_output/`.
+
+## Temporary manual results
+
+If the upstream results source is behind, you can add temporary rows to:
+
+* `match_results/manual_results.csv`
+* `match_results/manual_shootouts.csv`
+
+Use the same columns as the upstream CSVs. These files are merged into the
+refresh pipeline automatically when `match_results.generate.clean_results` runs.
+
+Deduplication uses:
+
+* `date`
+* `home_team`
+* `away_team`
+
+Team names are normalized before deduplication, so variants like
+`United States` and `USA` collapse to the same match key.
+
+If the same match later arrives in the upstream source, the upstream row
+replaces the manual row automatically.
 
 ## Website data summary
 

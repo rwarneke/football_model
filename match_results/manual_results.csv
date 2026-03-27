@@ -1,0 +1,11 @@
+date,home_team,away_team,home_score,away_score,tournament,city,country,neutral
+2026-03-26,New Caledonia,Jamaica,0,1,FIFA World Cup qualification,Guadalajara,Mexico,TRUE
+2026-03-26,Bolivia,Suriname,2,1,FIFA World Cup qualification,Monterrey,Mexico,TRUE
+2026-03-26,Wales,Bosnia and Herzegovina,1,1,FIFA World Cup qualification,Cardiff,Wales,FALSE
+2026-03-26,Italy,Northern Ireland,2,0,FIFA World Cup qualification,Bergamo,Italy,FALSE
+2026-03-26,Ukraine,Sweden,1,3,FIFA World Cup qualification,Valencia,Spain,TRUE
+2026-03-26,Poland,Albania,2,1,FIFA World Cup qualification,Warsaw,Poland,FALSE
+2026-03-26,Slovakia,Kosovo,3,4,FIFA World Cup qualification,Bratislava,Slovakia,FALSE
+2026-03-26,Turkey,Romania,1,0,FIFA World Cup qualification,Istanbul,Turkey,FALSE
+2026-03-26,Czechia,Ireland,2,2,FIFA World Cup qualification,Prague,Czechia,FALSE
+2026-03-26,Denmark,North Macedonia,4,0,FIFA World Cup qualification,Copenhagen,Denmark,FALSE

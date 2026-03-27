@@ -16,9 +16,64 @@ ARGS, _ = parser.parse_known_args()
 ROOT_DIR = Path(__file__).resolve().parents[2]
 MATCH_RESULTS_DIR = ROOT_DIR / "match_results"
 SCORE_RECONCILED_MIN_SHARE = 0.5
+RESULTS_KEY = ["date", "home_team", "away_team"]
+TEAM_NAME_MAP_PATHS = [
+    ROOT_DIR / "reference_data/kaggle_team_to_canonical_name_map.csv",
+    ROOT_DIR / "reference_data/fifa_member_to_canonical_name_map.csv",
+]
 
-results_raw = pd.read_csv(MATCH_RESULTS_DIR / "results.csv", parse_dates=["date"])
-shootouts_raw = pd.read_csv(MATCH_RESULTS_DIR / "shootouts.csv", parse_dates=["date"])
+
+def build_team_name_normalizer() -> dict[str, str]:
+    normalizer: dict[str, str] = {}
+    for mapping_path in TEAM_NAME_MAP_PATHS:
+        mapping = pd.read_csv(mapping_path)
+        for row in mapping.itertuples(index=False):
+            normalizer[str(row.original_name)] = str(row.replacement_name)
+    return normalizer
+
+
+TEAM_NAME_NORMALIZER = build_team_name_normalizer()
+
+
+def normalize_team_name_for_dedupe(team: str) -> str:
+    team = str(team).strip()
+    return TEAM_NAME_NORMALIZER.get(team, team)
+
+
+def load_csv_with_manual_overlay(filename: str, key_columns: list[str]) -> pd.DataFrame:
+    primary_path = MATCH_RESULTS_DIR / filename
+    manual_path = MATCH_RESULTS_DIR / f"manual_{filename}"
+
+    primary = pd.read_csv(primary_path, parse_dates=["date"])
+    if not manual_path.exists():
+        return primary
+
+    manual = pd.read_csv(manual_path, parse_dates=["date"])
+    if manual.empty:
+        return primary
+
+    primary = primary.copy()
+    manual = manual.copy()
+    primary["_source_priority"] = 1
+    manual["_source_priority"] = 0
+
+    for df in (primary, manual):
+        df["_home_team_key"] = df["home_team"].map(normalize_team_name_for_dedupe)
+        df["_away_team_key"] = df["away_team"].map(normalize_team_name_for_dedupe)
+
+    combined = pd.concat([manual, primary], ignore_index=True, sort=False)
+    combined = combined.sort_values(
+        by=["date", "_home_team_key", "_away_team_key", "_source_priority"],
+        ascending=[True, True, True, False],
+        kind="mergesort",
+    )
+    combined = combined.drop_duplicates(
+        subset=["date", "_home_team_key", "_away_team_key"], keep="first"
+    )
+    return combined.drop(columns=["_source_priority", "_home_team_key", "_away_team_key"])
+
+results_raw = load_csv_with_manual_overlay("results.csv", RESULTS_KEY)
+shootouts_raw = load_csv_with_manual_overlay("shootouts.csv", RESULTS_KEY)
 
 results_merged = pd.merge(
     results_raw,
