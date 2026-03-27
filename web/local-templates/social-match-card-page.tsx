@@ -28,7 +28,10 @@ export default async function SocialMatchCardPage({
 
   return (
     <main className="m-0 flex items-start justify-start bg-white p-0">
-      <div id="social-card-shot" className="inline-block overflow-hidden rounded-[16px] bg-white p-[2px]">
+      <div
+        id="social-card-shot"
+        className="inline-block overflow-hidden rounded-[16px] bg-white p-[2px]"
+      >
         <SocialMatchCard match={match} winProbabilities={winProbabilities} />
       </div>
     </main>

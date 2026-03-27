@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/check-favicon.mjs && next build",
+    "build:pages": "npx @cloudflare/next-on-pages@1",
+    "enable-local-social-route": "node scripts/enable-local-social-route.mjs",
+    "disable-local-social-route": "node scripts/disable-local-social-route.mjs",
     "generate:favicons": "node scripts/generate-favicons.mjs",
     "start": "next start",
     "lint": "next lint"
