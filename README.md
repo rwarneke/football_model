@@ -70,3 +70,13 @@ Run:
 This writes:
 * `model_output/web_simulation_results.csv`
 * `web/public/model_output/web_simulation_results.csv`
+
+## X Bot
+
+Automated match-preview posting lives in [x_bot/README.md](/Users/rowanwarneke/Desktop/chris%20gay/x_bot/README.md).
+
+It:
+* picks matches due for posting `48 hours before 00:00 UTC` on the match date
+* builds preview text from the same public files the site uses
+* renders a preview-card image
+* can post to X with attached media or run in dry-run mode

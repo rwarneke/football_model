@@ -1,0 +1,19 @@
+{
+  "name": "world-cup-x-bot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dry-run": "tsx src/cli.ts --dry-run",
+    "post": "tsx src/cli.ts --post"
+  },
+  "dependencies": {
+    "i18n-iso-countries": "^7.14.0",
+    "puppeteer-core": "^24.40.0",
+    "twitter-api-v2": "^1.23.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
