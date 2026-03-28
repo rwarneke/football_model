@@ -259,10 +259,10 @@ function formatPercent(value: number | null | undefined, forceDecimal = false) {
     return "--";
   }
   const percent = value * 100;
-  if (percent > 0 && percent < 0.1) {
+  if (percent < 0.1) {
     return "<0.1%";
   }
-  if (percent > 99.9 && percent < 100) {
+  if (percent > 99.9) {
     return ">99.9%";
   }
   if (forceDecimal || percent < 0.5 || percent >= 99.5) {
@@ -328,10 +328,10 @@ function formatNormalizedPercent(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "--";
   }
-  if (value > 0 && value < 0.1) {
+  if (value < 0.1) {
     return "<0.1%";
   }
-  if (value > 99.9 && value < 100) {
+  if (value > 99.9) {
     return ">99.9%";
   }
   if (value !== Math.round(value)) {

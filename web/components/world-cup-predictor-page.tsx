@@ -376,15 +376,14 @@ function formatProbability(value: number | null | undefined, forceDecimal = fals
     return undefined;
   }
   const percent = value * 100;
-  // Always use 1dp if forced, or if value is very small or very large
+  if (percent < 0.1) {
+    return "<0.1%";
+  }
+  if (percent > 99.9) {
+    return ">99.9%";
+  }
   if (forceDecimal || percent < 0.5 || percent >= 99.5) {
-    // If value would round to 0.0, display "<0.1"
-    if (percent > 0 && percent < 0.05) {
-      return "<0.1%";
-    }
-    const rounded = Number(percent.toFixed(1));
-    const capped = Math.min(rounded, 99.9);
-    return `${capped.toFixed(1)}%`;
+    return `${percent.toFixed(1)}%`;
   }
   return `${Math.round(percent)}%`;
 }
@@ -414,11 +413,12 @@ function parseProbabilityLabel(label?: string | null) {
 }
 
 function formatSegmentDisplay(value: number): string {
-  // If value is very small (from "<0.1%" parsing), display as "<0.1"
-  if (value > 0 && value < 0.1) {
+  if (value < 0.1) {
     return "<0.1";
   }
-  // If value has decimal part, display with 1dp
+  if (value > 99.9) {
+    return ">99.9";
+  }
   if (value !== Math.round(value)) {
     return value.toFixed(1);
   }

@@ -174,6 +174,68 @@ function resolveMatchScoreMatrix(match: WorldCupMatch) {
   return transposed;
 }
 
+function normalizeScoreMatrix(matrix: number[][]) {
+  let total = 0;
+  for (const row of matrix) {
+    for (const value of row) {
+      total += Number(value ?? 0);
+    }
+  }
+  if (total <= 0) {
+    return matrix.map((row) => row.map(() => 0));
+  }
+  return matrix.map((row) => row.map((value) => Number(value ?? 0) / total));
+}
+
+function buildMarginRow(matrix: number[][] | null) {
+  if (!matrix || matrix.length === 0) {
+    return null;
+  }
+  const normalized = normalizeScoreMatrix(matrix);
+  const buckets = {
+    home3: 0,
+    home2: 0,
+    home1: 0,
+    draw: 0,
+    away1: 0,
+    away2: 0,
+    away3: 0,
+  };
+
+  for (let homeGoals = 0; homeGoals < normalized.length; homeGoals += 1) {
+    const row = normalized[homeGoals] ?? [];
+    for (let awayGoals = 0; awayGoals < row.length; awayGoals += 1) {
+      const value = Number(row[awayGoals] ?? 0);
+      const diff = homeGoals - awayGoals;
+      if (diff >= 3) {
+        buckets.home3 += value;
+      } else if (diff === 2) {
+        buckets.home2 += value;
+      } else if (diff === 1) {
+        buckets.home1 += value;
+      } else if (diff === 0) {
+        buckets.draw += value;
+      } else if (diff === -1) {
+        buckets.away1 += value;
+      } else if (diff === -2) {
+        buckets.away2 += value;
+      } else if (diff <= -3) {
+        buckets.away3 += value;
+      }
+    }
+  }
+
+  return [
+    { label: "3+", value: buckets.home3 },
+    { label: "2", value: buckets.home2 },
+    { label: "1", value: buckets.home1 },
+    { label: "0", value: buckets.draw },
+    { label: "1", value: buckets.away1 },
+    { label: "2", value: buckets.away2 },
+    { label: "3+", value: buckets.away3 },
+  ];
+}
+
 function postHeaderLine(match: WorldCupMatch, teamToFifaCode: Map<string, string>) {
   const homeFlag = teamToFlagEmoji(match.home, teamToFifaCode);
   const awayFlag = teamToFlagEmoji(match.away, teamToFifaCode);
@@ -187,6 +249,7 @@ function buildPostText(
 ) {
   const allowDraw = Boolean(match.group);
   const scoreMatrix = resolveMatchScoreMatrix(match);
+  const marginRow = buildMarginRow(scoreMatrix);
   const ninetyValues = resolveMatchProbabilities({
     homeTeam: match.home,
     awayTeam: match.away,
@@ -230,6 +293,13 @@ function buildPostText(
     lines.push("Full Time");
     lines.push(`${match.home} ${formatPercent(qualifyValues?.home)}`);
     lines.push(`${match.away} ${formatPercent(qualifyValues?.away)}`);
+  }
+
+  if (marginRow) {
+    lines.push("");
+    lines.push("Margin");
+    lines.push(marginRow.map((cell) => cell.label).join(" "));
+    lines.push(marginRow.map((cell) => formatPercent(cell.value)).join(" "));
   }
 
   const likelyScoreline = mostLikelyScoreline(scoreMatrix);

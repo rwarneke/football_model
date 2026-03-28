@@ -313,6 +313,52 @@ function buildScoreGrid(matrix: number[][]) {
   return values;
 }
 
+function buildMarginRow(matrix: number[][]) {
+  const normalized = normalizeScoreMatrix(matrix);
+  const buckets = {
+    home3: 0,
+    home2: 0,
+    home1: 0,
+    draw: 0,
+    away1: 0,
+    away2: 0,
+    away3: 0,
+  };
+
+  for (let homeGoals = 0; homeGoals < normalized.length; homeGoals += 1) {
+    const row = normalized[homeGoals] ?? [];
+    for (let awayGoals = 0; awayGoals < row.length; awayGoals += 1) {
+      const value = Number(row[awayGoals] ?? 0);
+      const diff = homeGoals - awayGoals;
+      if (diff >= 3) {
+        buckets.home3 += value;
+      } else if (diff === 2) {
+        buckets.home2 += value;
+      } else if (diff === 1) {
+        buckets.home1 += value;
+      } else if (diff === 0) {
+        buckets.draw += value;
+      } else if (diff === -1) {
+        buckets.away1 += value;
+      } else if (diff === -2) {
+        buckets.away2 += value;
+      } else if (diff <= -3) {
+        buckets.away3 += value;
+      }
+    }
+  }
+
+  return [
+    { label: "3+", value: buckets.home3 },
+    { label: "2", value: buckets.home2 },
+    { label: "1", value: buckets.home1 },
+    { label: "0", value: buckets.draw },
+    { label: "1", value: buckets.away1 },
+    { label: "2", value: buckets.away2 },
+    { label: "3+", value: buckets.away3 },
+  ];
+}
+
 function scoreMatrixHighlight(value: number) {
   if (!Number.isFinite(value)) {
     return undefined;
@@ -342,10 +388,10 @@ function formatPercent(value: number | null | undefined, forceDecimal = false) {
     return "--";
   }
   const percent = value * 100;
-  if (percent > 0 && percent < 0.1) {
+  if (percent < 0.1) {
     return "<0.1%";
   }
-  if (percent > 99.9 && percent < 100) {
+  if (percent > 99.9) {
     return ">99.9%";
   }
   if (forceDecimal || percent < 0.5 || percent >= 99.5) {
@@ -411,10 +457,10 @@ function formatNormalizedPercent(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "--";
   }
-  if (value > 0 && value < 0.1) {
+  if (value < 0.1) {
     return "<0.1%";
   }
-  if (value > 99.9 && value < 100) {
+  if (value > 99.9) {
     return ">99.9%";
   }
   if (value !== Math.round(value)) {
@@ -750,6 +796,7 @@ export function WorldCupMatchesPageClient({
                   neutralOverride: match.neutral ?? null,
                 });
                 const scoreGrid = scoreMatrix ? buildScoreGrid(scoreMatrix) : null;
+                const marginRow = scoreMatrix ? buildMarginRow(scoreMatrix) : null;
 
                 return (
                   <div
@@ -876,6 +923,31 @@ export function WorldCupMatchesPageClient({
                           </div>
                         </div>
                       )}
+                      {marginRow ? (
+                        <div className="mt-3">
+                          <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                            Margin
+                          </div>
+                          <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                            {marginRow.map((cell, index) => (
+                              <div key={`margin-${cell.label}-${index}`} className="contents">
+                                <div className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                                  {cell.label}
+                                </div>
+                              </div>
+                            ))}
+                            {marginRow.map((cell, index) => (
+                              <div
+                                key={`margin-value-${cell.label}-${index}`}
+                                className="bg-white px-1 py-1 text-center tabular-nums"
+                                style={scoreMatrixHighlight(cell.value)}
+                              >
+                                {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                       {scoreGrid ? (
                         <div className="mt-3">
                           <div className="text-[10px] uppercase tracking-wide text-slate-500">
