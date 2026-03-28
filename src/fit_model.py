@@ -298,6 +298,10 @@ def main():
 
     with open("model_output/win_probabilities.json", "w") as f:
         json.dump(payload, f, separators=(",", ":"))
+    with open("model_output/win_probabilities.json", "rb") as f_in, gzip.open(
+        "model_output/win_probabilities.json.gz", "wb", compresslevel=9
+    ) as f_out:
+        shutil.copyfileobj(f_in, f_out)
 
     os.makedirs(PUBLIC_MODEL_OUTPUT_DIR, exist_ok=True)
     for filename in (

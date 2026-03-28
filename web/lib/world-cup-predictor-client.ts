@@ -1,4 +1,5 @@
 import type { WorldCupPredictorData } from "@/lib/world-cup-predictor-types";
+import { fetchJsonWithGzipFallback } from "@/lib/fetch-json-gzip-client";
 import { loadWorldCupPredictorDataWithFetchers } from "@/lib/world-cup-predictor-loader";
 
 const textCache = new Map<string, string>();
@@ -42,11 +43,10 @@ async function fetchJson(filePath: string) {
     return inflight;
   }
   const promise = (async () => {
-    const res = await fetch(filePath);
-    if (!res.ok) {
+    const data = await fetchJsonWithGzipFallback(filePath);
+    if (!data) {
       return null;
     }
-    const data = await res.json();
     jsonCache.set(filePath, data);
     return data;
   })();

@@ -119,14 +119,21 @@ export function RatingsTable({ data }: RatingsTableProps) {
         ),
       },
       {
-        id: "flag",
-        header: "",
-        accessorFn: (row) => row.flagPath ?? "",
-        enableSorting: false,
-        meta: { minWidthCh: 2.5, isFlag: true, width: "2rem" },
+        id: "team",
+        header: () => (
+          <span className="block pl-[calc(1.25rem+0.5rem)] sm:pl-[calc(1.5rem+0.625rem)]">
+            Team
+          </span>
+        ),
+        accessorFn: (row) => row.team,
+        sortingFn: (a, b, id) => {
+          const teamA = String(a.getValue(id) ?? "").toLowerCase();
+          const teamB = String(b.getValue(id) ?? "").toLowerCase();
+          return teamA.localeCompare(teamB);
+        },
         cell: ({ row }) => (
-          <div className="flex pl-0.5 sm:pl-1 w-full">
-            <div className="relative h-3.5 w-5 sm:h-4 sm:w-6 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+          <div className="flex w-full items-center gap-2 sm:gap-2.5">
+            <div className="relative h-3.5 w-5 shrink-0 overflow-hidden rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)] sm:h-4 sm:w-6">
               {row.original.flagPath ? (
                 <Image
                   src={row.original.flagPath}
@@ -136,27 +143,15 @@ export function RatingsTable({ data }: RatingsTableProps) {
                   sizes="24px"
                 />
               ) : (
-                <span className="flex h-full w-full items-center justify-center text-[8px] sm:text-[9px] font-semibold uppercase text-slate-500">
+                <span className="flex h-full w-full items-center justify-center text-[8px] font-semibold uppercase text-slate-500 sm:text-[9px]">
                   {teamInitials(row.original.team)}
                 </span>
               )}
             </div>
+            <span className="block min-w-0 truncate text-xs font-medium text-slate-900 sm:text-sm">
+              {row.original.team}
+            </span>
           </div>
-        ),
-      },
-      {
-        id: "team",
-        header: "Team",
-        accessorFn: (row) => row.team,
-        sortingFn: (a, b, id) => {
-          const teamA = String(a.getValue(id) ?? "").toLowerCase();
-          const teamB = String(b.getValue(id) ?? "").toLowerCase();
-          return teamA.localeCompare(teamB);
-        },
-        cell: ({ row }) => (
-          <span className="block w-full truncate text-xs sm:text-sm font-medium text-slate-900">
-            {row.original.team}
-          </span>
         ),
       },
       {
@@ -238,7 +233,14 @@ export function RatingsTable({ data }: RatingsTableProps) {
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-max min-w-full table-auto text-sm [--rating-col-width:clamp(6ch,9vw,14ch)] sm:[--rating-col-width:clamp(7ch,9vw,16ch)] [--rank-col-width:2.5rem] sm:[--rank-col-width:3rem] [--flag-col-width:2rem] sm:[--flag-col-width:3rem] [--team-col-width:8rem] sm:[--team-col-width:12rem] md:[--team-col-width:14rem] lg:[--team-col-width:16rem]">
+        <table className="w-max min-w-full table-fixed text-sm [--rating-col-width:clamp(4.75ch,6vw,7.25ch)] sm:[--rating-col-width:clamp(5ch,5vw,7.75ch)] [--rank-col-width:2.5rem] sm:[--rank-col-width:3rem] [--team-col-width:10.5rem] sm:[--team-col-width:14rem] md:[--team-col-width:16rem] lg:[--team-col-width:18rem]">
+          <colgroup>
+            <col style={{ width: "var(--rank-col-width)" }} />
+            <col style={{ width: "var(--team-col-width)" }} />
+            <col style={{ width: "var(--rating-col-width)" }} />
+            <col style={{ width: "var(--rating-col-width)" }} />
+            <col style={{ width: "var(--rating-col-width)" }} />
+          </colgroup>
           <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
@@ -260,18 +262,14 @@ export function RatingsTable({ data }: RatingsTableProps) {
                     } ${
                       header.id === "rank"
                         ? "text-right w-[var(--rank-col-width)] min-w-[var(--rank-col-width)] pr-2 sm:pr-3"
-                        : header.id === "flag"
-                        ? "text-left w-[var(--flag-col-width)] min-w-[var(--flag-col-width)] pl-0.5 pr-1 sm:pl-1 sm:pr-2"
                         : header.id === "team"
                         ? "text-left w-[var(--team-col-width)] min-w-[var(--team-col-width)] max-w-[var(--team-col-width)]"
                         : "text-right"
                     } px-1 sm:px-2 py-1.5 sm:py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-slate-600 ${
                       header.id === "rank"
                         ? "sticky left-0 z-10 bg-slate-200 rounded-tl-xl pr-2 sm:pr-3"
-                        : header.id === "flag"
-                        ? "sticky left-[var(--rank-col-width)] z-10 bg-slate-200"
                         : header.id === "team"
-                        ? "pl-0.5 sm:pl-1"
+                        ? "pl-0 sm:pl-0"
                         : ""
                     } ${isLastHeader ? "rounded-tr-xl" : ""}`}
                     onClick={
@@ -319,16 +317,12 @@ export function RatingsTable({ data }: RatingsTableProps) {
                     className={`px-1 sm:px-2 py-1.5 sm:py-2.5 ${
                       cell.column.id === "rank"
                         ? "text-right w-[var(--rank-col-width)] min-w-[var(--rank-col-width)] pr-2 sm:pr-3"
-                        : cell.column.id === "flag"
-                        ? "text-left w-[var(--flag-col-width)] min-w-[var(--flag-col-width)] pl-0.5 pr-1.5 sm:pl-1 sm:pr-2.5 overflow-hidden"
                         : cell.column.id === "team"
                         ? "text-left w-[var(--team-col-width)] min-w-[var(--team-col-width)] max-w-[var(--team-col-width)] pl-0.5 sm:pl-1"
                         : "text-right"
                     } ${
                       cell.column.id === "rank"
                         ? "sticky left-0 z-10 bg-white"
-                        : cell.column.id === "flag"
-                        ? "sticky left-[var(--rank-col-width)] z-10 bg-white"
                         : ""
                     }`}
                     style={{

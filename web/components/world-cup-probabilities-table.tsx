@@ -83,11 +83,11 @@ function formatDecimalOdds(value: number) {
     return "";
   }
   if (value <= 0) {
-    return ">$1000";
+    return ">1000";
   }
   const odds = 1 / value;
   if (odds > 1000) {
-    return ">$1000";
+    return ">1000";
   }
   let fractionDigits = 0;
   if (odds < 1.0095) {
@@ -97,7 +97,7 @@ function formatDecimalOdds(value: number) {
   } else if (odds < 100) {
     fractionDigits = 1;
   }
-  return `$${odds.toFixed(fractionDigits)}`;
+  return odds.toFixed(fractionDigits);
 }
 
 function formatProbability(

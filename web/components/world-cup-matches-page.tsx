@@ -342,10 +342,13 @@ function formatPercent(value: number | null | undefined, forceDecimal = false) {
     return "--";
   }
   const percent = value * 100;
+  if (percent > 0 && percent < 0.1) {
+    return "<0.1%";
+  }
+  if (percent > 99.9 && percent < 100) {
+    return ">99.9%";
+  }
   if (forceDecimal || percent < 0.5 || percent >= 99.5) {
-    if (percent > 0 && percent < 0.05) {
-      return "<0.1%";
-    }
     const rounded = Number(percent.toFixed(1));
     const capped = Math.min(rounded, 99.9);
     return `${capped.toFixed(1)}%`;
@@ -362,7 +365,10 @@ function formatDecimalOdds(value: number | null | undefined) {
   }
   const odds = 1 / value;
   if (odds > 1000) {
-    return ">$1000";
+    return ">1000";
+  }
+  if (odds < 1.001) {
+    return "<1.001";
   }
   let fractionDigits = 0;
   if (odds < 1.0095) {
@@ -372,7 +378,7 @@ function formatDecimalOdds(value: number | null | undefined) {
   } else if (odds < 100) {
     fractionDigits = 1;
   }
-  return `$${odds.toFixed(fractionDigits)}`;
+  return odds.toFixed(fractionDigits);
 }
 
 function formatProbabilityLabel(
@@ -407,6 +413,9 @@ function formatNormalizedPercent(value: number | null | undefined) {
   }
   if (value > 0 && value < 0.1) {
     return "<0.1%";
+  }
+  if (value > 99.9 && value < 100) {
+    return ">99.9%";
   }
   if (value !== Math.round(value)) {
     return `${value.toFixed(1)}%`;
@@ -595,9 +604,18 @@ export function WorldCupMatchesPageClient({
                 );
                 const normalizedShown = probabilityMode === "percent" && allowDraw
                   ? normalizeProbabilitySegments({
-                      home: parseProbabilityLabel(homeLabelRaw),
-                      draw: parseProbabilityLabel(drawLabelRaw ?? undefined),
-                      away: parseProbabilityLabel(awayLabelRaw),
+                      home:
+                        shownValues?.home !== null && shownValues?.home !== undefined
+                          ? shownValues.home * 100
+                          : null,
+                      draw:
+                        shownValues?.draw !== null && shownValues?.draw !== undefined
+                          ? shownValues.draw * 100
+                          : null,
+                      away:
+                        shownValues?.away !== null && shownValues?.away !== undefined
+                          ? shownValues.away * 100
+                          : null,
                     })
                   : null;
                 const homeLabel =
@@ -663,15 +681,30 @@ export function WorldCupMatchesPageClient({
                 );
                 const normalizedNinety = probabilityMode === "percent"
                   ? normalizeProbabilitySegments({
-                      home: parseProbabilityLabel(ninetyHomeLabelRaw),
-                      draw: parseProbabilityLabel(ninetyDrawLabelRaw),
-                      away: parseProbabilityLabel(ninetyAwayLabelRaw),
+                      home:
+                        ninetyValues?.home !== null && ninetyValues?.home !== undefined
+                          ? ninetyValues.home * 100
+                          : null,
+                      draw:
+                        ninetyValues?.draw !== null && ninetyValues?.draw !== undefined
+                          ? ninetyValues.draw * 100
+                          : null,
+                      away:
+                        ninetyValues?.away !== null && ninetyValues?.away !== undefined
+                          ? ninetyValues.away * 100
+                          : null,
                     })
                   : null;
                 const normalizedFullTime = probabilityMode === "percent"
                   ? normalizeTwoSegments({
-                      home: parseProbabilityLabel(fullTimeHomeLabelRaw),
-                      away: parseProbabilityLabel(fullTimeAwayLabelRaw),
+                      home:
+                        fullTimeValues?.home !== null && fullTimeValues?.home !== undefined
+                          ? fullTimeValues.home * 100
+                          : null,
+                      away:
+                        fullTimeValues?.away !== null && fullTimeValues?.away !== undefined
+                          ? fullTimeValues.away * 100
+                          : null,
                     })
                   : null;
                 const ninetyHomeLabel =

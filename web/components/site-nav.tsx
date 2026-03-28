@@ -13,6 +13,7 @@ import {
   Shuffle,
   Globe,
   List,
+  Swords,
 } from "lucide-react";
 
 type NavIcon = React.ComponentType<{ className?: string }>;
@@ -38,6 +39,7 @@ const navGroups: NavGroup[] = [
     children: [
       { label: "Current ratings", href: "/current-ratings", icon: ArrowUpDown },
       { label: "Historical ratings", href: "/history", icon: Clock },
+      { label: "Compare teams", href: "/matchup", icon: Swords },
     ],
   },
   {

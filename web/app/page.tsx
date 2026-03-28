@@ -588,6 +588,25 @@ export default async function HomePage() {
               <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_18%,rgba(255,255,255,0)_82%,rgba(255,255,255,0.45)_100%)]" />
             </div>
           </Link>
+          <Link
+            className="group flex flex-col gap-4 rounded-xl bg-white p-5 text-ebony shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex-row sm:flex-wrap sm:gap-0 sm:items-stretch"
+            href="/matchup"
+          >
+            <div className="flex-1 sm:basis-1/2 sm:shrink-0 sm:pr-3">
+              <h2 className="text-lg font-semibold">Compare Teams</h2>
+            </div>
+            <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 sm:basis-1/2 sm:min-w-[240px] sm:flex-1 sm:self-center">
+              <Image
+                src="/img/preview-matchup.png"
+                alt="Preview of arbitrary matchup finder"
+                fill
+                sizes="(min-width: 768px) 18rem, 100vw"
+                className="object-cover object-left-top"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_18%,rgba(255,255,255,0)_82%,rgba(255,255,255,0.45)_100%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_18%,rgba(255,255,255,0)_82%,rgba(255,255,255,0.45)_100%)]" />
+            </div>
+          </Link>
         </section>
       </div>
     </main>
