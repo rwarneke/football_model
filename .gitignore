@@ -2,6 +2,9 @@ venv/
 node_modules/
 *.DS_Store
 *.pyc
+.vercel/
+web/.vercel/
+web/app/social/match-card/[matchId]/page.tsx
 model_output/simulation_runs.jsonl
 model_output/simulation_runs_meta.json
 model_output/ratings_history.csv

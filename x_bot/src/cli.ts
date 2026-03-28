@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadDueMatchPreviews, loadPreviewForMatchId } from "./preview.js";
+import {
+  loadDueMatchPreviews,
+  loadPreviewForMatchId,
+  loadPreviewForMatchIdWithOptions,
+} from "./preview.js";
 import { renderPreviewImage } from "./render.js";
 import { loadCredsFile, postPreview } from "./post.js";
 
@@ -15,6 +19,7 @@ function parseArgs(argv: string[]) {
     post: argv.includes("--post"),
     dryRun: argv.includes("--dry-run") || !argv.includes("--post"),
     force: argv.includes("--force"),
+    variant: argv.includes("--variant"),
     nowIso: nowArg ? nowArg.slice("--now=".length) : null,
     matchId: matchArg ? matchArg.slice("--match-id=".length) : null,
   };
@@ -29,8 +34,12 @@ async function main() {
     throw new Error(`Invalid --now value: ${args.nowIso}`);
   }
   const previews = args.matchId
-    ? [loadPreviewForMatchId(args.matchId)]
-    : loadDueMatchPreviews(now, 1);
+    ? [
+        args.variant
+          ? loadPreviewForMatchIdWithOptions(args.matchId, { variant: true })
+          : loadPreviewForMatchId(args.matchId),
+      ]
+    : loadDueMatchPreviews(now, 1, { variant: args.variant });
 
   if (previews.length === 0) {
     console.log("No due match previews in the current 1-hour window.");
