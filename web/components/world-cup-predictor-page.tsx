@@ -7730,14 +7730,19 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const qualifierPanelId = (path: string) =>
     `qualifier-panel-${path.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   const supergroupMinWidth = 500;
+  const hasQualifiers = data.qualifiers.length > 0;
   const canAutopredictQualifiers = hasUnpredictedQualifiers();
   const canAutopredictGroups = hasUnpredictedGroups();
   const canAutopredictKnockouts = hasUnpredictedKnockouts();
-  const isGroupStageReady = !hasUnpredictedQualifiers();
+  const isGroupStageReady = hasQualifiers ? !hasUnpredictedQualifiers() : true;
   const canAutopredictTournament =
-    canAutopredictQualifiers || canAutopredictGroups || canAutopredictKnockouts;
+    (hasQualifiers && canAutopredictQualifiers) ||
+    canAutopredictGroups ||
+    canAutopredictKnockouts;
   const canResetTournament =
-    hasAnyQualifierPredictions || hasAnyGroupPredictions || hasAnyKnockoutPredictions;
+    (hasQualifiers && hasAnyQualifierPredictions) ||
+    hasAnyGroupPredictions ||
+    hasAnyKnockoutPredictions;
 
   React.useEffect(() => {
     if (isGroupStageReady) {
@@ -7779,6 +7784,8 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           animation: hintPulse 1.6s ease-in-out infinite;
         }
       `}</style>
+      {hasQualifiers ? (
+        <>
       <div className="h-px w-full bg-slate-200/80" />
       <section className="space-y-3 sm:space-y-6">
         <div>
@@ -8040,6 +8047,8 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       </section>
 
       <div className="h-px w-full bg-slate-200/80" />
+        </>
+      ) : null}
 
       <section className="space-y-3 sm:space-y-6">
         <div>

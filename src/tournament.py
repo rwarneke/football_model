@@ -1673,7 +1673,15 @@ class WorldCup2026(Tournament):
 
         remaining = self._load_remaining_qualifiers(model)
         if remaining.empty:
-            raise ValueError("Remaining qualifiers file is empty")
+            if len(qualified) != 48:
+                raise ValueError(
+                    f"Qualified teams file has {len(qualified)} teams but remaining qualifiers is empty"
+                )
+            states = self._init_team_states(
+                model, rng, teams=sorted(set(qualified)), start_day=self.start_day
+            )
+            self.qualification_matches = []
+            return states, qualified, {}
 
         remaining["day"] = remaining["date"].apply(self._date_to_day)
         base_day = min(self.start_day, int(remaining["day"].min()))
