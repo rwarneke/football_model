@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dry-run": "tsx src/cli.ts --dry-run",
-    "post": "tsx src/cli.ts --post"
+    "post": "tsx src/cli.ts --post",
+    "team-previews": "tsx src/team-previews.ts"
   },
   "dependencies": {
     "i18n-iso-countries": "^7.14.0",
