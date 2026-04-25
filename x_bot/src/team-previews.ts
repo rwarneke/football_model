@@ -144,6 +144,11 @@ function slugifyTeam(team: string): string {
     .toLowerCase();
 }
 
+function teamPreviewFileName(record: TeamPreviewRecord) {
+  const rank = String(record.ratings?.worldCupRank ?? 99).padStart(2, "0");
+  return `${rank}-${slugifyTeam(record.team)}.png`;
+}
+
 function flagDataUri(team: string): string | null {
   const fileName = `${team.replace(/ /g, "_")}.png`;
   const filePath = path.join(FLAGS_DIR, fileName);
@@ -699,7 +704,7 @@ function buildHtml(record: TeamPreviewRecord): string {
         padding: 8px 9px;
       }
       .match-probs .prob-win {
-        background: var(--team-accent-soft);
+        background: rgba(16, 185, 129, 0.18);
       }
       .match-probs .prob-loss {
         background: rgba(244, 63, 94, 0.15);
@@ -920,7 +925,7 @@ async function renderTeamPreviews() {
     await page.setViewport({ width: CARD_WIDTH, height: CARD_HEIGHT, deviceScaleFactor: 1 });
     for (const record of records) {
       await page.setContent(buildHtml(record), { waitUntil: "load" });
-      const outputPath = path.join(OUTPUT_DIR, `${slugifyTeam(record.team)}.png`);
+      const outputPath = path.join(OUTPUT_DIR, teamPreviewFileName(record));
       await page.screenshot({
         path: outputPath,
         type: "png",

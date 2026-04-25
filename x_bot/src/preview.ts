@@ -16,7 +16,7 @@ import {
 } from "./data.js";
 
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = path.resolve(MODULE_DIR, "..", "out");
+const OUTPUT_DIR = path.resolve(MODULE_DIR, "..", "out", "match-previews");
 
 function formatPercent(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
