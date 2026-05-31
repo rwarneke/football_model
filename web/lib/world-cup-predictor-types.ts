@@ -67,6 +67,12 @@ export type CompactWinProbabilities = {
 
 export type WinProbabilities = LegacyWinProbabilities | CompactWinProbabilities;
 
+export type TeamStageProbabilities = {
+  stage_probability: Record<string, number>;
+  group_stage_rank_probability: Record<string, number>;
+  [key: string]: Record<string, number>;
+};
+
 export type WorldCupPredictorData = {
   groups: GroupDefinition[];
   groupMatches: GroupMatch[];
@@ -75,4 +81,5 @@ export type WorldCupPredictorData = {
   qualifiers: QualifierMatch[];
   flags: Record<string, string | null>;
   winProbabilities: WinProbabilities;
+  simulationTeamProbabilities: Record<string, TeamStageProbabilities>;
 };

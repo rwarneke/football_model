@@ -19,6 +19,7 @@ from src.model import Model, MAX_GOALS
 from src.tournament import WorldCup2026
 
 FRIENDLY_LOSS_WEIGHT = 0.2
+FRIENDLY_QUALITY_SCALE = 1.0
 
 
 def get_results(team, second_team=None, res=None, start_date=None, end_date=None):
@@ -43,7 +44,11 @@ def calc_loss(res, friendly_loss_weight=FRIENDLY_LOSS_WEIGHT):
 
 
 def main():
-    results = pd.read_csv("match_results/results_clean.csv", parse_dates=["date"])
+    results = pd.read_csv(
+        "match_results/results_clean.csv",
+        parse_dates=["date"],
+        low_memory=False,
+    )
     results["year"] = results["date"].apply(lambda x: x.year)
     all_teams = pd.read_csv("reference_data/team_universe.csv")
     current_teams = all_teams.query("category != 'past_team'").team.tolist()
@@ -73,7 +78,7 @@ def main():
         results["tournament"] == "Friendly", 0, results["importance_class"]
     )
 
-    model = Model()
+    model = Model(friendly_quality_scale=FRIENDLY_QUALITY_SCALE)
     total_matches = int(len(results))
     progress_every = max(1, total_matches // 20)
 
@@ -265,12 +270,19 @@ def main():
             return 0.0
         return float(f"{float(value):.{sig}g}")
 
-    def extract_entry(t1, t2, is_neutral):
-        output = model.predict_match(t1, t2, requires_result=True, is_neutral=is_neutral)
+    def extract_entry(t1, t2, is_neutral, is_friendly):
+        output = model.predict_match(
+            t1,
+            t2,
+            requires_result=True,
+            is_neutral=is_neutral,
+            importance_class=0 if is_friendly else 1,
+        )
         return [
             int(team_ids[t1]),
             int(team_ids[t2]),
             1 if is_neutral else 0,
+            1 if is_friendly else 0,
             round_sig(output.get("nu", 0.0)),
             round_sig(output.get("lam_home", 0.0)),
             round_sig(output.get("lam_away", 0.0)),
@@ -286,11 +298,13 @@ def main():
         for team2 in teams:
             if team1 == team2:
                 continue
-            entries.append(extract_entry(team1, team2, False))
-            entries.append(extract_entry(team1, team2, True))
+            entries.append(extract_entry(team1, team2, False, False))
+            entries.append(extract_entry(team1, team2, True, False))
+            entries.append(extract_entry(team1, team2, False, True))
+            entries.append(extract_entry(team1, team2, True, True))
 
     payload = {
-        "version": 2,
+        "version": 3,
         "max_goals": int(MAX_GOALS),
         "teams": teams,
         "entries": entries,

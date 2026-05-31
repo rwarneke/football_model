@@ -10,6 +10,7 @@ import type {
   KnockoutMatch,
   QualifierMatch,
   RoundOf32Combos,
+  TeamStageProbabilities,
   WinProbabilities,
   WinProbabilityEntry,
   WorldCupPredictorData,
@@ -45,6 +46,11 @@ type ResolvedQualifierMatch = QualifierMatch & {
   winner?: string;
 };
 
+type ResolvedGroupMatch = GroupMatch & {
+  homeTeam: string;
+  awayTeam: string;
+};
+
 type ResolvedKnockoutMatch = KnockoutMatch & {
   homeResolved: string;
   awayResolved: string;
@@ -73,8 +79,9 @@ const ConfettiParticle: React.FC<{
   delay: number;
   duration: number;
   color: string;
-}> = ({ delay, duration, color }) => {
-  const angle = React.useRef(Math.random() * 360);
+  funny?: boolean;
+}> = ({ delay, duration, color, funny = false }) => {
+  const angle = React.useRef(funny ? 45 + Math.random() * 90 : Math.random() * 360);
   const distance = React.useRef(200 + Math.random() * 300);
   const rotation = React.useRef(Math.random() * 720 - 360);
   const size = React.useRef(8 + Math.random() * 6);
@@ -82,7 +89,9 @@ const ConfettiParticle: React.FC<{
 
   const x = Math.cos((angle.current * Math.PI) / 180) * distance.current;
   const y = Math.sin((angle.current * Math.PI) / 180) * distance.current;
-  const finalRotation = rotation.current;
+  const dropletOrientation = angle.current - 90;
+  const startRotation = funny ? dropletOrientation : 0;
+  const finalRotation = funny ? dropletOrientation : rotation.current;
 
   // Create unique animation ID for this particle
   const animationId = React.useRef(`confetti-${Math.random().toString(36).substr(2, 9)}`);
@@ -102,7 +111,7 @@ const ConfettiParticle: React.FC<{
       @keyframes ${animationId.current} {
         0% {
           opacity: 1;
-          transform: translate(-50%, -50%) translate(0, 0) rotate(0deg);
+          transform: translate(-50%, -50%) translate(0, 0) rotate(${startRotation}deg);
         }
         100% {
           opacity: 0;
@@ -117,7 +126,7 @@ const ConfettiParticle: React.FC<{
         document.head.removeChild(el);
       }
     };
-  }, [x, y, finalRotation]);
+  }, [x, y, startRotation, finalRotation]);
 
   return (
     <div
@@ -125,10 +134,17 @@ const ConfettiParticle: React.FC<{
       style={{
         left: '50%',
         top: '50%',
-        width: `${size.current}px`,
-        height: `${size.current}px`,
+        width: funny ? `${Math.max(6, size.current * 0.72)}px` : `${size.current}px`,
+        height: funny ? `${Math.max(12, size.current * 1.8)}px` : `${size.current}px`,
         backgroundColor: color,
-        borderRadius: isCircle.current ? '50%' : '0%',
+        borderRadius: funny
+          ? '58% 58% 68% 68% / 14% 14% 88% 88%'
+          : isCircle.current
+            ? '50%'
+            : '0%',
+        clipPath: funny
+          ? 'polygon(50% 0%, 61% 14%, 69% 28%, 77% 45%, 82% 63%, 80% 79%, 70% 91%, 58% 98%, 50% 100%, 42% 98%, 30% 91%, 20% 79%, 18% 63%, 23% 45%, 31% 28%, 39% 14%)'
+          : undefined,
         animation: `${animationId.current} ${duration}ms ease-out ${delay}ms forwards`,
         opacity: 1,
       }}
@@ -137,7 +153,11 @@ const ConfettiParticle: React.FC<{
 };
 
 // Confetti animation component - renders particles relative to its container
-const ConfettiAnimation: React.FC<{ duration: number; champion: string }> = ({ duration, champion }) => {
+const ConfettiAnimation: React.FC<{ duration: number; champion: string; funny?: boolean }> = ({
+  duration,
+  champion,
+  funny = false,
+}) => {
   const [particles, setParticles] = React.useState<Array<{ id: number; delay: number; color: string }>>([]);
   const flagColors = React.useMemo(() => getTeamFlagColors(champion), [champion]);
 
@@ -170,6 +190,7 @@ const ConfettiAnimation: React.FC<{ duration: number; champion: string }> = ({ d
           delay={particle.delay}
           duration={duration}
           color={particle.color}
+          funny={funny}
         />
       ))}
     </>
@@ -197,6 +218,143 @@ type MatchProbabilityLabels = {
   awayWinProb?: string;
   drawProb?: string | null;
 };
+
+type ScoredWinnerSample = {
+  selection: WinnerSelection;
+  probability: number;
+};
+
+type ScoredScoreSample = {
+  home: number;
+  away: number;
+  probability: number;
+};
+
+type AutopredictSnapshot = {
+  qualifierWinners: Record<string, WinnerSelection>;
+  autoQualifierWinners: Record<string, boolean>;
+  groupScores: Record<string, MatchScore>;
+  autoGroupScores: Record<string, boolean>;
+  knockoutWinners: Record<string, WinnerSelection>;
+  autoKnockoutWinners: Record<string, boolean>;
+  funninessScore: number;
+};
+
+function parseFunnyRuns(value: string | null) {
+  if (!value) {
+    return null;
+  }
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return null;
+  }
+  return parsed;
+}
+
+function funnyWeightForStage(stage: string | undefined) {
+  switch (stage) {
+    case "Round of 32":
+      return 3;
+    case "Round of 16":
+      return 5;
+    case "Quarterfinal":
+      return 10;
+    case "Semifinal":
+      return 20;
+    case "Final":
+      return 50;
+    default:
+      return 1;
+  }
+}
+
+function probabilityPenalty(probability: number, weight = 1) {
+  const clamped = Math.max(probability, Number.MIN_VALUE);
+  return Math.log(clamped) * weight;
+}
+
+type FinalProgressionStage =
+  | "Group stage"
+  | "Round of 32"
+  | "Round of 16"
+  | "Quarterfinal"
+  | "Semifinal"
+  | "Third place"
+  | "Reach Final"
+  | "Champion";
+
+function exactProgressionProbability(
+  probabilities: TeamStageProbabilities | undefined,
+  stage: FinalProgressionStage
+) {
+  if (!probabilities) {
+    return null;
+  }
+  const p = probabilities.stage_probability ?? {};
+  const reachR32 = Number(p["Reach R32"] ?? 0);
+  const reachR16 = Number(p["Reach R16"] ?? 0);
+  const reachQF = Number(p["Reach QF"] ?? 0);
+  const reachSF = Number(p["Reach SF"] ?? 0);
+  const thirdPlace = Number(p["Third place"] ?? 0);
+  const reachFinal = Number(p["Reach Final"] ?? 0);
+  const champion = Number(p["Champion"] ?? 0);
+  const exactByStage: Record<FinalProgressionStage, number> = {
+    "Group stage": 1 - reachR32,
+    "Round of 32": reachR32 - reachR16,
+    "Round of 16": reachR16 - reachQF,
+    Quarterfinal: reachQF - reachSF,
+    Semifinal: reachSF - reachFinal - thirdPlace,
+    "Third place": thirdPlace,
+    "Reach Final": reachFinal - champion,
+    Champion: champion,
+  };
+  return Math.max(exactByStage[stage] ?? 0, 0);
+}
+
+function scoreResultProbability(
+  scoreMatrix: number[][],
+  sample: Pick<ScoredScoreSample, "home" | "away">
+) {
+  let total = 0;
+  let resultTotal = 0;
+  for (let i = 0; i < scoreMatrix.length; i += 1) {
+    const row = scoreMatrix[i];
+    for (let j = 0; j < row.length; j += 1) {
+      const value = row[j];
+      if (!Number.isFinite(value) || value <= 0) {
+        continue;
+      }
+      total += value;
+      const matchesResult =
+        sample.home === sample.away
+          ? i === j
+          : sample.home > sample.away
+            ? i > j
+            : i < j;
+      if (matchesResult) {
+        resultTotal += value;
+      }
+    }
+  }
+  if (total <= 0 || resultTotal <= 0) {
+    return null;
+  }
+  return resultTotal / total;
+}
+
+function groupScorePenalty(scoreMatrix: number[][], sample: ScoredScoreSample) {
+  const resultProbability = scoreResultProbability(scoreMatrix, sample);
+  if (resultProbability === null) {
+    return probabilityPenalty(sample.probability);
+  }
+  return (
+    probabilityPenalty(resultProbability, 0.8) +
+    probabilityPenalty(sample.probability, 0.2)
+  );
+}
 
 function teamInitials(team: string) {
   const letters = team
@@ -802,7 +960,73 @@ function sampleWinner(values: MatchProbabilityValues | null): WinnerSelection {
   return roll < values.home ? "home" : "away";
 }
 
+function sampleWinnerWithProbability(
+  values: MatchProbabilityValues | null
+): ScoredWinnerSample | null {
+  if (!values || values.home === null || values.away === null) {
+    return null;
+  }
+  const total = values.home + values.away;
+  if (!Number.isFinite(total) || total <= 0) {
+    return null;
+  }
+  const roll = Math.random() * total;
+  if (roll < values.home) {
+    return { selection: "home", probability: values.home / total };
+  }
+  return { selection: "away", probability: values.away / total };
+}
+
+function sampleScoreMatrixWithProbability(
+  scoreMatrix: number[][]
+): ScoredScoreSample | null {
+  let total = 0;
+  for (const row of scoreMatrix) {
+    for (const value of row) {
+      if (Number.isFinite(value) && value > 0) {
+        total += value;
+      }
+    }
+  }
+  if (total <= 0) {
+    return null;
+  }
+  const target = Math.random() * total;
+  let cumulative = 0;
+  for (let i = 0; i < scoreMatrix.length; i += 1) {
+    const row = scoreMatrix[i];
+    for (let j = 0; j < row.length; j += 1) {
+      const value = row[j];
+      if (!Number.isFinite(value) || value <= 0) {
+        continue;
+      }
+      cumulative += value;
+      if (cumulative >= target) {
+        return {
+          home: Math.min(i, 31),
+          away: Math.min(j, 31),
+          probability: value / total,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 const SHARE_VERSION = 1;
+function progressionPlacementMultiplier(stage: FinalProgressionStage) {
+  switch (stage) {
+    case "Champion":
+      return 30;
+    case "Reach Final":
+      return 10;
+    case "Third place":
+    case "Semifinal":
+      return 5;
+    default:
+      return 1;
+  }
+}
 
 class BitWriter {
   private bytes: number[] = [];
@@ -4258,6 +4482,7 @@ export function WorldCupPredictorPage({
 }
 
 function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
+  const [funnyRuns, setFunnyRuns] = React.useState<number | null>(null);
   const [groupScores, setGroupScores] = React.useState<
     Record<string, MatchScore>
   >({});
@@ -4330,10 +4555,35 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const pendingSharedKnockouts = React.useRef<Record<string, WinnerSelection> | null>(
     null
   );
+  let resolvedGroupMatches: ResolvedGroupMatch[] = [];
+  let knockoutState: {
+    winners: Map<number, string>;
+    losers: Map<number, string>;
+    matches: ResolvedKnockoutMatch[];
+  } = {
+    winners: new Map<number, string>(),
+    losers: new Map<number, string>(),
+    matches: [],
+  };
 
   React.useEffect(() => {
     shareStatusRef.current = shareStatus;
   }, [shareStatus]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const updateFunnyRuns = () => {
+      const params = new URLSearchParams(window.location.search);
+      setFunnyRuns(parseFunnyRuns(params.get("funny")));
+    };
+    updateFunnyRuns();
+    window.addEventListener("popstate", updateFunnyRuns);
+    return () => {
+      window.removeEventListener("popstate", updateFunnyRuns);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (shareStatusRef.current !== "idle") {
@@ -5203,6 +5453,1039 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     [computeClearedKnockoutSelections, groupScores]
   );
 
+  const createAutopredictSnapshot = React.useCallback(
+    (): AutopredictSnapshot => ({
+      qualifierWinners: { ...qualifierWinners },
+      autoQualifierWinners: { ...autoQualifierWinners },
+      groupScores: { ...groupScores },
+      autoGroupScores: { ...autoGroupScores },
+      knockoutWinners: { ...knockoutWinners },
+      autoKnockoutWinners: { ...autoKnockoutWinners },
+      funninessScore: 0,
+    }),
+    [
+      autoGroupScores,
+      autoKnockoutWinners,
+      autoQualifierWinners,
+      groupScores,
+      knockoutWinners,
+      qualifierWinners,
+    ]
+  );
+
+  const commitAutopredictSnapshot = React.useCallback((snapshot: AutopredictSnapshot) => {
+    setQualifierWinners(snapshot.qualifierWinners);
+    setAutoQualifierWinners(snapshot.autoQualifierWinners);
+    setGroupScores(snapshot.groupScores);
+    setAutoGroupScores(snapshot.autoGroupScores);
+    setKnockoutWinners(snapshot.knockoutWinners);
+    setAutoKnockoutWinners(snapshot.autoKnockoutWinners);
+  }, []);
+
+  const progressionFunnyPenalty = React.useCallback(
+    (snapshot: AutopredictSnapshot) => {
+      const terminalStages = new Map<string, FinalProgressionStage>();
+      const slotWinnersLocal = resolveQualifierState(
+        data.qualifiers,
+        snapshot.qualifierWinners
+      ).slotWinners;
+      const resolvedGroupsLocal = data.groups.map((group) => ({
+        ...group,
+        teams: group.teams.map((team) => slotWinnersLocal.get(team) ?? team),
+      }));
+      const resolvedGroupMatchesLocal = data.groupMatches.map((match) => ({
+        ...match,
+        homeTeam: slotWinnersLocal.get(match.homeTeam) ?? match.homeTeam,
+        awayTeam: slotWinnersLocal.get(match.awayTeam) ?? match.awayTeam,
+      }));
+      const groupTablesLocal = resolvedGroupsLocal.map((group) => {
+        const matches = groupMatchesFor(group.id, resolvedGroupMatchesLocal);
+        const { table, ranking } = buildGroupTable(group, matches, snapshot.groupScores);
+        return { group, table, ranking };
+      });
+      const groupRankingsLocal: Record<string, string[]> = {};
+      const groupCompletionLocal: Record<string, boolean> = {};
+      for (const entry of groupTablesLocal) {
+        groupRankingsLocal[entry.group.id] = entry.ranking;
+        const matches = groupMatchesFor(entry.group.id, resolvedGroupMatchesLocal);
+        groupCompletionLocal[entry.group.id] = matches.every((match) => {
+          const score = snapshot.groupScores[String(match.id)];
+          return score && score.home !== null && score.away !== null;
+        });
+      }
+      for (const entry of groupTablesLocal) {
+        if (!groupCompletionLocal[entry.group.id]) {
+          continue;
+        }
+        const fourthPlacedTeam = entry.ranking[3];
+        if (isConcreteTeam(fourthPlacedTeam)) {
+          terminalStages.set(fourthPlacedTeam, "Group stage");
+        }
+      }
+      const thirdPlaceEntriesLocal = bestThirdPlace(groupTablesLocal).entries;
+      const thirdPlaceByGroupLocal: Record<string, string> = {};
+      for (const entry of thirdPlaceEntriesLocal) {
+        if (!thirdPlaceByGroupLocal[entry.group]) {
+          thirdPlaceByGroupLocal[entry.group] = entry.team;
+        }
+      }
+      const bestThirdGroupsLocal = thirdPlaceEntriesLocal.slice(0, 8);
+      const qualifiedThirdGroupsLocal = new Set(
+        bestThirdGroupsLocal.map((entry) => entry.group)
+      );
+      const comboKeyLocal = bestThirdGroupsLocal
+        .map((entry) => entry.group)
+        .sort()
+        .join("");
+      const thirdPlaceAssignmentsLocal = comboKeyLocal
+        ? data.roundOf32Combos[comboKeyLocal] ?? null
+        : null;
+      const allGroupMatchesCompleteLocal = resolvedGroupMatchesLocal.every((match) => {
+        const score = snapshot.groupScores[String(match.id)];
+        return score && score.home !== null && score.away !== null;
+      });
+
+      if (allGroupMatchesCompleteLocal) {
+        const qualifiedTeams = new Set<string>();
+        for (const entry of groupTablesLocal) {
+          entry.ranking.slice(0, 2).forEach((team) => qualifiedTeams.add(team));
+        }
+        for (const groupId of qualifiedThirdGroupsLocal) {
+          const team = thirdPlaceByGroupLocal[groupId];
+          if (team) {
+            qualifiedTeams.add(team);
+          }
+        }
+        for (const entry of groupTablesLocal) {
+          for (const team of entry.ranking) {
+            if (
+              isConcreteTeam(team) &&
+              !qualifiedTeams.has(team) &&
+              !terminalStages.has(team)
+            ) {
+              terminalStages.set(team, "Group stage");
+            }
+          }
+        }
+      }
+
+      const winners = new Map<number, string>();
+      const losers = new Map<number, string>();
+      const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
+      for (const match of sorted) {
+        const homeResolved = resolveKnockoutLabel({
+          label: match.homeLabel,
+          opponentLabel: match.awayLabel,
+          groupRankings: groupRankingsLocal,
+          thirdPlaceByGroup: thirdPlaceByGroupLocal,
+          thirdPlaceAssignments: thirdPlaceAssignmentsLocal,
+          knockoutWinners: winners,
+          knockoutLosers: losers,
+          groupCompletion: groupCompletionLocal,
+          allowThirdPlaceResolve: allGroupMatchesCompleteLocal,
+          qualifiedThirdGroups: qualifiedThirdGroupsLocal,
+          matchStageById,
+        });
+        const awayResolved = resolveKnockoutLabel({
+          label: match.awayLabel,
+          opponentLabel: match.homeLabel,
+          groupRankings: groupRankingsLocal,
+          thirdPlaceByGroup: thirdPlaceByGroupLocal,
+          thirdPlaceAssignments: thirdPlaceAssignmentsLocal,
+          knockoutWinners: winners,
+          knockoutLosers: losers,
+          groupCompletion: groupCompletionLocal,
+          allowThirdPlaceResolve: allGroupMatchesCompleteLocal,
+          qualifiedThirdGroups: qualifiedThirdGroupsLocal,
+          matchStageById,
+        });
+        const winner = resolveWinner(
+          match.id,
+          homeResolved,
+          awayResolved,
+          {},
+          false,
+          snapshot.knockoutWinners
+        );
+        if (!winner) {
+          continue;
+        }
+        const loser = winner === homeResolved ? awayResolved : homeResolved;
+        winners.set(match.id, winner);
+        losers.set(match.id, loser);
+        if (!isConcreteTeam(loser) || !isConcreteTeam(winner)) {
+          continue;
+        }
+        switch (match.stage) {
+          case "Round of 32":
+          case "Round of 16":
+          case "Quarterfinal":
+            terminalStages.set(loser, match.stage);
+            break;
+          case "Third place":
+            terminalStages.set(winner, "Third place");
+            terminalStages.set(loser, "Semifinal");
+            break;
+          case "Final":
+            terminalStages.set(loser, "Reach Final");
+            terminalStages.set(winner, "Champion");
+            break;
+          default:
+            break;
+        }
+      }
+
+      let penalty = 0;
+      terminalStages.forEach((stage, team) => {
+        const exactProbability = exactProgressionProbability(
+          data.simulationTeamProbabilities[team],
+          stage
+        );
+        if (exactProbability === null) {
+          return;
+        }
+        penalty += probabilityPenalty(exactProbability, progressionPlacementMultiplier(stage));
+      });
+      return penalty;
+    },
+    [data.groupMatches, data.groups, data.knockoutMatches, data.qualifiers, data.roundOf32Combos, data.simulationTeamProbabilities, matchStageById]
+  );
+
+  const chooseAutopredictSnapshot = React.useCallback(
+    (simulate: () => AutopredictSnapshot | null) => {
+      const attempts = funnyRuns ?? 1;
+      let best: AutopredictSnapshot | null = null;
+      let bestScore = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < attempts; i += 1) {
+        const candidate = simulate();
+        if (!candidate) {
+          continue;
+        }
+        const candidateScore = progressionFunnyPenalty(candidate);
+        if (!best || candidateScore < bestScore) {
+          best = candidate;
+          bestScore = candidateScore;
+        }
+      }
+      return best;
+    },
+    [funnyRuns, progressionFunnyPenalty]
+  );
+
+  const simulateGroupAutopredict = React.useCallback(
+    (targetGroupId: string): AutopredictSnapshot | null => {
+      const matches = groupMatchesFor(targetGroupId, resolvedGroupMatches);
+      if (matches.length === 0) {
+        return null;
+      }
+      const snapshot = createAutopredictSnapshot();
+      const allPredicted = matches.every((match) => {
+        const existing = snapshot.groupScores[String(match.id)];
+        return existing && existing.home !== null && existing.away !== null;
+      });
+      if (allPredicted) {
+        return null;
+      }
+      let changed = false;
+      matches.forEach((match) => {
+        const key = String(match.id);
+        const existing = snapshot.groupScores[key];
+        const hasScore =
+          existing && existing.home !== null && existing.away !== null;
+        if (hasScore) {
+          return;
+        }
+        const matrix = resolveMatchScoreMatrix({
+          probabilities: data.winProbabilities,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          country: match.country,
+        });
+        if (!matrix) {
+          return;
+        }
+        const sample = sampleScoreMatrixWithProbability(matrix);
+        if (!sample) {
+          return;
+        }
+        snapshot.groupScores[key] = { home: sample.home, away: sample.away };
+        snapshot.autoGroupScores[key] = true;
+        snapshot.funninessScore += groupScorePenalty(matrix, sample);
+        changed = true;
+      });
+      if (!changed) {
+        return null;
+      }
+      const cleared = computeClearedKnockoutSelections(
+        snapshot.knockoutWinners,
+        groupScores,
+        snapshot.groupScores
+      );
+      snapshot.knockoutWinners = cleared.nextWinners;
+      cleared.clearedIds.forEach((matchId) => {
+        delete snapshot.autoKnockoutWinners[matchId];
+      });
+      return snapshot;
+    },
+    [
+      computeClearedKnockoutSelections,
+      createAutopredictSnapshot,
+      data.winProbabilities,
+      groupScores,
+      resolvedGroupMatches,
+    ]
+  );
+
+  const simulateSectionGroupsAutopredict = React.useCallback((): AutopredictSnapshot | null => {
+    const snapshot = createAutopredictSnapshot();
+    const allPredicted = resolvedGroupMatches.every((match) => {
+      const score = snapshot.groupScores[String(match.id)];
+      return score && score.home !== null && score.away !== null;
+    });
+    if (allPredicted) {
+      return null;
+    }
+    let changed = false;
+    resolvedGroupMatches.forEach((match) => {
+      const key = String(match.id);
+      const existing = snapshot.groupScores[key];
+      const hasScore =
+        existing && existing.home !== null && existing.away !== null;
+      if (hasScore) {
+        return;
+      }
+      const matrix = resolveMatchScoreMatrix({
+        probabilities: data.winProbabilities,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        country: match.country,
+      });
+      if (!matrix) {
+        return;
+      }
+      const sample = sampleScoreMatrixWithProbability(matrix);
+      if (!sample) {
+        return;
+      }
+      snapshot.groupScores[key] = { home: sample.home, away: sample.away };
+      snapshot.autoGroupScores[key] = true;
+      snapshot.funninessScore += groupScorePenalty(matrix, sample);
+      changed = true;
+    });
+    if (!changed) {
+      return null;
+    }
+    const cleared = computeClearedKnockoutSelections(
+      snapshot.knockoutWinners,
+      groupScores,
+      snapshot.groupScores
+    );
+    snapshot.knockoutWinners = cleared.nextWinners;
+    cleared.clearedIds.forEach((matchId) => {
+      delete snapshot.autoKnockoutWinners[matchId];
+    });
+    return snapshot;
+  }, [
+    computeClearedKnockoutSelections,
+    createAutopredictSnapshot,
+    data.winProbabilities,
+    groupScores,
+    resolvedGroupMatches,
+  ]);
+
+  const simulateQualifierAutopredict = React.useCallback(
+    (path: string): AutopredictSnapshot | null => {
+      const snapshot = createAutopredictSnapshot();
+      const changedMatchIds = new Set<string>();
+      const qualifierStateLocal = resolveQualifierState(
+        data.qualifiers,
+        snapshot.qualifierWinners
+      );
+      const matches = qualifierStateLocal.matches.filter((match) => match.path === path);
+      if (matches.length === 0) {
+        return null;
+      }
+      const allPredicted = matches.every((match) => {
+        const key = String(match.id);
+        return (snapshot.qualifierWinners[key] ?? null) !== null;
+      });
+      if (allPredicted) {
+        return null;
+      }
+      const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
+        const prevSelection = snapshot.qualifierWinners[matchId] ?? null;
+        if (prevSelection === selection) {
+          return false;
+        }
+        const updated = { ...snapshot.qualifierWinners, [matchId]: selection };
+        const cleared = clearDependentSelections(updated, matchId, qualifierDependents);
+        const clearedIds = Object.keys(updated).filter(
+          (id) => updated[id] && cleared[id] === null
+        );
+        snapshot.qualifierWinners = cleared;
+        if (selection) {
+          snapshot.autoQualifierWinners[matchId] = true;
+        }
+        clearedIds.forEach((id) => {
+          delete snapshot.autoQualifierWinners[id];
+          changedMatchIds.add(id);
+        });
+        changedMatchIds.add(matchId);
+        return true;
+      };
+      let iteration = 0;
+      let progress = true;
+      while (progress && iteration < 10) {
+        iteration += 1;
+        progress = false;
+        const qualifierStateIter = resolveQualifierState(
+          data.qualifiers,
+          snapshot.qualifierWinners
+        );
+        qualifierStateIter.matches
+          .filter((match) => match.path === path)
+          .forEach((match) => {
+            const key = String(match.id);
+            const isManual =
+              snapshot.qualifierWinners[key] && !snapshot.autoQualifierWinners[key];
+            if (isManual || snapshot.qualifierWinners[key]) {
+              return;
+            }
+            if (
+              isPlaceholderLabel(match.homeResolved) ||
+              isPlaceholderLabel(match.awayResolved)
+            ) {
+              return;
+            }
+            const values = resolveMatchProbabilities({
+              probabilities: data.winProbabilities,
+              homeTeam: match.homeResolved,
+              awayTeam: match.awayResolved,
+              allowDraw: false,
+              neutralOverride: match.neutral,
+            });
+            const sample = sampleWinnerWithProbability(values);
+            if (!sample) {
+              return;
+            }
+            if (applyQualifierSelection(key, sample.selection)) {
+              snapshot.funninessScore += probabilityPenalty(sample.probability);
+              progress = true;
+            }
+          });
+      }
+      if (changedMatchIds.size === 0) {
+        return null;
+      }
+      const affectedSlots = new Set<string>();
+      changedMatchIds.forEach((matchId) => {
+        const slots = qualifierSlotsByMatch.get(matchId);
+        slots?.forEach((slot) => affectedSlots.add(slot));
+      });
+      const affectedGroups = new Set<string>();
+      affectedSlots.forEach((slot) => {
+        groupIdsBySlot.get(slot)?.forEach((groupId) => affectedGroups.add(groupId));
+      });
+      affectedSlots.forEach((slot) => {
+        groupMatchIdsByTeam.get(slot)?.forEach((matchId) => {
+          delete snapshot.groupScores[matchId];
+          delete snapshot.autoGroupScores[matchId];
+        });
+      });
+      if (affectedGroups.size > 0) {
+        affectedGroups.forEach((groupId) => {
+          knockoutRootsByGroup.get(groupId)?.forEach((matchId) => {
+            snapshot.knockoutWinners[matchId] = null;
+            snapshot.knockoutWinners = clearDependentSelections(
+              snapshot.knockoutWinners,
+              matchId,
+              knockoutDependents
+            );
+          });
+        });
+        Object.keys(knockoutWinners)
+          .filter(
+            (matchId) =>
+              knockoutWinners[matchId] && snapshot.knockoutWinners[matchId] === null
+          )
+          .forEach((matchId) => {
+            delete snapshot.autoKnockoutWinners[matchId];
+          });
+      }
+      return snapshot;
+    },
+    [
+      clearDependentSelections,
+      createAutopredictSnapshot,
+      data.qualifiers,
+      data.winProbabilities,
+      groupIdsBySlot,
+      groupMatchIdsByTeam,
+      knockoutDependents,
+      knockoutRootsByGroup,
+      knockoutWinners,
+      qualifierDependents,
+      qualifierSlotsByMatch,
+    ]
+  );
+
+  const simulateSectionQualifiersAutopredict = React.useCallback(
+    (): AutopredictSnapshot | null => {
+      const snapshot = createAutopredictSnapshot();
+      const qualifierStateLocal = resolveQualifierState(
+        data.qualifiers,
+        snapshot.qualifierWinners
+      );
+      const allPredicted = qualifierStateLocal.matches.every((match) => {
+        if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+          return true;
+        }
+        const key = String(match.id);
+        return (snapshot.qualifierWinners[key] ?? null) !== null;
+      });
+      if (allPredicted) {
+        return null;
+      }
+      const changedQualifiers = new Set<string>();
+      const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
+        const prevSelection = snapshot.qualifierWinners[matchId] ?? null;
+        if (prevSelection === selection) {
+          return { changed: false, clearedIds: [] as string[] };
+        }
+        const updated = { ...snapshot.qualifierWinners, [matchId]: selection };
+        const cleared = clearDependentSelections(updated, matchId, qualifierDependents);
+        const clearedIds = Object.keys(updated).filter(
+          (id) => updated[id] && cleared[id] === null
+        );
+        snapshot.qualifierWinners = cleared;
+        if (selection) {
+          snapshot.autoQualifierWinners[matchId] = true;
+        }
+        clearedIds.forEach((id) => {
+          delete snapshot.autoQualifierWinners[id];
+        });
+        return { changed: true, clearedIds };
+      };
+      let changed = false;
+      let iteration = 0;
+      while (iteration < 10) {
+        iteration += 1;
+        let qualifierProgress = false;
+        const qualifierStateIter = resolveQualifierState(
+          data.qualifiers,
+          snapshot.qualifierWinners
+        );
+        qualifierStateIter.matches.forEach((match) => {
+          const key = String(match.id);
+          const isManual =
+            snapshot.qualifierWinners[key] && !snapshot.autoQualifierWinners[key];
+          const existingSelection = snapshot.qualifierWinners[key] ?? null;
+          if (isManual || existingSelection) {
+            return;
+          }
+          if (
+            isPlaceholderLabel(match.homeResolved) ||
+            isPlaceholderLabel(match.awayResolved)
+          ) {
+            return;
+          }
+          const values = resolveMatchProbabilities({
+            probabilities: data.winProbabilities,
+            homeTeam: match.homeResolved,
+            awayTeam: match.awayResolved,
+            allowDraw: false,
+            neutralOverride: match.neutral,
+          });
+          const sample = sampleWinnerWithProbability(values);
+          if (!sample) {
+            return;
+          }
+          const result = applyQualifierSelection(key, sample.selection);
+          if (result.changed) {
+            snapshot.funninessScore += probabilityPenalty(sample.probability);
+            changed = true;
+            qualifierProgress = true;
+            changedQualifiers.add(key);
+          }
+        });
+        if (!qualifierProgress) {
+          break;
+        }
+      }
+      if (!changed && changedQualifiers.size === 0) {
+        return null;
+      }
+      if (changedQualifiers.size > 0) {
+        const affectedSlots = new Set<string>();
+        changedQualifiers.forEach((matchId) => {
+          qualifierSlotsByMatch.get(matchId)?.forEach((slot) => affectedSlots.add(slot));
+        });
+        const affectedGroups = new Set<string>();
+        affectedSlots.forEach((slot) => {
+          groupIdsBySlot.get(slot)?.forEach((groupId) => affectedGroups.add(groupId));
+        });
+        affectedSlots.forEach((slot) => {
+          groupMatchIdsByTeam.get(slot)?.forEach((matchId) => {
+            delete snapshot.groupScores[matchId];
+            delete snapshot.autoGroupScores[matchId];
+          });
+        });
+        if (affectedGroups.size > 0) {
+          affectedGroups.forEach((groupId) => {
+            knockoutRootsByGroup.get(groupId)?.forEach((matchId) => {
+              snapshot.knockoutWinners[matchId] = null;
+              snapshot.knockoutWinners = clearDependentSelections(
+                snapshot.knockoutWinners,
+                matchId,
+                knockoutDependents
+              );
+            });
+          });
+          Object.keys(knockoutWinners)
+            .filter(
+              (matchId) =>
+                knockoutWinners[matchId] && snapshot.knockoutWinners[matchId] === null
+            )
+            .forEach((matchId) => {
+              delete snapshot.autoKnockoutWinners[matchId];
+            });
+        }
+      }
+      return snapshot;
+    },
+    [
+      clearDependentSelections,
+      createAutopredictSnapshot,
+      data.qualifiers,
+      data.winProbabilities,
+      groupIdsBySlot,
+      groupMatchIdsByTeam,
+      knockoutDependents,
+      knockoutRootsByGroup,
+      knockoutWinners,
+      qualifierDependents,
+      qualifierSlotsByMatch,
+    ]
+  );
+
+  const simulateSectionKnockoutsAutopredict = React.useCallback(
+    (): AutopredictSnapshot | null => {
+      const snapshot = createAutopredictSnapshot();
+      const allPredicted = knockoutState.matches.every((match) => {
+        if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+          return true;
+        }
+        const key = String(match.id);
+        return (snapshot.knockoutWinners[key] ?? null) !== null;
+      });
+      if (allPredicted) {
+        return null;
+      }
+      const applyKnockoutSelection = (matchId: string, selection: WinnerSelection) => {
+        const prevSelection = snapshot.knockoutWinners[matchId] ?? null;
+        if (prevSelection === selection) {
+          return false;
+        }
+        const updated = { ...snapshot.knockoutWinners, [matchId]: selection };
+        const cleared = clearDependentSelections(updated, matchId, knockoutDependents);
+        const clearedIds = Object.keys(updated).filter(
+          (id) => updated[id] && cleared[id] === null
+        );
+        snapshot.knockoutWinners = cleared;
+        if (selection) {
+          snapshot.autoKnockoutWinners[matchId] = true;
+        }
+        clearedIds.forEach((id) => {
+          delete snapshot.autoKnockoutWinners[id];
+        });
+        return true;
+      };
+      const context = computeKnockoutContext(groupScores, slotWinners);
+      const winners = new Map<number, string>();
+      const losers = new Map<number, string>();
+      const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
+      let changed = false;
+      sorted.forEach((match) => {
+        const key = String(match.id);
+        const homeResolved = resolveKnockoutLabel({
+          label: match.homeLabel,
+          opponentLabel: match.awayLabel,
+          groupRankings: context.groupRankings,
+          thirdPlaceByGroup: context.thirdPlaceByGroup,
+          thirdPlaceAssignments: context.thirdPlaceAssignments,
+          knockoutWinners: winners,
+          knockoutLosers: losers,
+          groupCompletion: context.groupCompletion,
+          allowThirdPlaceResolve: context.allGroupMatchesComplete,
+          qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
+          matchStageById,
+        });
+        const awayResolved = resolveKnockoutLabel({
+          label: match.awayLabel,
+          opponentLabel: match.homeLabel,
+          groupRankings: context.groupRankings,
+          thirdPlaceByGroup: context.thirdPlaceByGroup,
+          thirdPlaceAssignments: context.thirdPlaceAssignments,
+          knockoutWinners: winners,
+          knockoutLosers: losers,
+          groupCompletion: context.groupCompletion,
+          allowThirdPlaceResolve: context.allGroupMatchesComplete,
+          qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
+          matchStageById,
+        });
+        const existingSelection = snapshot.knockoutWinners[key] ?? null;
+        const isManual = existingSelection && !snapshot.autoKnockoutWinners[key];
+        if (!isManual && !existingSelection) {
+          if (!isPlaceholderLabel(homeResolved) && !isPlaceholderLabel(awayResolved)) {
+            const values = resolveMatchProbabilities({
+              probabilities: data.winProbabilities,
+              homeTeam: homeResolved,
+              awayTeam: awayResolved,
+              allowDraw: false,
+              country: match.country,
+            });
+            const sample = sampleWinnerWithProbability(values);
+            if (sample && applyKnockoutSelection(key, sample.selection)) {
+              snapshot.funninessScore += probabilityPenalty(
+                sample.probability,
+                funnyWeightForStage(matchStageById[match.id])
+              );
+              changed = true;
+            }
+          }
+        }
+        const winner = resolveWinner(
+          match.id,
+          homeResolved,
+          awayResolved,
+          {},
+          false,
+          snapshot.knockoutWinners
+        );
+        if (winner) {
+          winners.set(match.id, winner);
+          losers.set(match.id, winner === homeResolved ? awayResolved : homeResolved);
+        }
+      });
+      return changed ? snapshot : null;
+    },
+    [
+      clearDependentSelections,
+      computeKnockoutContext,
+      createAutopredictSnapshot,
+      data.knockoutMatches,
+      data.winProbabilities,
+      groupScores,
+      knockoutDependents,
+      knockoutState.matches,
+      matchStageById,
+      slotWinners,
+    ]
+  );
+
+  const simulateTournamentAutopredict = React.useCallback((): AutopredictSnapshot | null => {
+    const snapshot = createAutopredictSnapshot();
+    const allQualifiersPredicted = qualifierState.matches.every((match) => {
+      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+        return true;
+      }
+      const key = String(match.id);
+      return (snapshot.qualifierWinners[key] ?? null) !== null;
+    });
+    const allGroupsPredicted = resolvedGroupMatches.every((match) => {
+      const score = snapshot.groupScores[String(match.id)];
+      return score && score.home !== null && score.away !== null;
+    });
+    const allKnockoutsPredicted = knockoutState.matches.every((match) => {
+      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
+        return true;
+      }
+      const key = String(match.id);
+      return (snapshot.knockoutWinners[key] ?? null) !== null;
+    });
+    if (allQualifiersPredicted && allGroupsPredicted && allKnockoutsPredicted) {
+      return null;
+    }
+    const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
+      const prevSelection = snapshot.qualifierWinners[matchId] ?? null;
+      if (prevSelection === selection) {
+        return { changed: false, clearedIds: [] as string[] };
+      }
+      const updated = { ...snapshot.qualifierWinners, [matchId]: selection };
+      const cleared = clearDependentSelections(updated, matchId, qualifierDependents);
+      const clearedIds = Object.keys(updated).filter(
+        (id) => updated[id] && cleared[id] === null
+      );
+      snapshot.qualifierWinners = cleared;
+      if (selection) {
+        snapshot.autoQualifierWinners[matchId] = true;
+      }
+      clearedIds.forEach((id) => {
+        delete snapshot.autoQualifierWinners[id];
+      });
+      return { changed: true, clearedIds };
+    };
+    const applyKnockoutSelection = (matchId: string, selection: WinnerSelection) => {
+      const prevSelection = snapshot.knockoutWinners[matchId] ?? null;
+      if (prevSelection === selection) {
+        return { changed: false, clearedIds: [] as string[] };
+      }
+      const updated = { ...snapshot.knockoutWinners, [matchId]: selection };
+      const cleared = clearDependentSelections(updated, matchId, knockoutDependents);
+      const clearedIds = Object.keys(updated).filter(
+        (id) => updated[id] && cleared[id] === null
+      );
+      snapshot.knockoutWinners = cleared;
+      if (selection) {
+        snapshot.autoKnockoutWinners[matchId] = true;
+      }
+      clearedIds.forEach((id) => {
+        delete snapshot.autoKnockoutWinners[id];
+      });
+      return { changed: true, clearedIds };
+    };
+    let iteration = 0;
+    let changed = true;
+    let anyChanged = false;
+    while (changed && iteration < 10) {
+      iteration += 1;
+      changed = false;
+      const previousSlotWinners = resolveQualifierState(
+        data.qualifiers,
+        snapshot.qualifierWinners
+      ).slotWinners;
+      const previousGroupScores = { ...snapshot.groupScores };
+      let qualifierStateLocal = resolveQualifierState(
+        data.qualifiers,
+        snapshot.qualifierWinners
+      );
+      const changedQualifiers = new Set<string>();
+      let qualifierProgress = true;
+      let qualifierIterations = 0;
+      while (qualifierProgress && qualifierIterations < 10) {
+        qualifierProgress = false;
+        qualifierIterations += 1;
+        qualifierStateLocal = resolveQualifierState(
+          data.qualifiers,
+          snapshot.qualifierWinners
+        );
+        qualifierStateLocal.matches.forEach((match) => {
+          const key = String(match.id);
+          const isManual =
+            snapshot.qualifierWinners[key] && !snapshot.autoQualifierWinners[key];
+          const existingSelection = snapshot.qualifierWinners[key] ?? null;
+          if (isManual || existingSelection) {
+            return;
+          }
+          if (
+            isPlaceholderLabel(match.homeResolved) ||
+            isPlaceholderLabel(match.awayResolved)
+          ) {
+            return;
+          }
+          const values = resolveMatchProbabilities({
+            probabilities: data.winProbabilities,
+            homeTeam: match.homeResolved,
+            awayTeam: match.awayResolved,
+            allowDraw: false,
+            neutralOverride: match.neutral,
+          });
+          const sample = sampleWinnerWithProbability(values);
+          if (!sample) {
+            return;
+          }
+          const result = applyQualifierSelection(key, sample.selection);
+          if (result.changed) {
+            snapshot.funninessScore += probabilityPenalty(sample.probability);
+            changed = true;
+            anyChanged = true;
+            qualifierProgress = true;
+            changedQualifiers.add(key);
+          }
+        });
+      }
+      if (changedQualifiers.size > 0) {
+        const affectedSlots = new Set<string>();
+        changedQualifiers.forEach((matchId) => {
+          qualifierSlotsByMatch.get(matchId)?.forEach((slot) => affectedSlots.add(slot));
+        });
+        const affectedGroups = new Set<string>();
+        affectedSlots.forEach((slot) => {
+          groupIdsBySlot.get(slot)?.forEach((groupId) => affectedGroups.add(groupId));
+        });
+        affectedSlots.forEach((slot) => {
+          groupMatchIdsByTeam.get(slot)?.forEach((matchId) => {
+            delete snapshot.groupScores[matchId];
+            delete snapshot.autoGroupScores[matchId];
+          });
+        });
+        if (affectedGroups.size > 0) {
+          const rootsToClear = new Set<string>();
+          affectedGroups.forEach((groupId) => {
+            knockoutRootsByGroup.get(groupId)?.forEach((matchId) => rootsToClear.add(matchId));
+          });
+          if (rootsToClear.size > 0) {
+            const cleared = clearKnockoutSelectionsByMatchIds(
+              snapshot.knockoutWinners,
+              rootsToClear
+            );
+            snapshot.knockoutWinners = cleared.next;
+            cleared.clearedIds.forEach((matchId) => {
+              delete snapshot.autoKnockoutWinners[matchId];
+            });
+            if (cleared.clearedIds.length > 0) {
+              changed = true;
+            }
+          }
+        }
+        qualifierStateLocal = resolveQualifierState(data.qualifiers, snapshot.qualifierWinners);
+      }
+      const nextSlotWinners = qualifierStateLocal.slotWinners;
+      const resolvedGroupMatchesLocal = data.groupMatches.map((match) => ({
+        ...match,
+        homeTeam: nextSlotWinners.get(match.homeTeam) ?? match.homeTeam,
+        awayTeam: nextSlotWinners.get(match.awayTeam) ?? match.awayTeam,
+      }));
+      let groupScoresChanged = false;
+      resolvedGroupMatchesLocal.forEach((match) => {
+        const key = String(match.id);
+        const existing = snapshot.groupScores[key];
+        const hasScore = existing && existing.home !== null && existing.away !== null;
+        const isManual = hasScore && !snapshot.autoGroupScores[key];
+        if (isManual || hasScore) {
+          return;
+        }
+        const matrix = resolveMatchScoreMatrix({
+          probabilities: data.winProbabilities,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          country: match.country,
+        });
+        if (!matrix) {
+          return;
+        }
+        const sample = sampleScoreMatrixWithProbability(matrix);
+        if (!sample) {
+          return;
+        }
+        snapshot.groupScores[key] = { home: sample.home, away: sample.away };
+        snapshot.autoGroupScores[key] = true;
+        snapshot.funninessScore += groupScorePenalty(matrix, sample);
+        groupScoresChanged = true;
+        anyChanged = true;
+      });
+      if (groupScoresChanged || changedQualifiers.size > 0) {
+        const clearedForGroups = computeClearedKnockoutSelections(
+          snapshot.knockoutWinners,
+          previousGroupScores,
+          snapshot.groupScores,
+          {
+            previousSlotWinners,
+            nextSlotWinners,
+          }
+        );
+        snapshot.knockoutWinners = clearedForGroups.nextWinners;
+        clearedForGroups.clearedIds.forEach((matchId) => {
+          delete snapshot.autoKnockoutWinners[matchId];
+        });
+        if (clearedForGroups.clearedIds.length > 0) {
+          changed = true;
+        }
+      }
+      const nextContext = computeKnockoutContext(snapshot.groupScores, nextSlotWinners);
+      const winners = new Map<number, string>();
+      const losers = new Map<number, string>();
+      const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
+      for (const match of sorted) {
+        const key = String(match.id);
+        const homeResolved = resolveKnockoutLabel({
+          label: match.homeLabel,
+          opponentLabel: match.awayLabel,
+          groupRankings: nextContext.groupRankings,
+          thirdPlaceByGroup: nextContext.thirdPlaceByGroup,
+          thirdPlaceAssignments: nextContext.thirdPlaceAssignments,
+          knockoutWinners: winners,
+          knockoutLosers: losers,
+          groupCompletion: nextContext.groupCompletion,
+          allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
+          qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
+          matchStageById,
+        });
+        const awayResolved = resolveKnockoutLabel({
+          label: match.awayLabel,
+          opponentLabel: match.homeLabel,
+          groupRankings: nextContext.groupRankings,
+          thirdPlaceByGroup: nextContext.thirdPlaceByGroup,
+          thirdPlaceAssignments: nextContext.thirdPlaceAssignments,
+          knockoutWinners: winners,
+          knockoutLosers: losers,
+          groupCompletion: nextContext.groupCompletion,
+          allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
+          qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
+          matchStageById,
+        });
+        const existingSelection = snapshot.knockoutWinners[key] ?? null;
+        const isManual = existingSelection && !snapshot.autoKnockoutWinners[key];
+        if (!isManual && !existingSelection) {
+          if (!isPlaceholderLabel(homeResolved) && !isPlaceholderLabel(awayResolved)) {
+            const values = resolveMatchProbabilities({
+              probabilities: data.winProbabilities,
+              homeTeam: homeResolved,
+              awayTeam: awayResolved,
+              allowDraw: false,
+              country: match.country,
+            });
+            const sample = sampleWinnerWithProbability(values);
+            if (sample) {
+              const result = applyKnockoutSelection(key, sample.selection);
+              if (result.changed) {
+                snapshot.funninessScore += probabilityPenalty(
+                  sample.probability,
+                  funnyWeightForStage(matchStageById[match.id])
+                );
+                changed = true;
+                anyChanged = true;
+              }
+            }
+          }
+        }
+        const winner = resolveWinner(
+          match.id,
+          homeResolved,
+          awayResolved,
+          {},
+          false,
+          snapshot.knockoutWinners
+        );
+        if (winner) {
+          winners.set(match.id, winner);
+          losers.set(match.id, winner === homeResolved ? awayResolved : homeResolved);
+        }
+      }
+    }
+    return anyChanged ? snapshot : null;
+  }, [
+    clearDependentSelections,
+    clearKnockoutSelectionsByMatchIds,
+    computeClearedKnockoutSelections,
+    computeKnockoutContext,
+    createAutopredictSnapshot,
+    data.groupMatches,
+    data.knockoutMatches,
+    data.qualifiers,
+    data.winProbabilities,
+    groupIdsBySlot,
+    groupMatchIdsByTeam,
+    knockoutDependents,
+    knockoutRootsByGroup,
+    knockoutState.matches,
+    matchStageById,
+    qualifierDependents,
+    qualifierSlotsByMatch,
+    qualifierState.matches,
+    resolvedGroupMatches,
+  ]);
+
   const updateGroupScore = React.useCallback(
     (id: string | number, side: "home" | "away", value: number | null) => {
       let changed = false;
@@ -5320,7 +6603,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     return normalized;
   }, [data.groups, data.qualifiers, slotWinners]);
 
-  const resolvedGroupMatches = React.useMemo(() => {
+  resolvedGroupMatches = React.useMemo(() => {
     return data.groupMatches.map((match) => ({
       ...match,
       homeTeam: slotWinners.get(match.homeTeam) ?? match.homeTeam,
@@ -5513,7 +6796,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     []
   );
 
-  const knockoutState = React.useMemo(() => {
+  knockoutState = React.useMemo(() => {
     const winners = new Map<number, string>();
     const losers = new Map<number, string>();
     const resolvedMatches: ResolvedKnockoutMatch[] = [];
@@ -6418,352 +7701,15 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const handleAutopredict = React.useCallback(() => {
     setShowQualifierHint(false);
     setShowGroupHint(false);
-    let nextQualifierWinners = { ...qualifierWinners };
-    let nextAutoQualifierWinners = { ...autoQualifierWinners };
-    let nextGroupScores = { ...groupScores };
-    let nextAutoGroupScores = { ...autoGroupScores };
-    let nextKnockoutWinners = { ...knockoutWinners };
-    let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
-    const allQualifiersPredicted = qualifierState.matches.every((match) => {
-      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
-        return true;
-      }
-      const key = String(match.id);
-      return (qualifierWinners[key] ?? null) !== null;
-    });
-    const allGroupsPredicted = resolvedGroupMatches.every((match) => {
-      const score = groupScores[String(match.id)];
-      return score && score.home !== null && score.away !== null;
-    });
-    const allKnockoutsPredicted = knockoutState.matches.every((match) => {
-      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
-        return true;
-      }
-      const key = String(match.id);
-      return (knockoutWinners[key] ?? null) !== null;
-    });
-    if (allQualifiersPredicted && allGroupsPredicted && allKnockoutsPredicted) {
+    const snapshot = chooseAutopredictSnapshot(simulateTournamentAutopredict);
+    if (!snapshot) {
       return;
     }
-
-    const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
-      const prevSelection = nextQualifierWinners[matchId] ?? null;
-      if (prevSelection === selection) {
-        return { changed: false, clearedIds: [] as string[] };
-      }
-      const updated = { ...nextQualifierWinners, [matchId]: selection };
-      const cleared = clearDependentSelections(updated, matchId, qualifierDependents);
-      const clearedIds = Object.keys(updated).filter(
-        (id) => updated[id] && cleared[id] === null
-      );
-      nextQualifierWinners = cleared;
-      if (selection) {
-        nextAutoQualifierWinners[matchId] = true;
-      }
-      clearedIds.forEach((id) => {
-        delete nextAutoQualifierWinners[id];
-      });
-      return { changed: true, clearedIds };
-    };
-
-    const applyKnockoutSelection = (matchId: string, selection: WinnerSelection) => {
-      const prevSelection = nextKnockoutWinners[matchId] ?? null;
-      if (prevSelection === selection) {
-        return { changed: false, clearedIds: [] as string[] };
-      }
-      const updated = { ...nextKnockoutWinners, [matchId]: selection };
-      const cleared = clearDependentSelections(updated, matchId, knockoutDependents);
-      const clearedIds = Object.keys(updated).filter(
-        (id) => updated[id] && cleared[id] === null
-      );
-      nextKnockoutWinners = cleared;
-      if (selection) {
-        nextAutoKnockoutWinners[matchId] = true;
-      }
-      clearedIds.forEach((id) => {
-        delete nextAutoKnockoutWinners[id];
-      });
-      return { changed: true, clearedIds };
-    };
-
-    const maxIterations = 10;
-    let iteration = 0;
-    let changed = true;
-
-    while (changed && iteration < maxIterations) {
-      iteration += 1;
-      changed = false;
-
-      const previousSlotWinners = resolveQualifierState(
-        data.qualifiers,
-        nextQualifierWinners
-      ).slotWinners;
-      const previousGroupScores = { ...nextGroupScores };
-
-      let qualifierState = resolveQualifierState(
-        data.qualifiers,
-        nextQualifierWinners
-      );
-      const changedQualifiers = new Set<string>();
-      let qualifierProgress = true;
-      let qualifierIterations = 0;
-
-      while (qualifierProgress && qualifierIterations < maxIterations) {
-        qualifierProgress = false;
-        qualifierIterations += 1;
-        qualifierState = resolveQualifierState(
-          data.qualifiers,
-          nextQualifierWinners
-        );
-        qualifierState.matches.forEach((match) => {
-          const key = String(match.id);
-          const isManual =
-            nextQualifierWinners[key] && !nextAutoQualifierWinners[key];
-          const existingSelection = nextQualifierWinners[key] ?? null;
-          if (isManual || existingSelection) {
-            return;
-          }
-          if (
-            isPlaceholderLabel(match.homeResolved) ||
-            isPlaceholderLabel(match.awayResolved)
-          ) {
-            return;
-          }
-          const values = resolveMatchProbabilities({
-            probabilities: data.winProbabilities,
-            homeTeam: match.homeResolved,
-            awayTeam: match.awayResolved,
-            allowDraw: false,
-            neutralOverride: match.neutral,
-          });
-          const selection = sampleWinner(values);
-          if (!selection) {
-            return;
-          }
-          const result = applyQualifierSelection(key, selection);
-          if (result.changed) {
-            changed = true;
-            qualifierProgress = true;
-            changedQualifiers.add(key);
-          }
-        });
-      }
-
-      if (changedQualifiers.size > 0) {
-        const affectedSlots = new Set<string>();
-        changedQualifiers.forEach((matchId) => {
-          const slots = qualifierSlotsByMatch.get(matchId);
-          if (!slots) {
-            return;
-          }
-          slots.forEach((slot) => affectedSlots.add(slot));
-        });
-        const affectedGroups = new Set<string>();
-        affectedSlots.forEach((slot) => {
-          const groups = groupIdsBySlot.get(slot);
-          if (groups) {
-            groups.forEach((groupId) => affectedGroups.add(groupId));
-          }
-        });
-
-        affectedSlots.forEach((slot) => {
-          const matchIds = groupMatchIdsByTeam.get(slot);
-          if (!matchIds) {
-            return;
-          }
-          matchIds.forEach((matchId) => {
-            delete nextGroupScores[matchId];
-            delete nextAutoGroupScores[matchId];
-          });
-        });
-
-        if (affectedGroups.size > 0) {
-          const rootsToClear = new Set<string>();
-          affectedGroups.forEach((groupId) => {
-            const rootMatches = knockoutRootsByGroup.get(groupId);
-            if (rootMatches) {
-              rootMatches.forEach((matchId) => rootsToClear.add(matchId));
-            }
-          });
-          if (rootsToClear.size > 0) {
-            const cleared = clearKnockoutSelectionsByMatchIds(
-              nextKnockoutWinners,
-              rootsToClear
-            );
-            nextKnockoutWinners = cleared.next;
-            cleared.clearedIds.forEach((matchId) => {
-              delete nextAutoKnockoutWinners[matchId];
-            });
-            if (cleared.clearedIds.length > 0) {
-              changed = true;
-            }
-          }
-        }
-
-        qualifierState = resolveQualifierState(data.qualifiers, nextQualifierWinners);
-      }
-
-      const nextSlotWinners = qualifierState.slotWinners;
-      const resolvedGroupMatches = data.groupMatches.map((match) => ({
-        ...match,
-        homeTeam: nextSlotWinners.get(match.homeTeam) ?? match.homeTeam,
-        awayTeam: nextSlotWinners.get(match.awayTeam) ?? match.awayTeam,
-      }));
-
-      let groupScoresChanged = false;
-      resolvedGroupMatches.forEach((match) => {
-        const key = String(match.id);
-        const existing = nextGroupScores[key];
-        const hasScore =
-          existing && existing.home !== null && existing.away !== null;
-        const isManual = hasScore && !nextAutoGroupScores[key];
-        if (isManual || hasScore) {
-          return;
-        }
-        const matrix = resolveMatchScoreMatrix({
-          probabilities: data.winProbabilities,
-          homeTeam: match.homeTeam,
-          awayTeam: match.awayTeam,
-          country: match.country,
-        });
-        if (!matrix) {
-          return;
-        }
-        const sample = sampleScoreMatrix(matrix);
-        if (!sample) {
-          return;
-        }
-        nextGroupScores[key] = { home: sample.home, away: sample.away };
-        nextAutoGroupScores[key] = true;
-        groupScoresChanged = true;
-      });
-
-      if (groupScoresChanged || changedQualifiers.size > 0) {
-        const clearedForGroups = computeClearedKnockoutSelections(
-          nextKnockoutWinners,
-          previousGroupScores,
-          nextGroupScores,
-          {
-            previousSlotWinners,
-            nextSlotWinners,
-          }
-        );
-        nextKnockoutWinners = clearedForGroups.nextWinners;
-        clearedForGroups.clearedIds.forEach((matchId) => {
-          delete nextAutoKnockoutWinners[matchId];
-        });
-        if (clearedForGroups.clearedIds.length > 0) {
-          changed = true;
-        }
-      }
-
-      const nextContext = computeKnockoutContext(
-        nextGroupScores,
-        nextSlotWinners
-      );
-      const winners = new Map<number, string>();
-      const losers = new Map<number, string>();
-      const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
-
-      for (const match of sorted) {
-        const key = String(match.id);
-        const homeResolved = resolveKnockoutLabel({
-          label: match.homeLabel,
-          opponentLabel: match.awayLabel,
-          groupRankings: nextContext.groupRankings,
-          thirdPlaceByGroup: nextContext.thirdPlaceByGroup,
-          thirdPlaceAssignments: nextContext.thirdPlaceAssignments,
-          knockoutWinners: winners,
-          knockoutLosers: losers,
-          groupCompletion: nextContext.groupCompletion,
-          allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
-          qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
-          matchStageById,
-        });
-        const awayResolved = resolveKnockoutLabel({
-          label: match.awayLabel,
-          opponentLabel: match.homeLabel,
-          groupRankings: nextContext.groupRankings,
-          thirdPlaceByGroup: nextContext.thirdPlaceByGroup,
-          thirdPlaceAssignments: nextContext.thirdPlaceAssignments,
-          knockoutWinners: winners,
-          knockoutLosers: losers,
-          groupCompletion: nextContext.groupCompletion,
-          allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
-          qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
-          matchStageById,
-        });
-        const existingSelection = nextKnockoutWinners[key] ?? null;
-        const isManual = existingSelection && !nextAutoKnockoutWinners[key];
-        if (!isManual && !existingSelection) {
-          if (
-            !isPlaceholderLabel(homeResolved) &&
-            !isPlaceholderLabel(awayResolved)
-          ) {
-            const values = resolveMatchProbabilities({
-              probabilities: data.winProbabilities,
-              homeTeam: homeResolved,
-              awayTeam: awayResolved,
-              allowDraw: false,
-              country: match.country,
-            });
-            const selection = sampleWinner(values);
-            if (selection) {
-              const result = applyKnockoutSelection(key, selection);
-              if (result.changed) {
-                changed = true;
-              }
-            }
-          }
-        }
-
-        const winner = resolveWinner(
-          match.id,
-          homeResolved,
-          awayResolved,
-          {},
-          false,
-          nextKnockoutWinners
-        );
-        if (winner) {
-          winners.set(match.id, winner);
-          const loser = winner === homeResolved ? awayResolved : homeResolved;
-          losers.set(match.id, loser);
-        }
-      }
-    }
-
-    setQualifierWinners(nextQualifierWinners);
-    setAutoQualifierWinners(nextAutoQualifierWinners);
-    setGroupScores(nextGroupScores);
-    setAutoGroupScores(nextAutoGroupScores);
-    setKnockoutWinners(nextKnockoutWinners);
-    setAutoKnockoutWinners(nextAutoKnockoutWinners);
+    commitAutopredictSnapshot(snapshot);
   }, [
-    autoGroupScores,
-    autoKnockoutWinners,
-    autoQualifierWinners,
-    clearKnockoutSelectionsByMatchIds,
-    computeClearedKnockoutSelections,
-    computeKnockoutContext,
-    data.groupMatches,
-    data.knockoutMatches,
-    data.qualifiers,
-    data.winProbabilities,
-    groupIdsBySlot,
-    groupMatchIdsByTeam,
-    groupScores,
-    knockoutDependents,
-    knockoutRootsByGroup,
-    knockoutState.matches,
-    knockoutWinners,
-    matchStageById,
-    qualifierDependents,
-    qualifierSlotsByMatch,
-    qualifierState.matches,
-    qualifierWinners,
-    resolvedGroupMatches,
-    slotWinners,
+    chooseAutopredictSnapshot,
+    commitAutopredictSnapshot,
+    simulateTournamentAutopredict,
   ]);
 
   const handleResetAll = React.useCallback(() => {
@@ -6894,62 +7840,13 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const handleGroupAutopredict = React.useCallback(
     (groupId: string) => {
       setShowGroupHint(false);
-      const matches = groupMatchesFor(groupId, resolvedGroupMatches);
-      if (matches.length === 0) {
+      const snapshot = chooseAutopredictSnapshot(() => simulateGroupAutopredict(groupId));
+      if (!snapshot) {
         return;
       }
-      let changed = false;
-      const nextScores = { ...groupScores };
-      const nextAutoScores = { ...autoGroupScores };
-      const allPredicted = matches.every((match) => {
-        const key = String(match.id);
-        const existing = nextScores[key];
-        const hasScore =
-          existing && existing.home !== null && existing.away !== null;
-        return hasScore;
-      });
-      if (allPredicted) {
-        return;
-      }
-      matches.forEach((match) => {
-        const key = String(match.id);
-        const existing = nextScores[key];
-        const hasScore =
-          existing && existing.home !== null && existing.away !== null;
-        if (hasScore) {
-          return;
-        }
-        const matrix = resolveMatchScoreMatrix({
-          probabilities: data.winProbabilities,
-          homeTeam: match.homeTeam,
-          awayTeam: match.awayTeam,
-          country: match.country,
-        });
-        if (!matrix) {
-          return;
-        }
-        const sample = sampleScoreMatrix(matrix);
-        if (!sample) {
-          return;
-        }
-        nextScores[key] = { home: sample.home, away: sample.away };
-        nextAutoScores[key] = true;
-        changed = true;
-      });
-      if (!changed) {
-        return;
-      }
-      setGroupScores(nextScores);
-      setAutoGroupScores(nextAutoScores);
-      clearKnockoutOnGroupChange(nextScores);
+      commitAutopredictSnapshot(snapshot);
     },
-    [
-      autoGroupScores,
-      clearKnockoutOnGroupChange,
-      data.winProbabilities,
-      groupScores,
-      resolvedGroupMatches,
-    ]
+    [chooseAutopredictSnapshot, commitAutopredictSnapshot, simulateGroupAutopredict]
   );
 
   const handleGroupReset = React.useCallback(
@@ -6984,174 +7881,13 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const handleQualifierAutopredict = React.useCallback(
     (path: string) => {
       setShowQualifierHint(false);
-      let nextQualifierWinners = { ...qualifierWinners };
-      let nextAutoQualifierWinners = { ...autoQualifierWinners };
-      const changedMatchIds = new Set<string>();
-
-      const qualifierStateLocal = resolveQualifierState(
-        data.qualifiers,
-        nextQualifierWinners
-      );
-      const matches = qualifierStateLocal.matches.filter(
-        (match) => match.path === path
-      );
-      if (matches.length === 0) {
+      const snapshot = chooseAutopredictSnapshot(() => simulateQualifierAutopredict(path));
+      if (!snapshot) {
         return;
       }
-      const allPredicted = matches.every((match) => {
-        const key = String(match.id);
-        return (nextQualifierWinners[key] ?? null) !== null;
-      });
-      if (allPredicted) {
-        return;
-      }
-
-      const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
-        const prevSelection = nextQualifierWinners[matchId] ?? null;
-        if (prevSelection === selection) {
-          return false;
-        }
-        const updated = { ...nextQualifierWinners, [matchId]: selection };
-        const cleared = clearDependentSelections(
-          updated,
-          matchId,
-          qualifierDependents
-        );
-        const clearedIds = Object.keys(updated).filter(
-          (id) => updated[id] && cleared[id] === null
-        );
-        nextQualifierWinners = cleared;
-        if (selection) {
-          nextAutoQualifierWinners[matchId] = true;
-        }
-        clearedIds.forEach((id) => {
-          delete nextAutoQualifierWinners[id];
-          changedMatchIds.add(id);
-        });
-        changedMatchIds.add(matchId);
-        return true;
-      };
-
-      const maxIterations = 10;
-      let iteration = 0;
-      let progress = true;
-      while (progress && iteration < maxIterations) {
-        iteration += 1;
-        progress = false;
-        const qualifierStateIter = resolveQualifierState(
-          data.qualifiers,
-          nextQualifierWinners
-        );
-        const pathMatches = qualifierStateIter.matches.filter(
-          (match) => match.path === path
-        );
-        if (pathMatches.length === 0) {
-          break;
-        }
-        pathMatches.forEach((match) => {
-          const key = String(match.id);
-          const isManual =
-            nextQualifierWinners[key] && !nextAutoQualifierWinners[key];
-          if (isManual || nextQualifierWinners[key]) {
-            return;
-          }
-          if (
-            isPlaceholderLabel(match.homeResolved) ||
-            isPlaceholderLabel(match.awayResolved)
-          ) {
-            return;
-          }
-          const values = resolveMatchProbabilities({
-            probabilities: data.winProbabilities,
-            homeTeam: match.homeResolved,
-            awayTeam: match.awayResolved,
-            allowDraw: false,
-            neutralOverride: match.neutral,
-          });
-          const selection = sampleWinner(values);
-          if (!selection) {
-            return;
-          }
-          if (applyQualifierSelection(key, selection)) {
-            progress = true;
-          }
-        });
-      }
-      if (changedMatchIds.size === 0) {
-        return;
-      }
-      const affectedSlots = new Set<string>();
-      changedMatchIds.forEach((matchId) => {
-        const slots = qualifierSlotsByMatch.get(matchId);
-        if (slots) {
-          slots.forEach((slot) => affectedSlots.add(slot));
-        }
-      });
-      const affectedGroups = new Set<string>();
-      affectedSlots.forEach((slot) => {
-        const groups = groupIdsBySlot.get(slot);
-        if (groups) {
-          groups.forEach((groupId) => affectedGroups.add(groupId));
-        }
-      });
-      const nextGroupScores = { ...groupScores };
-      const nextAutoGroupScores = { ...autoGroupScores };
-      affectedSlots.forEach((slot) => {
-        const matchIds = groupMatchIdsByTeam.get(slot);
-        if (!matchIds) {
-          return;
-        }
-        matchIds.forEach((matchId) => {
-          delete nextGroupScores[matchId];
-          delete nextAutoGroupScores[matchId];
-        });
-      });
-      let nextKnockoutWinners = { ...knockoutWinners };
-      let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
-      if (affectedGroups.size > 0) {
-        affectedGroups.forEach((groupId) => {
-          const rootMatches = knockoutRootsByGroup.get(groupId);
-          if (rootMatches) {
-            rootMatches.forEach((matchId) => {
-              nextKnockoutWinners[matchId] = null;
-              nextKnockoutWinners = clearDependentSelections(
-                nextKnockoutWinners,
-                matchId,
-                knockoutDependents
-              );
-            });
-          }
-        });
-        const clearedIds = Object.keys(knockoutWinners).filter(
-          (matchId) => knockoutWinners[matchId] && nextKnockoutWinners[matchId] === null
-        );
-        clearedIds.forEach((matchId) => {
-          delete nextAutoKnockoutWinners[matchId];
-        });
-      }
-      setQualifierWinners(nextQualifierWinners);
-      setAutoQualifierWinners(nextAutoQualifierWinners);
-      setGroupScores(nextGroupScores);
-      setAutoGroupScores(nextAutoGroupScores);
-      setKnockoutWinners(nextKnockoutWinners);
-      setAutoKnockoutWinners(nextAutoKnockoutWinners);
+      commitAutopredictSnapshot(snapshot);
     },
-    [
-      autoGroupScores,
-      autoKnockoutWinners,
-      autoQualifierWinners,
-      data.qualifiers,
-      data.winProbabilities,
-      groupIdsBySlot,
-      groupMatchIdsByTeam,
-      groupScores,
-      knockoutDependents,
-      knockoutRootsByGroup,
-      knockoutWinners,
-      qualifierDependents,
-      qualifierSlotsByMatch,
-      qualifierWinners,
-    ]
+    [chooseAutopredictSnapshot, commitAutopredictSnapshot, simulateQualifierAutopredict]
   );
 
   const handleQualifierReset = React.useCallback(
@@ -7268,172 +8004,15 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
 
   const handleSectionQualifiersAutopredict = React.useCallback(() => {
     setShowQualifierHint(false);
-    let nextQualifierWinners = { ...qualifierWinners };
-    let nextAutoQualifierWinners = { ...autoQualifierWinners };
-    let nextGroupScores = { ...groupScores };
-    let nextAutoGroupScores = { ...autoGroupScores };
-    let nextKnockoutWinners = { ...knockoutWinners };
-    let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
-    const qualifierStateLocal = resolveQualifierState(
-      data.qualifiers,
-      nextQualifierWinners
-    );
-    const allPredicted = qualifierStateLocal.matches.every((match) => {
-      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
-        return true;
-      }
-      const key = String(match.id);
-      return (nextQualifierWinners[key] ?? null) !== null;
-    });
-    if (allPredicted) {
+    const snapshot = chooseAutopredictSnapshot(simulateSectionQualifiersAutopredict);
+    if (!snapshot) {
       return;
     }
-
-    const applyQualifierSelection = (matchId: string, selection: WinnerSelection) => {
-      const prevSelection = nextQualifierWinners[matchId] ?? null;
-      if (prevSelection === selection) {
-        return { changed: false, clearedIds: [] as string[] };
-      }
-      const updated = { ...nextQualifierWinners, [matchId]: selection };
-      const cleared = clearDependentSelections(updated, matchId, qualifierDependents);
-      const clearedIds = Object.keys(updated).filter(
-        (id) => updated[id] && cleared[id] === null
-      );
-      nextQualifierWinners = cleared;
-      if (selection) {
-        nextAutoQualifierWinners[matchId] = true;
-      }
-      clearedIds.forEach((id) => {
-        delete nextAutoQualifierWinners[id];
-      });
-      return { changed: true, clearedIds };
-    };
-
-    const maxIterations = 10;
-    let iteration = 0;
-    let changed = false;
-    const changedQualifiers = new Set<string>();
-
-    while (iteration < maxIterations) {
-      iteration += 1;
-      let qualifierProgress = false;
-      const qualifierStateLocal = resolveQualifierState(
-        data.qualifiers,
-        nextQualifierWinners
-      );
-      qualifierStateLocal.matches.forEach((match) => {
-        const key = String(match.id);
-        const isManual =
-          nextQualifierWinners[key] && !nextAutoQualifierWinners[key];
-        const existingSelection = nextQualifierWinners[key] ?? null;
-        if (isManual || existingSelection) {
-          return;
-        }
-        if (
-          isPlaceholderLabel(match.homeResolved) ||
-          isPlaceholderLabel(match.awayResolved)
-        ) {
-          return;
-        }
-        const values = resolveMatchProbabilities({
-          probabilities: data.winProbabilities,
-          homeTeam: match.homeResolved,
-          awayTeam: match.awayResolved,
-          allowDraw: false,
-          neutralOverride: match.neutral,
-        });
-        const selection = sampleWinner(values);
-        if (!selection) {
-          return;
-        }
-        const result = applyQualifierSelection(key, selection);
-        if (result.changed) {
-          changed = true;
-          qualifierProgress = true;
-          changedQualifiers.add(key);
-        }
-      });
-      if (!qualifierProgress) {
-        break;
-      }
-    }
-
-    if (changedQualifiers.size > 0) {
-      const affectedSlots = new Set<string>();
-      changedQualifiers.forEach((matchId) => {
-        const slots = qualifierSlotsByMatch.get(matchId);
-        if (!slots) {
-          return;
-        }
-        slots.forEach((slot) => affectedSlots.add(slot));
-      });
-      const affectedGroups = new Set<string>();
-      affectedSlots.forEach((slot) => {
-        const groups = groupIdsBySlot.get(slot);
-        if (groups) {
-          groups.forEach((groupId) => affectedGroups.add(groupId));
-        }
-      });
-
-      affectedSlots.forEach((slot) => {
-        const matchIds = groupMatchIdsByTeam.get(slot);
-        if (!matchIds) {
-          return;
-        }
-        matchIds.forEach((matchId) => {
-          delete nextGroupScores[matchId];
-          delete nextAutoGroupScores[matchId];
-        });
-      });
-
-      if (affectedGroups.size > 0) {
-        affectedGroups.forEach((groupId) => {
-          const rootMatches = knockoutRootsByGroup.get(groupId);
-          if (!rootMatches) {
-            return;
-          }
-          rootMatches.forEach((matchId) => {
-            nextKnockoutWinners[matchId] = null;
-            nextKnockoutWinners = clearDependentSelections(
-              nextKnockoutWinners,
-              matchId,
-              knockoutDependents
-            );
-          });
-        });
-        const clearedIds = Object.keys(knockoutWinners).filter(
-          (matchId) => knockoutWinners[matchId] && nextKnockoutWinners[matchId] === null
-        );
-        clearedIds.forEach((matchId) => {
-          delete nextAutoKnockoutWinners[matchId];
-        });
-      }
-    }
-
-    if (!changed && changedQualifiers.size === 0) {
-      return;
-    }
-    setQualifierWinners(nextQualifierWinners);
-    setAutoQualifierWinners(nextAutoQualifierWinners);
-    setGroupScores(nextGroupScores);
-    setAutoGroupScores(nextAutoGroupScores);
-    setKnockoutWinners(nextKnockoutWinners);
-    setAutoKnockoutWinners(nextAutoKnockoutWinners);
+    commitAutopredictSnapshot(snapshot);
   }, [
-    autoGroupScores,
-    autoKnockoutWinners,
-    autoQualifierWinners,
-    data.qualifiers,
-    data.winProbabilities,
-    groupIdsBySlot,
-    groupMatchIdsByTeam,
-    groupScores,
-    knockoutDependents,
-    knockoutRootsByGroup,
-    knockoutWinners,
-    qualifierDependents,
-    qualifierSlotsByMatch,
-    qualifierWinners,
+    chooseAutopredictSnapshot,
+    commitAutopredictSnapshot,
+    simulateSectionQualifiersAutopredict,
   ]);
 
   const handleSectionQualifiersReset = React.useCallback(() => {
@@ -7513,53 +8092,15 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
 
   const handleSectionGroupsAutopredict = React.useCallback(() => {
     setShowGroupHint(false);
-    let changed = false;
-    const nextScores = { ...groupScores };
-    const nextAutoScores = { ...autoGroupScores };
-    const allPredicted = resolvedGroupMatches.every((match) => {
-      const score = nextScores[String(match.id)];
-      return score && score.home !== null && score.away !== null;
-    });
-    if (allPredicted) {
+    const snapshot = chooseAutopredictSnapshot(simulateSectionGroupsAutopredict);
+    if (!snapshot) {
       return;
     }
-    resolvedGroupMatches.forEach((match) => {
-      const key = String(match.id);
-      const existing = nextScores[key];
-      const hasScore =
-        existing && existing.home !== null && existing.away !== null;
-      if (hasScore) {
-        return;
-      }
-      const matrix = resolveMatchScoreMatrix({
-        probabilities: data.winProbabilities,
-        homeTeam: match.homeTeam,
-        awayTeam: match.awayTeam,
-        country: match.country,
-      });
-      if (!matrix) {
-        return;
-      }
-      const sample = sampleScoreMatrix(matrix);
-      if (!sample) {
-        return;
-      }
-      nextScores[key] = { home: sample.home, away: sample.away };
-      nextAutoScores[key] = true;
-      changed = true;
-    });
-    if (!changed) {
-      return;
-    }
-    setGroupScores(nextScores);
-    setAutoGroupScores(nextAutoScores);
-    clearKnockoutOnGroupChange(nextScores);
+    commitAutopredictSnapshot(snapshot);
   }, [
-    autoGroupScores,
-    clearKnockoutOnGroupChange,
-    data.winProbabilities,
-    groupScores,
-    resolvedGroupMatches,
+    chooseAutopredictSnapshot,
+    commitAutopredictSnapshot,
+    simulateSectionGroupsAutopredict,
   ]);
 
   React.useEffect(() => {
@@ -7585,119 +8126,15 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   }, [clearKnockoutOnGroupChange, groupScores]);
 
   const handleSectionKnockoutsAutopredict = React.useCallback(() => {
-    let nextKnockoutWinners = { ...knockoutWinners };
-    let nextAutoKnockoutWinners = { ...autoKnockoutWinners };
-    const allPredicted = knockoutState.matches.every((match) => {
-      if (!isConcreteTeam(match.homeResolved) || !isConcreteTeam(match.awayResolved)) {
-        return true;
-      }
-      const key = String(match.id);
-      return (nextKnockoutWinners[key] ?? null) !== null;
-    });
-    if (allPredicted) {
+    const snapshot = chooseAutopredictSnapshot(simulateSectionKnockoutsAutopredict);
+    if (!snapshot) {
       return;
     }
-
-    const applyKnockoutSelection = (matchId: string, selection: WinnerSelection) => {
-      const prevSelection = nextKnockoutWinners[matchId] ?? null;
-      if (prevSelection === selection) {
-        return false;
-      }
-      const updated = { ...nextKnockoutWinners, [matchId]: selection };
-      const cleared = clearDependentSelections(updated, matchId, knockoutDependents);
-      const clearedIds = Object.keys(updated).filter(
-        (id) => updated[id] && cleared[id] === null
-      );
-      nextKnockoutWinners = cleared;
-      if (selection) {
-        nextAutoKnockoutWinners[matchId] = true;
-      }
-      clearedIds.forEach((id) => {
-        delete nextAutoKnockoutWinners[id];
-      });
-      return true;
-    };
-
-    const context = computeKnockoutContext(groupScores, slotWinners);
-    const winners = new Map<number, string>();
-    const losers = new Map<number, string>();
-    const sorted = [...data.knockoutMatches].sort((a, b) => a.id - b.id);
-
-    sorted.forEach((match) => {
-      const key = String(match.id);
-      const homeResolved = resolveKnockoutLabel({
-        label: match.homeLabel,
-        opponentLabel: match.awayLabel,
-        groupRankings: context.groupRankings,
-        thirdPlaceByGroup: context.thirdPlaceByGroup,
-        thirdPlaceAssignments: context.thirdPlaceAssignments,
-        knockoutWinners: winners,
-        knockoutLosers: losers,
-        groupCompletion: context.groupCompletion,
-        allowThirdPlaceResolve: context.allGroupMatchesComplete,
-        qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
-        matchStageById,
-      });
-      const awayResolved = resolveKnockoutLabel({
-        label: match.awayLabel,
-        opponentLabel: match.homeLabel,
-        groupRankings: context.groupRankings,
-        thirdPlaceByGroup: context.thirdPlaceByGroup,
-        thirdPlaceAssignments: context.thirdPlaceAssignments,
-        knockoutWinners: winners,
-        knockoutLosers: losers,
-        groupCompletion: context.groupCompletion,
-        allowThirdPlaceResolve: context.allGroupMatchesComplete,
-        qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
-        matchStageById,
-      });
-
-      const existingSelection = nextKnockoutWinners[key] ?? null;
-      const isManual = existingSelection && !nextAutoKnockoutWinners[key];
-      if (!isManual && !existingSelection) {
-        if (!isPlaceholderLabel(homeResolved) && !isPlaceholderLabel(awayResolved)) {
-          const values = resolveMatchProbabilities({
-            probabilities: data.winProbabilities,
-            homeTeam: homeResolved,
-            awayTeam: awayResolved,
-            allowDraw: false,
-            country: match.country,
-          });
-          const selection = sampleWinner(values);
-          if (selection) {
-            applyKnockoutSelection(key, selection);
-          }
-        }
-      }
-
-      const winner = resolveWinner(
-        match.id,
-        homeResolved,
-        awayResolved,
-        {},
-        false,
-        nextKnockoutWinners
-      );
-      if (winner) {
-        winners.set(match.id, winner);
-        const loser = winner === homeResolved ? awayResolved : homeResolved;
-        losers.set(match.id, loser);
-      }
-    });
-
-    setKnockoutWinners(nextKnockoutWinners);
-    setAutoKnockoutWinners(nextAutoKnockoutWinners);
+    commitAutopredictSnapshot(snapshot);
   }, [
-    autoKnockoutWinners,
-    computeKnockoutContext,
-    data.knockoutMatches,
-    data.winProbabilities,
-    groupScores,
-    knockoutDependents,
-    knockoutState.matches,
-    knockoutWinners,
-    matchStageById,
-    slotWinners,
+    chooseAutopredictSnapshot,
+    commitAutopredictSnapshot,
+    simulateSectionKnockoutsAutopredict,
   ]);
 
   const handleSectionKnockoutsReset = React.useCallback(() => {
@@ -8750,7 +9187,14 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                                       className="h-6 w-9 rounded-sm border-0 shadow-[0_0_0_1px_rgba(15,23,42,0.08)]"
                                     />
                                     {/* Confetti renders directly inside the flag container */}
-                                    {champion && <ConfettiAnimation key={champion} duration={2000} champion={champion} />}
+                                    {champion && (
+                                      <ConfettiAnimation
+                                        key={champion}
+                                        duration={2000}
+                                        champion={champion}
+                                        funny={funnyRuns !== null}
+                                      />
+                                    )}
                                   </div>
                                   <div className="text-base font-bold text-slate-900 text-center break-words w-full" style={{ paddingLeft: '8px', paddingRight: '8px', boxSizing: 'border-box' }}>
                                     {champion}

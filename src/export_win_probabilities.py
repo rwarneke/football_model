@@ -119,12 +119,19 @@ def build_payload(model, teams: Iterable[str]) -> dict:
     teams = sorted(dict.fromkeys(teams))
     team_ids = {team: idx for idx, team in enumerate(teams)}
 
-    def extract_entry(t1: str, t2: str, is_neutral: bool):
-        output = model.predict_match(t1, t2, requires_result=True, is_neutral=is_neutral)
+    def extract_entry(t1: str, t2: str, is_neutral: bool, is_friendly: bool):
+        output = model.predict_match(
+            t1,
+            t2,
+            requires_result=True,
+            is_neutral=is_neutral,
+            importance_class=0 if is_friendly else 1,
+        )
         return [
             int(team_ids[t1]),
             int(team_ids[t2]),
             1 if is_neutral else 0,
+            1 if is_friendly else 0,
             round_sig(output.get("nu", 0.0)),
             round_sig(output.get("lam_home", 0.0)),
             round_sig(output.get("lam_away", 0.0)),
@@ -140,11 +147,13 @@ def build_payload(model, teams: Iterable[str]) -> dict:
         for team2 in teams:
             if team1 == team2:
                 continue
-            entries.append(extract_entry(team1, team2, False))
-            entries.append(extract_entry(team1, team2, True))
+            entries.append(extract_entry(team1, team2, False, False))
+            entries.append(extract_entry(team1, team2, True, False))
+            entries.append(extract_entry(team1, team2, False, True))
+            entries.append(extract_entry(team1, team2, True, True))
 
     return {
-        "version": 2,
+        "version": 3,
         "max_goals": int(MAX_GOALS),
         "teams": teams,
         "entries": entries,

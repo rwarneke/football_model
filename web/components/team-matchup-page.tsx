@@ -39,14 +39,22 @@ function resolveProbabilityEntry({
   homeTeam,
   awayTeam,
   neutral,
+  isFriendly,
 }: {
   probabilities: WinProbabilities;
   homeTeam: string;
   awayTeam: string;
   neutral: boolean;
+  isFriendly: boolean;
 }): { entry: WinProbabilityEntry; flipped: boolean } | null {
   if (isCompactWinProbabilities(probabilities)) {
-    const entry = resolveCompactEntry(probabilities, homeTeam, awayTeam, neutral);
+    const entry = resolveCompactEntry(
+      probabilities,
+      homeTeam,
+      awayTeam,
+      neutral,
+      isFriendly
+    );
     return entry ? { entry: parseCompactEntry(entry), flipped: false } : null;
   }
   if (neutral) {
@@ -63,18 +71,21 @@ function resolveMatchProbabilities({
   awayTeam,
   allowDraw = true,
   neutral,
+  isFriendly,
 }: {
   probabilities: WinProbabilities;
   homeTeam: string;
   awayTeam: string;
   allowDraw?: boolean;
   neutral: boolean;
+  isFriendly: boolean;
 }): MatchProbabilityValues | null {
   const resolved = resolveProbabilityEntry({
     probabilities,
     homeTeam,
     awayTeam,
     neutral,
+    isFriendly,
   });
   if (!resolved) {
     return null;
@@ -99,17 +110,20 @@ function resolveMatchScoreMatrix({
   homeTeam,
   awayTeam,
   neutral,
+  isFriendly,
 }: {
   probabilities: WinProbabilities;
   homeTeam: string;
   awayTeam: string;
   neutral: boolean;
+  isFriendly: boolean;
 }): number[][] | null {
   const resolved = resolveProbabilityEntry({
     probabilities,
     homeTeam,
     awayTeam,
     neutral,
+    isFriendly,
   });
   if (!resolved) {
     return null;
@@ -476,6 +490,7 @@ export function TeamMatchupPage({
   const [teamAInput, setTeamAInput] = React.useState(teams[0]?.team ?? "");
   const [teamBInput, setTeamBInput] = React.useState(teams[1]?.team ?? "");
   const [neutral, setNeutral] = React.useState(false);
+  const [isFriendly, setIsFriendly] = React.useState(false);
   const [requiresResult, setRequiresResult] = React.useState(false);
   const [probabilityMode, setProbabilityMode] = React.useState<"percent" | "decimal">("percent");
   const teamA = teamMap.get(teamAInput.trim().toLowerCase()) ?? null;
@@ -489,9 +504,10 @@ export function TeamMatchupPage({
             homeTeam: teamA.team,
             awayTeam: teamB.team,
             neutral,
+            isFriendly,
           })
         : null,
-    [neutral, teamA, teamB, resolvedWinProbabilities]
+    [isFriendly, neutral, teamA, teamB, resolvedWinProbabilities]
   );
 
   const scoreMatrix = React.useMemo(
@@ -502,9 +518,10 @@ export function TeamMatchupPage({
             homeTeam: teamA.team,
             awayTeam: teamB.team,
             neutral,
+            isFriendly,
           })
         : null,
-    [neutral, teamA, teamB, resolvedWinProbabilities]
+    [isFriendly, neutral, teamA, teamB, resolvedWinProbabilities]
   );
 
   const scoreGrid = React.useMemo(
@@ -591,9 +608,10 @@ export function TeamMatchupPage({
             awayTeam: teamB.team,
             allowDraw: false,
             neutral,
+            isFriendly,
           })
         : null,
-    [neutral, requiresResult, teamA, teamB, resolvedWinProbabilities]
+    [isFriendly, neutral, requiresResult, teamA, teamB, resolvedWinProbabilities]
   );
 
   const ninetyUseDecimal = shouldUseDecimalPrecision([
@@ -769,6 +787,15 @@ export function TeamMatchupPage({
                 <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
                   <input
                     type="checkbox"
+                    checked={isFriendly}
+                    onChange={(event) => setIsFriendly(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  Friendly
+                </label>
+                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  <input
+                    type="checkbox"
                     checked={requiresResult}
                     onChange={(event) => setRequiresResult(event.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
@@ -792,9 +819,8 @@ export function TeamMatchupPage({
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-600">
-                  {neutral
-                    ? "Neutral venue"
-                    : `${teamA.team} home advantage`}
+                  {[neutral ? "Neutral venue" : `${teamA.team} home advantage`, isFriendly ? "Friendly" : "Competitive"]
+                    .join(" • ")}
                 </div>
               </div>
 

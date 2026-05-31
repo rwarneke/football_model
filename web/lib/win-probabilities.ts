@@ -8,14 +8,15 @@ const ENTRY_INDEX = {
   HOME_ID: 0,
   AWAY_ID: 1,
   NEUTRAL: 2,
-  NU: 3,
-  LAM_HOME: 4,
-  LAM_AWAY: 5,
-  P_HOME: 6,
-  P_DRAW: 7,
-  P_AWAY: 8,
-  P_HOME_PENS: 9,
-  P_AWAY_PENS: 10,
+  FRIENDLY: 3,
+  NU: 4,
+  LAM_HOME: 5,
+  LAM_AWAY: 6,
+  P_HOME: 7,
+  P_DRAW: 8,
+  P_AWAY: 9,
+  P_HOME_PENS: 10,
+  P_AWAY_PENS: 11,
 } as const;
 
 type CompactIndex = {
@@ -25,8 +26,13 @@ type CompactIndex = {
 
 const compactIndexCache = new WeakMap<CompactWinProbabilities, CompactIndex>();
 
-function buildEntryKey(homeId: number, awayId: number, neutralFlag: number) {
-  return `${homeId}|${awayId}|${neutralFlag}`;
+function buildEntryKey(
+  homeId: number,
+  awayId: number,
+  neutralFlag: number,
+  friendlyFlag: number
+) {
+  return `${homeId}|${awayId}|${neutralFlag}|${friendlyFlag}`;
 }
 
 export function isCompactWinProbabilities(
@@ -62,12 +68,15 @@ export function getCompactIndex(probabilities: CompactWinProbabilities): Compact
     const homeId = entry[ENTRY_INDEX.HOME_ID];
     const awayId = entry[ENTRY_INDEX.AWAY_ID];
     const neutralFlag = entry[ENTRY_INDEX.NEUTRAL];
+    const friendlyFlag =
+      entry.length > ENTRY_INDEX.P_AWAY_PENS ? entry[ENTRY_INDEX.FRIENDLY] : 0;
     if (
       Number.isFinite(homeId) &&
       Number.isFinite(awayId) &&
-      Number.isFinite(neutralFlag)
+      Number.isFinite(neutralFlag) &&
+      Number.isFinite(friendlyFlag)
     ) {
-      entryIndex.set(buildEntryKey(homeId, awayId, neutralFlag), entry);
+      entryIndex.set(buildEntryKey(homeId, awayId, neutralFlag, friendlyFlag), entry);
     }
   }
   const index = { teamIndex, entryIndex };
@@ -79,7 +88,8 @@ export function resolveCompactEntry(
   probabilities: CompactWinProbabilities,
   homeTeam: string,
   awayTeam: string,
-  neutral: boolean
+  neutral: boolean,
+  isFriendly = false
 ): number[] | null {
   const { teamIndex, entryIndex } = getCompactIndex(probabilities);
   const homeId = teamIndex.get(homeTeam);
@@ -87,19 +97,20 @@ export function resolveCompactEntry(
   if (homeId === undefined || awayId === undefined) {
     return null;
   }
-  const key = buildEntryKey(homeId, awayId, neutral ? 1 : 0);
+  const key = buildEntryKey(homeId, awayId, neutral ? 1 : 0, isFriendly ? 1 : 0);
   return entryIndex.get(key) ?? null;
 }
 
 export function parseCompactEntry(entry: number[]): WinProbabilityEntry {
+  const shift = entry.length > ENTRY_INDEX.P_AWAY_PENS ? 0 : -1;
   return {
-    nu: entry[ENTRY_INDEX.NU],
-    lam_home: entry[ENTRY_INDEX.LAM_HOME],
-    lam_away: entry[ENTRY_INDEX.LAM_AWAY],
-    p_home: entry[ENTRY_INDEX.P_HOME],
-    p_draw: entry[ENTRY_INDEX.P_DRAW],
-    p_away: entry[ENTRY_INDEX.P_AWAY],
-    p_home_pens: entry[ENTRY_INDEX.P_HOME_PENS],
-    p_away_pens: entry[ENTRY_INDEX.P_AWAY_PENS],
+    nu: entry[ENTRY_INDEX.NU + shift],
+    lam_home: entry[ENTRY_INDEX.LAM_HOME + shift],
+    lam_away: entry[ENTRY_INDEX.LAM_AWAY + shift],
+    p_home: entry[ENTRY_INDEX.P_HOME + shift],
+    p_draw: entry[ENTRY_INDEX.P_DRAW + shift],
+    p_away: entry[ENTRY_INDEX.P_AWAY + shift],
+    p_home_pens: entry[ENTRY_INDEX.P_HOME_PENS + shift],
+    p_away_pens: entry[ENTRY_INDEX.P_AWAY_PENS + shift],
   };
 }

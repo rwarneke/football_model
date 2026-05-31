@@ -40,6 +40,13 @@ def normalize_team_name_for_dedupe(team: str) -> str:
     return TEAM_NAME_NORMALIZER.get(team, team)
 
 
+def infer_objects_compat(df_or_series):
+    try:
+        return df_or_series.infer_objects(copy=False)
+    except TypeError:
+        return df_or_series.infer_objects()
+
+
 def load_csv_with_manual_overlay(filename: str, key_columns: list[str]) -> pd.DataFrame:
     primary_path = MATCH_RESULTS_DIR / filename
     manual_path = MATCH_RESULTS_DIR / f"manual_{filename}"
@@ -100,7 +107,7 @@ results = results_merged.loc[fil]
 corrections_path = MATCH_RESULTS_DIR / "results_corrections.csv"
 if corrections_path.exists():
     corrections = pd.read_csv(corrections_path, keep_default_na=False)
-    corrections = corrections.replace({"": np.nan}).infer_objects(copy=False)
+    corrections = infer_objects_compat(corrections.replace({"": np.nan}))
     corrections["date"] = pd.to_datetime(corrections["date"], errors="coerce")
 
     def parse_nullable_bool(val):
@@ -129,7 +136,7 @@ if corrections_path.exists():
             updated = results[corr_col].where(
                 results[corr_col].notna(), results[col]
             )
-            results[col] = updated.infer_objects(copy=False)
+            results[col] = infer_objects_compat(updated)
             results = results.drop(columns=[corr_col])
 
     results["home_score"] = results["home_score"].astype("Int64")
@@ -138,6 +145,21 @@ if corrections_path.exists():
 score_missing = results["home_score"].isna() ^ results["away_score"].isna()
 if score_missing.any():
     results.loc[score_missing, ["home_score", "away_score"]] = pd.NA
+
+incomplete_mask = results["home_score"].isna() | results["away_score"].isna()
+if incomplete_mask.any():
+    today = pd.Timestamp.now().normalize()
+    stale_cutoff = today - pd.Timedelta(days=3)
+    invalid_incomplete = results.loc[
+        incomplete_mask & (results["date"] < stale_cutoff),
+        ["date", "home_team", "away_team", "home_score", "away_score"],
+    ]
+    if not invalid_incomplete.empty:
+        raise ValueError(
+            "[results] incomplete matches found more than 3 days in the past.\n"
+            f"{invalid_incomplete.head(50).to_string(index=False)}"
+        )
+    results = results.loc[~incomplete_mask].copy()
 
 
 # add confederations (date-aware membership)

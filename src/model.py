@@ -81,6 +81,7 @@ class Model:
         d_hga_override=None,
         # Learning weights
         importance_class_weights={0: 0.4, 1: 0.7, 2: 1.0},
+        friendly_quality_scale=0.9,
         # Score censoring
         censor_big_wins=False,
         censor_big_win_margin=2,
@@ -118,6 +119,8 @@ class Model:
         init_var_diag: prior variance for attack/defense
         cross_var_ratio: off-diagonal covariance ratio vs diagonal variance (0 to 1)
         importance_class_weights: mapping of importance_class -> weight
+        friendly_quality_scale: scale applied to the match-up strength differential
+        for importance_class == 0 (friendlies), preserving the average scoring level
         censor_big_wins: if True, censor winner scores for wins by censor_big_win_margin+
         censor_big_win_margin: margin threshold for censoring (>= 1)
         shootout_skilldiff_coef: logit coefficient for shootout home_win vs skilldiff
@@ -204,6 +207,9 @@ class Model:
         if importance_class_weights is None:
             importance_class_weights = defaultdict(lambda: 1.0)
         self.importance_class_weights = importance_class_weights
+        self.friendly_quality_scale = float(friendly_quality_scale)
+        if not (0.0 <= self.friendly_quality_scale <= 1.0):
+            raise ValueError("friendly_quality_scale must be between 0 and 1")
         self.shootout_skilldiff_coef = float(shootout_skilldiff_coef)
         self.lognormal_score_correction = bool(lognormal_score_correction)
         self._match_index = 0
@@ -222,6 +228,31 @@ class Model:
             s[0, 0] = max(s[0, 0], self.variance_min)
             s[1, 1] = max(s[1, 1], self.variance_min)
         return s
+
+    def _quality_scale_for_importance(self, importance_class) -> float:
+        if importance_class is None or pd.isna(importance_class):
+            return 1.0
+        try:
+            importance_int = int(importance_class)
+        except (TypeError, ValueError):
+            return 1.0
+        return self.friendly_quality_scale if importance_int == 0 else 1.0
+
+    @staticmethod
+    def _apply_matchup_scale(
+        eta_home: float,
+        eta_away: float,
+        mu_baseline: float,
+        quality_scale: float,
+    ) -> tuple[float, float]:
+        quality_scale = float(quality_scale)
+        if quality_scale == 1.0:
+            return float(eta_home), float(eta_away)
+        mu_baseline = float(mu_baseline)
+        return (
+            float(mu_baseline + (float(eta_home) - mu_baseline) * quality_scale),
+            float(mu_baseline + (float(eta_away) - mu_baseline) * quality_scale),
+        )
 
     def fit(self, results, progress_cb=None, progress_every=1000):
         assert not self.is_fit
@@ -372,6 +403,7 @@ class Model:
             away = row.away_team
             is_neutral = row.neutral
             importance_class = row.importance_class if has_importance_class else None
+            quality_scale = self._quality_scale_for_importance(importance_class)
             score_h = row.home_score
             score_a = row.away_score
             (
@@ -419,8 +451,14 @@ class Model:
                 d_hga = 0.0
             else:
                 a_hga, d_hga = self._current_hga_components()
-            eta_home_pre = float(self.mu + (mu_h_pre[0] + a_hga) - mu_a_pre[1])
-            eta_away_pre = float(self.mu + mu_a_pre[0] - (mu_h_pre[1] + d_hga))
+            eta_home_base = float(self.mu + (mu_h_pre[0] + a_hga) - mu_a_pre[1])
+            eta_away_base = float(self.mu + mu_a_pre[0] - (mu_h_pre[1] + d_hga))
+            eta_home_pre, eta_away_pre = self._apply_matchup_scale(
+                eta_home_base,
+                eta_away_base,
+                self.mu,
+                quality_scale,
+            )
             f_home_pre = eta_home_pre
             fprime_home_pre = 1.0
             g_home_pre = 0.0
@@ -446,6 +484,7 @@ class Model:
                 score_h_obs,
                 score_a_obs,
                 log_fact,
+                quality_scale=quality_scale,
                 score_h_censored=score_h_censored,
                 score_a_censored=score_a_censored,
             )
@@ -457,6 +496,7 @@ class Model:
                     score_h_cap,
                     score_a_cap,
                     log_fact,
+                    quality_scale=quality_scale,
                 )
             )
             m_home_pre = float(debug["mH"])
@@ -517,6 +557,7 @@ class Model:
                     st_h.sigma2,
                     st_a.m,
                     st_a.sigma2,
+                    quality_scale=quality_scale,
                     match_weight=match_weight,
                     score_h_censored=score_h_90_censored,
                     score_a_censored=score_a_90_censored,
@@ -543,6 +584,7 @@ class Model:
                         sigma_h_mid,
                         mu_a_mid,
                         sigma_a_mid,
+                        quality_scale=quality_scale,
                         match_weight=match_weight,
                         score_h_censored=score_h_et_censored,
                         score_a_censored=score_a_et_censored,
@@ -570,6 +612,7 @@ class Model:
                     st_h.sigma2,
                     st_a.m,
                     st_a.sigma2,
+                    quality_scale=quality_scale,
                     match_weight=match_weight,
                     score_h_censored=score_h_censored,
                     score_a_censored=score_a_censored,
@@ -832,14 +875,15 @@ class Model:
             return
         if df_detaH is None or df_detaA is None or mH is None or mA is None:
             return
-        grad_a = float(df_detaH) * match_weight
-        grad_d = -float(df_detaA) * match_weight
+        hga_scale = float(info.get("hga_scale", 1.0))
+        grad_a = float(df_detaH) * hga_scale * match_weight
+        grad_d = -float(df_detaA) * hga_scale * match_weight
         if fprimeH is None or fprimeA is None:
-            curv_a = float(mH) * match_weight
-            curv_d = float(mA) * match_weight
+            curv_a = float(mH) * (hga_scale ** 2) * match_weight
+            curv_d = float(mA) * (hga_scale ** 2) * match_weight
         else:
-            curv_a = float(mH) * float(fprimeH) ** 2 * match_weight
-            curv_d = float(mA) * float(fprimeA) ** 2 * match_weight
+            curv_a = float(mH) * float(fprimeH) ** 2 * (hga_scale ** 2) * match_weight
+            curv_d = float(mA) * float(fprimeA) ** 2 * (hga_scale ** 2) * match_weight
         if not self._hga_fixed_a:
             self._hga_grad_sum_a += grad_a
             self._hga_curv_sum_a += curv_a
@@ -999,6 +1043,7 @@ class Model:
         sigma_h_prior: np.ndarray,
         mu_a_prior: np.ndarray,
         sigma_a_prior: np.ndarray,
+        quality_scale=1.0,
         max_steps=500,
         tol_grad=1e-6,
         tol_step=1e-10,
@@ -1050,14 +1095,31 @@ class Model:
             ],
             dtype=float,
         )
+        quality_scale = float(quality_scale)
+        if not (0.0 <= quality_scale <= 1.0):
+            raise ValueError("quality_scale must be between 0 and 1")
+        scale_transform = np.array(
+            [
+                [0.5 * (1.0 + quality_scale), 0.5 * (1.0 - quality_scale)],
+                [0.5 * (1.0 - quality_scale), 0.5 * (1.0 + quality_scale)],
+            ],
+            dtype=float,
+        )
+        J_eff = scale_transform @ J
 
         eps_smin = self.smin_eps_epsilon
 
         def _forward(theta):
             aH, dH, aA, dA = theta[:4]
 
-            etaH = self.mu + (aH + a_hga) - dA
-            etaA = self.mu + aA - (dH + d_hga)
+            etaH_base = self.mu + (aH + a_hga) - dA
+            etaA_base = self.mu + aA - (dH + d_hga)
+            etaH, etaA = Model._apply_matchup_scale(
+                etaH_base,
+                etaA_base,
+                self.mu,
+                quality_scale,
+            )
 
             fH = float(etaH)
             fprimeH = 1.0
@@ -1317,11 +1379,9 @@ class Model:
             dlogp_dfH = mH * dlogp_dmH
             dlogp_dfA = mA * dlogp_dmA
             like_vec = np.array([dlogp_dfH, dlogp_dfA], dtype=float)
-            J_full = np.zeros((2, 4), dtype=float)
-            J_full[0, 0] = fprimeH
-            J_full[0, 3] = -fprimeH
-            J_full[1, 1] = -fprimeA
-            J_full[1, 2] = fprimeA
+            J_full = np.array(J_eff, dtype=float)
+            J_full[0, :] *= fprimeH
+            J_full[1, :] *= fprimeA
             g_like = -J_full.T @ like_vec
 
             return match_weight * g_like + g_prior
@@ -1352,11 +1412,9 @@ class Model:
                 return Sigma0_inv.copy()
 
             H_eta = np.diag([mH, mA])
-            J_full = np.zeros((2, 4), dtype=float)
-            J_full[0, 0] = fprimeH
-            J_full[0, 3] = -fprimeH
-            J_full[1, 1] = -fprimeA
-            J_full[1, 2] = fprimeA
+            J_full = np.array(J_eff, dtype=float)
+            J_full[0, :] *= fprimeH
+            J_full[1, :] *= fprimeA
             H_like = J_full.T @ H_eta @ J_full
             H = match_weight * H_like + Sigma0_inv
             return 0.5 * (H + H.T)
@@ -1444,6 +1502,7 @@ class Model:
             info["hga_mA"] = float(mA_like)
             info["hga_fprimeH"] = float(fprimeH)
             info["hga_fprimeA"] = float(fprimeA)
+            info["hga_scale"] = float(quality_scale)
         info["match_weight"] = float(match_weight)
         info["grad_norm_recomputed"] = float(np.linalg.norm(g_at_map))
         info["theta_map"] = theta_map.copy()
@@ -1465,6 +1524,7 @@ class Model:
         mu_a: np.ndarray,
         is_neutral: bool,
         log_fact: np.ndarray,
+        quality_scale: float = 1.0,
         sigma_h=None,
         sigma_a=None,
         lognormal_correction: bool = False,
@@ -1482,8 +1542,14 @@ class Model:
         aH, dH = float(mu_h[0]), float(mu_h[1])
         aA, dA = float(mu_a[0]), float(mu_a[1])
 
-        etaH = self.mu + (aH + a_hga) - dA
-        etaA = self.mu + aA - (dH + d_hga)
+        etaH_base = self.mu + (aH + a_hga) - dA
+        etaA_base = self.mu + aA - (dH + d_hga)
+        etaH, etaA = self._apply_matchup_scale(
+            etaH_base,
+            etaA_base,
+            self.mu,
+            quality_scale,
+        )
 
         mH_raw = safe_exp(float(etaH))
         mA_raw = safe_exp(float(etaA))
@@ -1597,10 +1663,17 @@ class Model:
         score_h: int,
         score_a: int,
         log_fact: np.ndarray,
+        quality_scale: float = 1.0,
         score_h_censored: bool = False,
         score_a_censored: bool = False,
     ):
-        score_matrix, debug = self._score_matrix(mu_h, mu_a, is_neutral, log_fact)
+        score_matrix, debug = self._score_matrix(
+            mu_h,
+            mu_a,
+            is_neutral,
+            log_fact,
+            quality_scale=quality_scale,
+        )
         total = float(score_matrix.sum())
         if total <= 0.0:
             return 0.0, 0.0, 0.0, 0.0, debug
@@ -1635,6 +1708,7 @@ class Model:
         home_team: str,
         away_team: str,
         is_neutral: bool = True,
+        importance_class=None,
         mode: str = "point",
         n_samples: int = 2000,
         random_state=None,
@@ -1657,6 +1731,7 @@ class Model:
             if lognormal_score_correction is None
             else bool(lognormal_score_correction)
         )
+        quality_scale = self._quality_scale_for_importance(importance_class)
         if use_lognormal_correction and mode != "point":
             raise ValueError(
                 "lognormal_score_correction is only supported in point mode; "
@@ -1670,6 +1745,7 @@ class Model:
                 st_a.m,
                 is_neutral,
                 log_fact,
+                quality_scale=quality_scale,
                 sigma_h=st_h.sigma2,
                 sigma_a=st_a.sigma2,
                 lognormal_correction=use_lognormal_correction,
@@ -1711,10 +1787,15 @@ class Model:
                     d_hga = 0.0
                 else:
                     a_hga, d_hga = self._current_hga_components()
-                skilldiff = (
-                    self.mu + (st_h.m[0] + a_hga) - st_a.m[1]
-                    - (self.mu + st_a.m[0] - (st_h.m[1] + d_hga))
+                eta_home_base = self.mu + (st_h.m[0] + a_hga) - st_a.m[1]
+                eta_away_base = self.mu + st_a.m[0] - (st_h.m[1] + d_hga)
+                eta_home_eff, eta_away_eff = self._apply_matchup_scale(
+                    eta_home_base,
+                    eta_away_base,
+                    self.mu,
+                    quality_scale,
                 )
+                skilldiff = eta_home_eff - eta_away_eff
                 mu_before = float(self.mu)
                 self.mu = mu_before + math.log(self.extra_time_exp_score_mult)
                 try:
@@ -1723,6 +1804,7 @@ class Model:
                         st_a.m,
                         is_neutral,
                         log_fact,
+                        quality_scale=quality_scale,
                         sigma_h=st_h.sigma2,
                         sigma_a=st_a.sigma2,
                         lognormal_correction=use_lognormal_correction,
@@ -1816,7 +1898,13 @@ class Model:
         else:
             a_hga, d_hga = self._current_hga_components()
         for mu_h, mu_a in zip(draws_h, draws_a):
-            score_matrix, debug = self._score_matrix(mu_h, mu_a, is_neutral, log_fact)
+            score_matrix, debug = self._score_matrix(
+                mu_h,
+                mu_a,
+                is_neutral,
+                log_fact,
+                quality_scale=quality_scale,
+            )
             total = float(score_matrix.sum())
             if total <= 0.0:
                 continue
@@ -1834,15 +1922,24 @@ class Model:
             lam_away_sum += float(debug.get("lamA", 0.0))
             nu_sum += float(debug.get("nu", 0.0))
             if requires_result:
-                skilldiff = (
-                    self.mu + (mu_h[0] + a_hga) - mu_a[1]
-                    - (self.mu + mu_a[0] - (mu_h[1] + d_hga))
+                eta_home_base = self.mu + (mu_h[0] + a_hga) - mu_a[1]
+                eta_away_base = self.mu + mu_a[0] - (mu_h[1] + d_hga)
+                eta_home_eff, eta_away_eff = self._apply_matchup_scale(
+                    eta_home_base,
+                    eta_away_base,
+                    self.mu,
+                    quality_scale,
                 )
+                skilldiff = eta_home_eff - eta_away_eff
                 mu_before = float(self.mu)
                 self.mu = mu_before + math.log(self.extra_time_exp_score_mult)
                 try:
                     score_matrix_et, _debug_et = self._score_matrix(
-                        mu_h, mu_a, is_neutral, log_fact
+                        mu_h,
+                        mu_a,
+                        is_neutral,
+                        log_fact,
+                        quality_scale=quality_scale,
                     )
                 finally:
                     self.mu = mu_before
@@ -1948,6 +2045,7 @@ class Model:
         mu_h: np.ndarray,
         mu_a: np.ndarray,
         is_neutral: bool = True,
+        importance_class=None,
         mode: str = "point",
         n_samples: int = 2000,
         random_state=None,
@@ -1985,6 +2083,7 @@ class Model:
                 if lognormal_score_correction is None
                 else bool(lognormal_score_correction)
             )
+            quality_scale = self._quality_scale_for_importance(importance_class)
             if use_lognormal_correction and mode != "point":
                 raise ValueError(
                     "lognormal_score_correction is only supported in point mode; "
@@ -1998,6 +2097,7 @@ class Model:
                     mu_a,
                     is_neutral,
                     log_fact,
+                    quality_scale=quality_scale,
                     sigma_h=sigma_h,
                     sigma_a=sigma_a,
                     lognormal_correction=use_lognormal_correction,
@@ -2039,10 +2139,15 @@ class Model:
                         d_hga_val = 0.0
                     else:
                         a_hga_val, d_hga_val = self._current_hga_components()
-                    skilldiff = (
-                        self.mu + (mu_h[0] + a_hga_val) - mu_a[1]
-                        - (self.mu + mu_a[0] - (mu_h[1] + d_hga_val))
+                    eta_home_base = self.mu + (mu_h[0] + a_hga_val) - mu_a[1]
+                    eta_away_base = self.mu + mu_a[0] - (mu_h[1] + d_hga_val)
+                    eta_home_eff, eta_away_eff = self._apply_matchup_scale(
+                        eta_home_base,
+                        eta_away_base,
+                        self.mu,
+                        quality_scale,
                     )
+                    skilldiff = eta_home_eff - eta_away_eff
                     mu_before = float(self.mu)
                     self.mu = mu_before + math.log(self.extra_time_exp_score_mult)
                     try:
@@ -2051,6 +2156,7 @@ class Model:
                             mu_a,
                             is_neutral,
                             log_fact,
+                            quality_scale=quality_scale,
                             sigma_h=sigma_h,
                             sigma_a=sigma_a,
                             lognormal_correction=use_lognormal_correction,
@@ -2147,7 +2253,11 @@ class Model:
                 a_hga_val, d_hga_val = self._current_hga_components()
             for mu_h_draw, mu_a_draw in zip(draws_h, draws_a):
                 score_matrix, debug = self._score_matrix(
-                    mu_h_draw, mu_a_draw, is_neutral, log_fact
+                    mu_h_draw,
+                    mu_a_draw,
+                    is_neutral,
+                    log_fact,
+                    quality_scale=quality_scale,
                 )
                 total = float(score_matrix.sum())
                 if total <= 0.0:
@@ -2166,15 +2276,24 @@ class Model:
                 lam_away_sum += float(debug.get("lamA", 0.0))
                 nu_sum += float(debug.get("nu", 0.0))
                 if requires_result:
-                    skilldiff = (
-                        self.mu + (mu_h_draw[0] + a_hga_val) - mu_a_draw[1]
-                        - (self.mu + mu_a_draw[0] - (mu_h_draw[1] + d_hga_val))
+                    eta_home_base = self.mu + (mu_h_draw[0] + a_hga_val) - mu_a_draw[1]
+                    eta_away_base = self.mu + mu_a_draw[0] - (mu_h_draw[1] + d_hga_val)
+                    eta_home_eff, eta_away_eff = self._apply_matchup_scale(
+                        eta_home_base,
+                        eta_away_base,
+                        self.mu,
+                        quality_scale,
                     )
+                    skilldiff = eta_home_eff - eta_away_eff
                     mu_before = float(self.mu)
                     self.mu = mu_before + math.log(self.extra_time_exp_score_mult)
                     try:
                         score_matrix_et, _debug_et = self._score_matrix(
-                            mu_h_draw, mu_a_draw, is_neutral, log_fact
+                            mu_h_draw,
+                            mu_a_draw,
+                            is_neutral,
+                            log_fact,
+                            quality_scale=quality_scale,
                         )
                     finally:
                         self.mu = mu_before
@@ -2270,6 +2389,7 @@ class Model:
         home_team: str,
         away_team: str,
         is_neutral: bool = True,
+        importance_class=None,
         mode: str = "point",
         n_samples: int = 2000,
         random_state=None,
@@ -2279,6 +2399,7 @@ class Model:
             home_team,
             away_team,
             is_neutral=is_neutral,
+            importance_class=importance_class,
             mode=mode,
             n_samples=n_samples,
             random_state=random_state,
@@ -2301,6 +2422,7 @@ class Model:
         home_team: str,
         away_team: str,
         is_neutral: bool = True,
+        importance_class=None,
         mode: str = "point",
         n_samples: int = 2000,
         random_state=None,
@@ -2310,6 +2432,7 @@ class Model:
             home_team,
             away_team,
             is_neutral=is_neutral,
+            importance_class=importance_class,
             mode=mode,
             n_samples=n_samples,
             random_state=random_state,

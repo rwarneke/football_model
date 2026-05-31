@@ -4,6 +4,7 @@ import type {
   KnockoutMatch,
   QualifierMatch,
   RoundOf32Combos,
+  TeamStageProbabilities,
   WinProbabilities,
   WorldCupPredictorData,
 } from "@/lib/world-cup-predictor-types";
@@ -14,6 +15,7 @@ const GROUP_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_group_matches.csv`;
 const KNOCKOUT_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_knockout_matches.csv`;
 const ROUND_OF_32_FILE = `${REFERENCE_DIR}/world_cup_2026_round_of_32_combinations.csv`;
 const WIN_PROBABILITIES_FILE = "/model_output/win_probabilities.json";
+const TEAM_PROBABILITIES_FILE = "/model_output/simulation_team_probabilities.json";
 const QUALIFIERS_FILE = `${REFERENCE_DIR}/world_cup_2026_remaining_qualifiers.csv`;
 
 async function readCsv(
@@ -168,6 +170,8 @@ export async function loadWorldCupPredictorDataWithFetchers(
 
   const winProbabilities =
     (await fetchJsonFn(WIN_PROBABILITIES_FILE)) ?? {};
+  const simulationTeamProbabilities =
+    (await fetchJsonFn(TEAM_PROBABILITIES_FILE)) ?? {};
 
   return {
     groups,
@@ -177,5 +181,7 @@ export async function loadWorldCupPredictorDataWithFetchers(
     qualifiers,
     flags,
     winProbabilities: winProbabilities as WinProbabilities,
+    simulationTeamProbabilities:
+      simulationTeamProbabilities as Record<string, TeamStageProbabilities>,
   };
 }
