@@ -348,10 +348,7 @@ function formatNormalizedPercent(value: number | null | undefined) {
   if (value > 99.9) {
     return ">99.9%";
   }
-  if (value !== Math.round(value)) {
-    return `${value.toFixed(1)}%`;
-  }
-  return `${Math.round(value)}%`;
+  return `${value.toFixed(1)}%`;
 }
 
 function normalizeProbabilitySegments(values: {
@@ -752,7 +749,8 @@ export function TeamMatchupPage({
               </div>
             </div>
             <div className="min-w-0 lg:w-full lg:max-w-[28rem] lg:justify-self-center lg:pt-5">
-            <div className="mb-3 grid gap-3 sm:grid-cols-2">
+            <div className="mb-3 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={handleSwap}
@@ -775,7 +773,9 @@ export function TeamMatchupPage({
                     <option value="decimal">Decimal Odds</option>
                   </select>
                 </label>
-                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
                   <input
                     type="checkbox"
                     checked={neutral}
@@ -784,7 +784,7 @@ export function TeamMatchupPage({
                   />
                   Neutral
                 </label>
-                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
                   <input
                     type="checkbox"
                     checked={isFriendly}
@@ -793,7 +793,7 @@ export function TeamMatchupPage({
                   />
                   Friendly
                 </label>
-                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
                   <input
                     type="checkbox"
                     checked={requiresResult}
@@ -802,6 +802,7 @@ export function TeamMatchupPage({
                   />
                   Requires Result
                 </label>
+              </div>
             </div>
             <div className="rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
               <div className="space-y-1">
@@ -1028,7 +1029,8 @@ export function TeamMatchupPage({
             </label>
           </div>
           <div className="order-1 min-w-0 xl:order-2 xl:justify-self-center">
-            <div className="mb-3 grid gap-3 sm:grid-cols-2">
+            <div className="mb-3 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={handleSwap}
@@ -1051,7 +1053,9 @@ export function TeamMatchupPage({
                     <option value="decimal">Decimal Odds</option>
                   </select>
                 </label>
-                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
                   <input
                     type="checkbox"
                     checked={neutral}
@@ -1060,7 +1064,16 @@ export function TeamMatchupPage({
                   />
                   Neutral
                 </label>
-                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={isFriendly}
+                    onChange={(event) => setIsFriendly(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  Friendly
+                </label>
+                <label className="inline-flex h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
                   <input
                     type="checkbox"
                     checked={requiresResult}
@@ -1069,6 +1082,7 @@ export function TeamMatchupPage({
                   />
                   Requires Result
                 </label>
+              </div>
             </div>
             <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-sm text-slate-600">
               {teamA && teamB && teamA.team === teamB.team

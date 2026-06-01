@@ -19,7 +19,6 @@ from src.model import Model, MAX_GOALS
 from src.tournament import WorldCup2026
 
 FRIENDLY_LOSS_WEIGHT = 0.2
-FRIENDLY_QUALITY_SCALE = 1.0
 
 
 def get_results(team, second_team=None, res=None, start_date=None, end_date=None):
@@ -78,7 +77,7 @@ def main():
         results["tournament"] == "Friendly", 0, results["importance_class"]
     )
 
-    model = Model(friendly_quality_scale=FRIENDLY_QUALITY_SCALE)
+    model = Model()
     total_matches = int(len(results))
     progress_every = max(1, total_matches // 20)
 

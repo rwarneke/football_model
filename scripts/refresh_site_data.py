@@ -24,6 +24,7 @@ def main() -> None:
     run_step("Pull and clean match results", [sys.executable, "-m", "match_results.generate.run"])
     run_step("Sync reference data into web/public", [sys.executable, "scripts/sync_reference_data.py"])
     run_step("Fit model", [sys.executable, "-m", "src.fit_model"])
+    run_step("Export matchup probabilities", [sys.executable, "-m", "src.export_win_probabilities"])
     run_step("Run tournament simulations", [sys.executable, "-m", "src.run_simulations"], env=sim_env)
     run_step("Postprocess simulation outputs", [sys.executable, "-m", "src.postprocess_simulations"])
 
