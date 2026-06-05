@@ -14,6 +14,20 @@ export type WorldCupProbabilities = {
   }>;
 };
 
+export type WorldCupOptionPricing = {
+  strikes: number[];
+  rows: Array<{
+    team: string;
+    flagPath: string;
+    group: string | null;
+    progressionFairValue: number;
+    winFairValue: number;
+    totalFairValue: number;
+    calls: Record<string, number>;
+    puts: Record<string, number>;
+  }>;
+};
+
 export type ProbabilityStatus = "G" | "U" | "I";
 
 export type OpponentProbabilities = {
@@ -29,6 +43,7 @@ export type GroupRankProbabilities = Record<string, number>;
 const DATA_FILE = "/model_output/simulation_results.csv";
 const STATUS_FILE = "/model_output/simulation_results_status.csv";
 const TEAM_PROB_FILE = "/model_output/simulation_team_probabilities.json";
+const TEAM_VALUE_FILE = "/model_output/simulation_team_value_pricing.json";
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -278,4 +293,65 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
   });
 
   return { columns, rows };
+}
+
+export async function loadWorldCupOptionPricing(): Promise<WorldCupOptionPricing> {
+  const [probabilities, valueContents] = await Promise.all([
+    loadWorldCupProbabilities(),
+    readOptionalPublicText(TEAM_VALUE_FILE),
+  ]);
+
+  if (!valueContents) {
+    return { strikes: [], rows: [] };
+  }
+
+  const parsed = JSON.parse(valueContents) as {
+    value_definition?: { call_put_strikes?: number[] };
+    teams?: Record<
+      string,
+      {
+        progression_fair_value?: number;
+        win_fair_value?: number;
+        total_fair_value?: number;
+        calls?: Record<string, number>;
+        puts?: Record<string, number>;
+      }
+    >;
+  };
+
+  const strikes = Array.isArray(parsed.value_definition?.call_put_strikes)
+    ? parsed.value_definition?.call_put_strikes.filter((value) => Number.isFinite(value))
+    : [];
+  const teamValues = parsed.teams ?? {};
+
+  const rows = probabilities.rows
+    .flatMap((row) => {
+      const entry = teamValues[row.team];
+      if (!entry) {
+        return [];
+      }
+      return [
+        {
+          team: row.team,
+          flagPath: row.flagPath,
+          group: row.group,
+          progressionFairValue: Number(entry.progression_fair_value ?? 0),
+          winFairValue: Number(entry.win_fair_value ?? 0),
+          totalFairValue: Number(entry.total_fair_value ?? 0),
+          calls: Object.fromEntries(
+            Object.entries(entry.calls ?? {}).filter(([, value]) =>
+              Number.isFinite(value)
+            )
+          ),
+          puts: Object.fromEntries(
+            Object.entries(entry.puts ?? {}).filter(([, value]) =>
+              Number.isFinite(value)
+            )
+          ),
+        },
+      ];
+    })
+    .sort((a, b) => b.totalFairValue - a.totalFairValue);
+
+  return { strikes, rows };
 }

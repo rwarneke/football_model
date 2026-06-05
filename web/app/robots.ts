@@ -5,6 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
+      disallow: ["/options-pricing"],
     },
     sitemap: "https://thebackpost.net/sitemap.xml",
   };
