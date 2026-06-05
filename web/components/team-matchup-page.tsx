@@ -909,7 +909,9 @@ export function TeamMatchupPage({
 
               {scoreGrid ? (
                 <div className="mt-3">
-                  <div className="text-[10px] uppercase tracking-wide text-slate-500">Score Matrix</div>
+                  <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                    {requiresResult ? "Score Matrix (90')" : "Score Matrix"}
+                  </div>
                   <div className="mt-2 w-full overflow-x-auto">
                     <div className="grid w-full min-w-[22rem] grid-cols-[1.5rem_repeat(6,minmax(0,1fr))] gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
                       <div className="bg-slate-50 px-1 py-1 text-center font-semibold uppercase text-slate-500">

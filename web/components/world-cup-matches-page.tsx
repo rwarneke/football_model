@@ -951,7 +951,7 @@ export function WorldCupMatchesPageClient({
                       {scoreGrid ? (
                         <div className="mt-3">
                           <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                            Score Matrix
+                            {requiresResult ? "Score Matrix (90')" : "Score Matrix"}
                           </div>
                           <div className="mt-2 w-full overflow-x-auto">
                             <div className="min-w-full w-full">
