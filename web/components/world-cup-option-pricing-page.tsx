@@ -28,6 +28,10 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
+const BLUE_RGB = "147, 197, 253";
+const GREEN_RGB = "16, 185, 129";
+const RED_RGB = "239, 68, 68";
+
 function formatMoney(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "--";
@@ -45,6 +49,25 @@ function wrapHeaderLabel(label: string) {
   );
 }
 
+function valueHeatBackground(value: number, maxValue: number, rgb: string) {
+  if (!Number.isFinite(value) || !Number.isFinite(maxValue) || maxValue <= 0 || value <= 0) {
+    return undefined;
+  }
+  const clamped = Math.max(0, Math.min(value / maxValue, 1));
+  let alpha = 0;
+  if (clamped <= 0.1) {
+    const scaled = clamped / 0.1;
+    alpha = 0.08 + Math.pow(scaled, 1.2) * 0.08;
+  } else if (clamped <= 0.9) {
+    const scaled = (clamped - 0.1) / 0.8;
+    alpha = 0.16 + Math.pow(scaled, 1.35) * 0.54;
+  } else {
+    const scaled = (clamped - 0.9) / 0.1;
+    alpha = 0.8 + Math.pow(scaled, 1.25) * 0.18;
+  }
+  return { backgroundColor: `rgba(${rgb}, ${alpha})` };
+}
+
 export function WorldCupOptionPricingPage({
   strikes,
   rows,
@@ -58,6 +81,35 @@ export function WorldCupOptionPricingPage({
     }
     return rows.filter((row) => row.team.toLowerCase().includes(normalized));
   }, [query, rows]);
+
+  const maxTotal = React.useMemo(
+    () => rows.reduce((max, row) => Math.max(max, row.totalFairValue), 0),
+    [rows]
+  );
+  const maxCall = React.useMemo(
+    () =>
+      rows.reduce(
+        (max, row) =>
+          Math.max(
+            max,
+            ...strikes.map((strike) => Number(row.calls[String(strike)] ?? 0))
+          ),
+        0
+      ),
+    [rows, strikes]
+  );
+  const maxPut = React.useMemo(
+    () =>
+      rows.reduce(
+        (max, row) =>
+          Math.max(
+            max,
+            ...strikes.map((strike) => Number(row.puts[String(strike)] ?? 0))
+          ),
+        0
+      ),
+    [rows, strikes]
+  );
 
   const standardDescForColumn = React.useCallback((columnId: string) => {
     if (columnId === "team" || columnId === "group" || columnId === "flag") {
@@ -173,7 +225,7 @@ export function WorldCupOptionPricingPage({
         id: "totalFairValue",
         header: () => wrapHeaderLabel("Total"),
         accessorFn: (row) => row.totalFairValue,
-        meta: { isValue: true, emphasize: true },
+        meta: { isValue: true, emphasize: true, heat: "blue" },
         sortingFn: (a, b, id) => Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
         cell: ({ row }) => (
           <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-900 font-semibold whitespace-nowrap">
@@ -187,7 +239,7 @@ export function WorldCupOptionPricingPage({
             id: `call-${strike}`,
             header: () => <span className="whitespace-nowrap">C{strike}</span>,
             accessorFn: (row: TableRowData) => row.calls[String(strike)] ?? 0,
-            meta: { isValue: true },
+            meta: { isValue: true, heat: "green", strike },
             sortingFn: (a, b, id) =>
               Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
             cell: ({ row }: { row: { original: TableRowData } }) => (
@@ -203,7 +255,7 @@ export function WorldCupOptionPricingPage({
             id: `put-${strike}`,
             header: () => <span className="whitespace-nowrap">P{strike}</span>,
             accessorFn: (row: TableRowData) => row.puts[String(strike)] ?? 0,
-            meta: { isValue: true },
+            meta: { isValue: true, heat: "red", strike },
             sortingFn: (a, b, id) =>
               Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
             cell: ({ row }: { row: { original: TableRowData } }) => (
@@ -300,8 +352,19 @@ export function WorldCupOptionPricingPage({
                           isGroup?: boolean;
                           isValue?: boolean;
                           emphasize?: boolean;
+                          heat?: "blue" | "green" | "red";
+                          strike?: number;
                         }
                       | undefined;
+                    const rawValue = Number(cell.getValue() ?? 0);
+                    const heatStyle =
+                      columnMeta?.heat === "blue"
+                        ? valueHeatBackground(rawValue, maxTotal, BLUE_RGB)
+                        : columnMeta?.heat === "green"
+                          ? valueHeatBackground(rawValue, maxCall, GREEN_RGB)
+                          : columnMeta?.heat === "red"
+                            ? valueHeatBackground(rawValue, maxPut, RED_RGB)
+                            : undefined;
                     return (
                       <TableCell
                         key={cell.id}
@@ -316,13 +379,14 @@ export function WorldCupOptionPricingPage({
                         } ${cell.column.id === "flag" ? "sticky left-0 z-10 bg-white" : ""}`}
                         style={
                           columnMeta?.minWidthCh
-                            ? { minWidth: `${columnMeta.minWidthCh}ch` }
+                            ? { minWidth: `${columnMeta.minWidthCh}ch`, ...heatStyle }
                             : columnMeta?.isValue
                               ? {
                                   minWidth: "var(--value-col-width)",
                                   maxWidth: "calc(var(--value-col-width) * 1.6)",
+                                  ...heatStyle,
                                 }
-                              : undefined
+                              : heatStyle
                         }
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
