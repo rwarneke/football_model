@@ -13,6 +13,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from src.tournament import WorldCup2026
+from src.world_cup_results import load_results_wc2026
 
 STAGES = [
     "Group",
@@ -32,9 +33,17 @@ _SIM_ROUND_OF_32_COMBOS = None
 _SIM_TEAM_TO_ID = None
 _SIM_STAGE_INDEX = None
 _SIM_GROUP_INDEX = None
+_SIM_COMPLETED_MATCH_RESULTS = None
 
 
-def _init_worker(model, group_matches_df, knockout_matches_df, round_of_32_combos, team_to_id):
+def _init_worker(
+    model,
+    group_matches_df,
+    knockout_matches_df,
+    round_of_32_combos,
+    team_to_id,
+    completed_match_results,
+):
     global _SIM_MODEL
     global _SIM_GROUP_MATCHES_DF
     global _SIM_KNOCKOUT_MATCHES_DF
@@ -42,6 +51,7 @@ def _init_worker(model, group_matches_df, knockout_matches_df, round_of_32_combo
     global _SIM_TEAM_TO_ID
     global _SIM_STAGE_INDEX
     global _SIM_GROUP_INDEX
+    global _SIM_COMPLETED_MATCH_RESULTS
 
     _SIM_MODEL = model
     _SIM_GROUP_MATCHES_DF = group_matches_df
@@ -50,6 +60,7 @@ def _init_worker(model, group_matches_df, knockout_matches_df, round_of_32_combo
     _SIM_TEAM_TO_ID = team_to_id
     _SIM_STAGE_INDEX = {stage: idx for idx, stage in enumerate(STAGES)}
     _SIM_GROUP_INDEX = {group: idx for idx, group in enumerate(GROUPS)}
+    _SIM_COMPLETED_MATCH_RESULTS = completed_match_results
 
 
 def _score_or_default(value, default):
@@ -134,6 +145,7 @@ def _simulate_chunk(seed_start, seed_count):
             group_matches_df=_SIM_GROUP_MATCHES_DF,
             knockout_matches_df=_SIM_KNOCKOUT_MATCHES_DF,
             round_of_32_combos=_SIM_ROUND_OF_32_COMBOS,
+            completed_match_results=_SIM_COMPLETED_MATCH_RESULTS,
         )
         t.simulate(_SIM_MODEL, random_state=seed, record_params=False, fast_mode=False)
 
@@ -177,6 +189,7 @@ def main():
     round_of_32_df = pd.read_csv(
         "reference_data/world_cup_2026_round_of_32_combinations.csv"
     )
+    completed_match_results = load_results_wc2026()
     round_of_32_combos = {}
     for row in round_of_32_df.to_dict(orient="records"):
         combo = str(row.get("combo", "")).strip()
@@ -241,6 +254,7 @@ def main():
             knockout_matches_df,
             round_of_32_combos,
             team_to_id,
+            completed_match_results,
         ),
     ) as executor:
         futures = [executor.submit(_simulate_chunk, start, count) for start, count in tasks]

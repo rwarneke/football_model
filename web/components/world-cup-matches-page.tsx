@@ -3,6 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import type { WorldCupMatch } from "@/lib/world-cup-matches";
+import type { CompletedWorldCupMatch } from "@/lib/world-cup-results";
 import type { WinProbabilities, WinProbabilityEntry } from "@/lib/world-cup-predictor-types";
 import { buildScoreMatrix } from "@/lib/score-matrix";
 import {
@@ -537,33 +538,52 @@ function formatDateHeading(date: string) {
 
 export function WorldCupMatchesPageClient({
   matches,
+  completedMatches,
   winProbabilities,
 }: {
   matches: WorldCupMatch[];
+  completedMatches: CompletedWorldCupMatch[];
   winProbabilities: WinProbabilities;
 }) {
   const [probabilityMode, setProbabilityMode] = React.useState<"percent" | "decimal">("percent");
   const [query, setQuery] = React.useState("");
+  const completedById = React.useMemo(
+    () => new Map(completedMatches.map((match) => [String(match.matchId), match])),
+    [completedMatches]
+  );
 
-  const filteredMatches = React.useMemo(() => {
+  const filteredUpcomingMatches = React.useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return matches;
-    }
     return matches.filter((match) => {
+      if (completedById.has(String(match.id))) {
+        return false;
+      }
       const home = match.home.toLowerCase();
       const away = match.away.toLowerCase();
-      return home.includes(normalized) || away.includes(normalized);
+      return !normalized || home.includes(normalized) || away.includes(normalized);
     });
-  }, [matches, query]);
+  }, [completedById, matches, query]);
+
+  const filteredCompletedMatches = React.useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return completedMatches.filter((match) => {
+      if (!normalized) {
+        return true;
+      }
+      return (
+        match.homeTeam.toLowerCase().includes(normalized) ||
+        match.awayTeam.toLowerCase().includes(normalized)
+      );
+    });
+  }, [completedMatches, query]);
 
   const grouped = React.useMemo(() => {
-    return filteredMatches.reduce<Record<string, WorldCupMatch[]>>((acc, match) => {
+    return filteredUpcomingMatches.reduce<Record<string, WorldCupMatch[]>>((acc, match) => {
       acc[match.date] = acc[match.date] ?? [];
       acc[match.date].push(match);
       return acc;
     }, {});
-  }, [filteredMatches]);
+  }, [filteredUpcomingMatches]);
 
   const dates = React.useMemo(
     () => Object.keys(grouped).sort((a, b) => a.localeCompare(b)),
@@ -597,7 +617,9 @@ export function WorldCupMatchesPageClient({
         <div className="text-2xl font-semibold text-ebony md:text-3xl">
           Upcoming matches
         </div>
-        {dates.map((date) => (
+        {dates.length === 0 ? (
+          <div className="text-sm text-slate-500">No upcoming matches.</div>
+        ) : dates.map((date) => (
           <section key={date} className="space-y-3">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
               {formatDateHeading(date)}
@@ -1019,7 +1041,156 @@ export function WorldCupMatchesPageClient({
         <div className="text-2xl font-semibold text-ebony md:text-3xl">
           Past matches
         </div>
-        <div className="text-sm text-slate-500">No past matches yet.</div>
+        {filteredCompletedMatches.length === 0 ? (
+          <div className="text-sm text-slate-500">No past matches yet.</div>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {filteredCompletedMatches.map((match) => {
+              const margin = match.homeScore - match.awayScore;
+              const homeWon = margin > 0 || match.winner === match.homeTeam;
+              const awayWon = margin < 0 || match.winner === match.awayTeam;
+              const isDraw = !homeWon && !awayWon;
+              const matrix = resolveMatchScoreMatrix({
+                probabilities: winProbabilities,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                country: match.country,
+                neutralOverride: match.neutral ?? null,
+              });
+              const scoreGrid = matrix ? buildScoreGrid(matrix) : null;
+              const marginRow = matrix ? buildMarginRow(matrix) : null;
+              const actualMarginIndex =
+                margin >= 3 ? 0 : margin === 2 ? 1 : margin === 1 ? 2 : margin === 0 ? 3 : margin === -1 ? 4 : margin === -2 ? 5 : 6;
+              const actualHomeBucket = Math.min(match.homeScore, 5);
+              const actualAwayBucket = Math.min(match.awayScore, 5);
+              return (
+                <div key={`past-${match.matchId}`} className="min-w-0">
+                  <div className="h-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">
+                      <span className={`flex items-center gap-2 min-w-0 ${awayWon ? "opacity-40" : "opacity-100"}`}>
+                        <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+                          <Image
+                            src={`/flags/${match.homeTeam.replace(/ /g, "_")}.png`}
+                            alt={`${match.homeTeam} flag`}
+                            fill
+                            className="object-cover"
+                            sizes="24px"
+                          />
+                        </span>
+                        <span
+                          className={`whitespace-normal break-words ${homeWon ? "font-bold text-slate-900" : isDraw ? "text-slate-900" : ""}`}
+                        >
+                          {match.homeTeam}
+                        </span>
+                      </span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {match.homeScore}-{match.awayScore}
+                      </span>
+                      <span className={`flex items-center gap-2 min-w-0 justify-end text-right ${homeWon ? "opacity-40" : "opacity-100"}`}>
+                        <span
+                          className={`whitespace-normal break-words ${awayWon ? "font-bold text-slate-900" : isDraw ? "text-slate-900" : ""}`}
+                        >
+                          {match.awayTeam}
+                        </span>
+                        <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+                          <Image
+                            src={`/flags/${match.awayTeam.replace(/ /g, "_")}.png`}
+                            alt={`${match.awayTeam} flag`}
+                            fill
+                            className="object-cover"
+                            sizes="24px"
+                          />
+                        </span>
+                      </span>
+                    </div>
+                    {marginRow ? (
+                      <div className="mt-3">
+                        <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                          Margin
+                        </div>
+                        <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                          {marginRow.map((cell, index) => (
+                            <div key={`past-margin-label-${match.matchId}-${index}`} className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                              {cell.label}
+                            </div>
+                          ))}
+                          {marginRow.map((cell, index) => (
+                            <div
+                              key={`past-margin-value-${match.matchId}-${index}`}
+                              className={`bg-white px-1 py-1 text-center tabular-nums ${index === actualMarginIndex ? "text-blue-800" : "opacity-30"}`}
+                              style={index === actualMarginIndex ? scoreMatrixHighlight(cell.value) : undefined}
+                            >
+                              {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {scoreGrid ? (
+                      <div className="mt-3">
+                        <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                          Exact score
+                        </div>
+                        <div className="mt-2 w-full overflow-x-auto">
+                          <div className="min-w-full w-full">
+                            <div className="grid w-full min-w-[22rem] grid-cols-[1.5rem_repeat(6,minmax(0,1fr))] gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                              <div className="bg-slate-50 px-1 py-1 text-center font-semibold uppercase text-slate-500">
+                                H/A
+                              </div>
+                              {SCORE_LABELS.map((label) => (
+                                <div
+                                  key={`past-col-${match.matchId}-${label}`}
+                                  className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500"
+                                >
+                                  {label}
+                                </div>
+                              ))}
+                              {scoreGrid.map((row, rowIndex) => (
+                                <React.Fragment key={`past-row-${match.matchId}-${rowIndex}`}>
+                                  <div className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                                    {SCORE_LABELS[rowIndex]}
+                                  </div>
+                                  {row.map((value, colIndex) => {
+                                    const isActual =
+                                      rowIndex === actualHomeBucket &&
+                                      colIndex === actualAwayBucket;
+                                    return (
+                                      <div
+                                        key={`past-cell-${match.matchId}-${rowIndex}-${colIndex}`}
+                                        className={`bg-white px-1 py-1 text-center tabular-nums ${isActual ? "text-blue-800" : "opacity-25"}`}
+                                        style={isActual ? scoreMatrixHighlight(value) : undefined}
+                                      >
+                                        {formatProbabilityLabel(
+                                          value,
+                                          probabilityMode,
+                                          true
+                                        ).replace("%", "")}
+                                      </div>
+                                    );
+                                  })}
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="mt-auto pt-3 flex items-end justify-between gap-3">
+                      <div className="text-sm text-slate-600 w-[60%] whitespace-normal break-words">
+                        {match.city || match.country
+                          ? `${match.city}${match.city && match.country ? ", " : ""}${match.country}`
+                          : "TBD"}
+                      </div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 text-right w-[40%] whitespace-normal break-words">
+                        {match.stage}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

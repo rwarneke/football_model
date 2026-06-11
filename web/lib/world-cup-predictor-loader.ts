@@ -1,4 +1,5 @@
 import type {
+  CompletedWorldCupMatch,
   GroupDefinition,
   GroupMatch,
   KnockoutMatch,
@@ -14,9 +15,8 @@ const GROUPS_FILE = `${REFERENCE_DIR}/world_cup_2026_groups.csv`;
 const GROUP_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_group_matches.csv`;
 const KNOCKOUT_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_knockout_matches.csv`;
 const ROUND_OF_32_FILE = `${REFERENCE_DIR}/world_cup_2026_round_of_32_combinations.csv`;
-const WIN_PROBABILITIES_FILE = "/model_output/win_probabilities.json";
-const TEAM_PROBABILITIES_FILE = "/model_output/simulation_team_probabilities.json";
 const QUALIFIERS_FILE = `${REFERENCE_DIR}/world_cup_2026_remaining_qualifiers.csv`;
+const RESULTS_FILE_NAME = "results_wc2026.csv";
 
 async function readCsv(
   filePath: string,
@@ -37,13 +37,24 @@ async function readCsv(
   return { headers, rows };
 }
 
+async function readOptionalCsv(
+  filePath: string,
+  fetchTextFn: (path: string) => Promise<string>
+) {
+  try {
+    return await readCsv(filePath, fetchTextFn);
+  } catch {
+    return { headers: [] as string[], rows: [] as Record<string, string>[] };
+  }
+}
+
 function isSlotPlaceholder(name: string) {
   return /\bwinner$/i.test(name.trim());
 }
 
 function normalizeName(raw: string): string {
   const trimmed = raw?.trim() ?? "";
-  if (!trimmed || trimmed.toLowerCase() === "nan") {
+  if (!trimmed || trimmed.toLowerCase() === "nan" || trimmed.toLowerCase() === "na") {
     return "";
   }
   if (isSlotPlaceholder(trimmed)) {
@@ -62,8 +73,12 @@ function resolveFlagPath(team: string) {
 
 export async function loadWorldCupPredictorDataWithFetchers(
   fetchTextFn: (path: string) => Promise<string>,
-  fetchJsonFn: (path: string) => Promise<unknown>
+  fetchJsonFn: (path: string) => Promise<unknown>,
+  modelOutputDir = "/model_output"
 ): Promise<WorldCupPredictorData> {
+  const winProbabilitiesFile = `${modelOutputDir}/win_probabilities.json`;
+  const teamProbabilitiesFile = `${modelOutputDir}/simulation_team_probabilities.json`;
+  const resultsFile = `${modelOutputDir}/${RESULTS_FILE_NAME}`;
   const groupRows = (await readCsv(GROUPS_FILE, fetchTextFn)).rows;
   const groupsMap = new Map<string, string[]>();
   for (const row of groupRows) {
@@ -168,10 +183,60 @@ export async function loadWorldCupPredictorDataWithFetchers(
     flags[team] = resolveFlagPath(team);
   }
 
+  const completedMatches: CompletedWorldCupMatch[] = (
+    await readOptionalCsv(resultsFile, fetchTextFn)
+  ).rows
+    .map((row) => {
+      const homeScore = Number(row.home_score);
+      const awayScore = Number(row.away_score);
+      const matchId = Number(row.match_id);
+      if (
+        !Number.isInteger(matchId) ||
+        !Number.isInteger(homeScore) ||
+        !Number.isInteger(awayScore)
+      ) {
+        return null;
+      }
+      const penaltyWinner = normalizeName(row.penalty_winner ?? "");
+      const winner =
+        penaltyWinner
+          || (homeScore > awayScore
+            ? normalizeName(row.home_team ?? "")
+            : awayScore > homeScore
+            ? normalizeName(row.away_team ?? "")
+            : "");
+      return {
+        matchId,
+        date: row.date,
+        stage: row.stage?.trim() ?? "",
+        group: normalizeName(row.group ?? "") || null,
+        homeTeam: normalizeName(row.home_team ?? ""),
+        awayTeam: normalizeName(row.away_team ?? ""),
+        stadium: row.stadium?.trim() ?? "",
+        city: row.city?.trim() ?? "",
+        country: row.country?.trim() ?? "",
+        neutral:
+          String(row.neutral ?? "").trim().toLowerCase() === "true"
+            ? true
+            : String(row.neutral ?? "").trim().toLowerCase() === "false"
+            ? false
+            : null,
+        homeScore,
+        awayScore,
+        wentExtraTime:
+          String(row.went_extra_time ?? "").trim().toLowerCase() === "true",
+        wentPenalties:
+          String(row.went_penalties ?? "").trim().toLowerCase() === "true",
+        penaltyWinner: penaltyWinner || null,
+        winner: winner || null,
+      } satisfies CompletedWorldCupMatch;
+    })
+    .filter((row): row is CompletedWorldCupMatch => Boolean(row));
+
   const winProbabilities =
-    (await fetchJsonFn(WIN_PROBABILITIES_FILE)) ?? {};
+    (await fetchJsonFn(winProbabilitiesFile)) ?? {};
   const simulationTeamProbabilities =
-    (await fetchJsonFn(TEAM_PROBABILITIES_FILE)) ?? {};
+    (await fetchJsonFn(teamProbabilitiesFile)) ?? {};
 
   return {
     groups,
@@ -183,5 +248,6 @@ export async function loadWorldCupPredictorDataWithFetchers(
     winProbabilities: winProbabilities as WinProbabilities,
     simulationTeamProbabilities:
       simulationTeamProbabilities as Record<string, TeamStageProbabilities>,
+    completedMatches,
   };
 }

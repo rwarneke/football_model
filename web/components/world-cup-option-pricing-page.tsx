@@ -19,7 +19,12 @@ import {
 } from "@/components/ui/table";
 import type { WorldCupOptionPricing } from "@/lib/world-cup";
 
-type WorldCupOptionPricingPageProps = WorldCupOptionPricing;
+type WorldCupOptionPricingPageProps = {
+  current: WorldCupOptionPricing;
+  pretournament: WorldCupOptionPricing;
+  currentUpdatedLabel: string;
+  pretournamentUpdatedLabel: string;
+};
 
 type TableRowData = WorldCupOptionPricing["rows"][number];
 
@@ -69,10 +74,20 @@ function valueHeatBackground(value: number, maxValue: number, rgb: string) {
 }
 
 export function WorldCupOptionPricingPage({
-  strikes,
-  rows,
+  current,
+  pretournament,
+  currentUpdatedLabel,
+  pretournamentUpdatedLabel,
 }: WorldCupOptionPricingPageProps) {
   const [query, setQuery] = React.useState("");
+  const [showPretournament, setShowPretournament] = React.useState(false);
+  const showingCurrent = !showPretournament;
+  const active = showPretournament ? pretournament : current;
+  const updatedLabel = showingCurrent
+    ? currentUpdatedLabel
+    : pretournamentUpdatedLabel;
+  const strikes = active.strikes;
+  const rows = active.rows;
 
   const filtered = React.useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -277,10 +292,36 @@ export function WorldCupOptionPricingPage({
     getSortedRowModel: getSortedRowModel(),
     enableMultiSort: false,
   });
+  const isGroupedByGroup = sorting[0]?.id === "group";
+  const groupBase = (value: string | null | undefined) =>
+    String(value ?? "").replace(/\*/g, "");
 
   return (
     <div className="space-y-4">
       <div className="flex w-full items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setShowPretournament((prev) => !prev)}
+          role="switch"
+          aria-checked={showingCurrent}
+          aria-label={showingCurrent ? "Current" : "Pre-tournament"}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 ${
+            showingCurrent ? "bg-slate-900" : "bg-slate-300"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+              showingCurrent ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+        <span className="shrink-0 text-sm text-slate-700">
+          {showingCurrent ? "Current" : "Pre-tournament"}
+        </span>
+      </div>
+      <div className="flex w-full items-center gap-3">
+        <span className="shrink-0 text-sm text-ink-400">Updated {updatedLabel}</span>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -340,10 +381,19 @@ export function WorldCupOptionPricingPage({
               ))}
             </thead>
             <TableBody className="divide-y divide-slate-100">
-              {table.getRowModel().rows.map((row) => (
+              {table.getRowModel().rows.map((row, index, allRows) => {
+                const isGroupEnd =
+                  isGroupedByGroup &&
+                  index > 0 &&
+                  index < allRows.length - 1 &&
+                  groupBase(row.original.group) !==
+                    groupBase(allRows[index + 1]?.original.group);
+                return (
                 <TableRow
                   key={row.id}
-                  className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
+                  className={`border-b border-slate-100 transition-colors hover:bg-slate-50/70 ${
+                    isGroupEnd ? "border-b-2 border-slate-200" : ""
+                  }`}
                 >
                   {row.getVisibleCells().map((cell) => {
                     const columnMeta = cell.column.columnDef.meta as
@@ -376,7 +426,9 @@ export function WorldCupOptionPricingPage({
                               : columnMeta?.isGroup
                                 ? "text-center"
                                 : "text-right"
-                        } ${cell.column.id === "flag" ? "sticky left-0 z-10 bg-white" : ""}`}
+                        } ${cell.column.id === "flag" ? "sticky left-0 z-10 bg-white" : ""} ${
+                          isGroupEnd ? "border-b-2 border-slate-200" : ""
+                        }`}
                         style={
                           columnMeta?.minWidthCh
                             ? { minWidth: `${columnMeta.minWidthCh}ch`, ...heatStyle }
@@ -394,7 +446,8 @@ export function WorldCupOptionPricingPage({
                     );
                   })}
                 </TableRow>
-              ))}
+                );
+              })}
               {table.getRowModel().rows.length === 0 ? (
                 <TableRow>
                   <TableCell

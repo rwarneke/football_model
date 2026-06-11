@@ -40,10 +40,10 @@ export type OpponentProbabilities = {
 
 export type GroupRankProbabilities = Record<string, number>;
 
-const DATA_FILE = "/model_output/simulation_results.csv";
-const STATUS_FILE = "/model_output/simulation_results_status.csv";
-const TEAM_PROB_FILE = "/model_output/simulation_team_probabilities.json";
-const TEAM_VALUE_FILE = "/model_output/simulation_team_value_pricing.json";
+const DATA_FILE_NAME = "simulation_results.csv";
+const STATUS_FILE_NAME = "simulation_results_status.csv";
+const TEAM_PROB_FILE_NAME = "simulation_team_probabilities.json";
+const TEAM_VALUE_FILE_NAME = "simulation_team_value_pricing.json";
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -90,8 +90,10 @@ function emptyOpponentProbabilities(): OpponentProbabilities {
   return { R32: {}, R16: {}, QF: {}, SF: {}, Final: {} };
 }
 
-export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities> {
-  const contents = await readPublicText(DATA_FILE);
+export async function loadWorldCupProbabilities(
+  modelOutputDir = "/model_output"
+): Promise<WorldCupProbabilities> {
+  const contents = await readPublicText(`${modelOutputDir}/${DATA_FILE_NAME}`);
   const lines = contents.trim().split(/\r?\n/);
   if (lines.length <= 1) {
     return { columns: [], rows: [] };
@@ -111,7 +113,9 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
 
   let statusHeaders: string[] = [];
   const statusMap = new Map<string, Record<string, string | undefined>>();
-  const statusContents = await readOptionalPublicText(STATUS_FILE);
+  const statusContents = await readOptionalPublicText(
+    `${modelOutputDir}/${STATUS_FILE_NAME}`
+  );
   if (statusContents) {
     const statusLines = statusContents.trim().split(/\r?\n/);
     statusHeaders = statusLines[0]?.split(",") ?? [];
@@ -195,7 +199,9 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
 
   const opponentMap = new Map<string, OpponentProbabilities>();
   const groupRankMap = new Map<string, GroupRankProbabilities>();
-  const teamProbContents = await readOptionalPublicText(TEAM_PROB_FILE);
+  const teamProbContents = await readOptionalPublicText(
+    `${modelOutputDir}/${TEAM_PROB_FILE_NAME}`
+  );
   if (teamProbContents) {
     const parsed = JSON.parse(teamProbContents) as Record<
       string,
@@ -295,10 +301,12 @@ export async function loadWorldCupProbabilities(): Promise<WorldCupProbabilities
   return { columns, rows };
 }
 
-export async function loadWorldCupOptionPricing(): Promise<WorldCupOptionPricing> {
+export async function loadWorldCupOptionPricing(
+  modelOutputDir = "/model_output"
+): Promise<WorldCupOptionPricing> {
   const [probabilities, valueContents] = await Promise.all([
-    loadWorldCupProbabilities(),
-    readOptionalPublicText(TEAM_VALUE_FILE),
+    loadWorldCupProbabilities(modelOutputDir),
+    readOptionalPublicText(`${modelOutputDir}/${TEAM_VALUE_FILE_NAME}`),
   ]);
 
   if (!valueContents) {

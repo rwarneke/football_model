@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { stat } from "node:fs/promises";
+import path from "node:path";
 import { WorldCupProbabilitiesPage } from "@/components/world-cup-probabilities-page";
 import { loadRatings } from "@/lib/ratings";
 import { loadWorldCupProbabilities } from "@/lib/world-cup";
@@ -7,9 +9,42 @@ export const metadata: Metadata = {
   title: "World Cup 2026 Progression Chances",
 };
 
+async function modelOutputUpdatedLabel(dirName: string) {
+  const stats = await stat(
+    path.join(process.cwd(), "public", dirName.replace(/^\/+/, ""), "simulation_results.csv")
+  );
+  return stats.mtime.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+async function loadPretournamentProbabilities() {
+  try {
+    return await loadWorldCupProbabilities("/model_output_pretournament");
+  } catch {
+    return await loadWorldCupProbabilities("/model_output");
+  }
+}
+
+async function pretournamentUpdatedLabel() {
+  try {
+    return await modelOutputUpdatedLabel("/model_output_pretournament");
+  } catch {
+    return await modelOutputUpdatedLabel("/model_output");
+  }
+}
+
 export default async function WorldCupProbabilitiesRoute() {
-  const { columns, rows } = await loadWorldCupProbabilities();
-  const ratings = await loadRatings();
+  const [current, pretournament, ratings, currentUpdatedLabel, pretournamentUpdated] =
+    await Promise.all([
+      loadWorldCupProbabilities("/model_output"),
+      loadPretournamentProbabilities(),
+      loadRatings(),
+      modelOutputUpdatedLabel("/model_output"),
+      pretournamentUpdatedLabel(),
+    ]);
   const ratingsMap = new Map(
     ratings.map((row) => [
       row.team,
@@ -20,20 +55,16 @@ export default async function WorldCupProbabilitiesRoute() {
       },
     ])
   );
-  const rowsWithRatings = rows.map((row) => {
-    const rating = ratingsMap.get(row.team);
-    return {
-      ...row,
-      ratingOverall: rating?.ratingOverall,
-      ratingAttack: rating?.ratingAttack,
-      ratingDefense: rating?.ratingDefense,
-    };
-  });
-  const lastUpdated = new Date().toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const attachRatings = (rows: typeof current.rows) =>
+    rows.map((row) => {
+      const rating = ratingsMap.get(row.team);
+      return {
+        ...row,
+        ratingOverall: rating?.ratingOverall,
+        ratingAttack: rating?.ratingAttack,
+        ratingDefense: rating?.ratingDefense,
+      };
+    });
 
   return (
     <main className="px-2 pb-16 pt-8 lg:px-6">
@@ -49,12 +80,17 @@ export default async function WorldCupProbabilitiesRoute() {
             Each team's probability of reaching each stage of the 2026 FIFA
             World Cup, based on 10,000 simulations.
           </p>
-          <div className="flex items-center gap-4 text-sm text-ink-400">
-            <span>Updated {lastUpdated}</span>
-          </div>
         </header>
 
-        <WorldCupProbabilitiesPage columns={columns} rows={rowsWithRatings} />
+        <WorldCupProbabilitiesPage
+          current={{ columns: current.columns, rows: attachRatings(current.rows) }}
+          pretournament={{
+            columns: pretournament.columns,
+            rows: attachRatings(pretournament.rows),
+          }}
+          currentUpdatedLabel={currentUpdatedLabel}
+          pretournamentUpdatedLabel={pretournamentUpdated}
+        />
       </div>
     </main>
   );

@@ -58,6 +58,8 @@ async function fetchJson(filePath: string) {
   }
 }
 
-export async function loadWorldCupPredictorDataClient(): Promise<WorldCupPredictorData> {
-  return loadWorldCupPredictorDataWithFetchers(fetchText, fetchJson);
+export async function loadWorldCupPredictorDataClient(
+  modelOutputDir = "/model_output"
+): Promise<WorldCupPredictorData> {
+  return loadWorldCupPredictorDataWithFetchers(fetchText, fetchJson, modelOutputDir);
 }

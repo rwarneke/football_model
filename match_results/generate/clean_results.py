@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
+from src.world_cup_results import world_cup_results_for_clean_results
+
 parser = argparse.ArgumentParser(description="Clean match results data.")
 parser.add_argument(
     "--no-goalscorers",
@@ -79,8 +81,95 @@ def load_csv_with_manual_overlay(filename: str, key_columns: list[str]) -> pd.Da
     )
     return combined.drop(columns=["_source_priority", "_home_team_key", "_away_team_key"])
 
+
+def combine_with_world_cup_rows(
+    primary: pd.DataFrame,
+    world_cup: pd.DataFrame,
+    key_columns: list[str],
+    compare_columns: list[str],
+    source_name: str,
+) -> pd.DataFrame:
+    if world_cup.empty:
+        return primary
+
+    primary = primary.copy()
+    world_cup = world_cup.copy()
+
+    for df in (primary, world_cup):
+        df["_home_team_key"] = df["home_team"].map(normalize_team_name_for_dedupe)
+        df["_away_team_key"] = df["away_team"].map(normalize_team_name_for_dedupe)
+        df["_date_key"] = pd.to_datetime(df["date"])
+
+    overlap = primary.merge(
+        world_cup,
+        on=["_date_key", "_home_team_key", "_away_team_key"],
+        how="inner",
+        suffixes=("_primary", "_wc"),
+    )
+    if not overlap.empty:
+        mismatches: list[str] = []
+        for _, row in overlap.iterrows():
+            row_mismatch = False
+            for col in compare_columns:
+                left = row.get(f"{col}_primary", pd.NA)
+                right = row.get(f"{col}_wc", pd.NA)
+                if pd.isna(left):
+                    continue
+                if pd.isna(right):
+                    row_mismatch = True
+                    break
+                if pd.isna(left) and pd.isna(right):
+                    continue
+                if isinstance(left, (bool, np.bool_)) or isinstance(right, (bool, np.bool_)):
+                    if bool(left) != bool(right):
+                        row_mismatch = True
+                        break
+                    continue
+                if str(left) != str(right):
+                    row_mismatch = True
+                    break
+            if row_mismatch:
+                mismatches.append(
+                    f"{row['_date_key'].date()} {row['home_team_wc']} vs {row['away_team_wc']}"
+                )
+        if mismatches:
+            raise ValueError(
+                f"[{source_name}] results_wc2026.csv conflicts with {source_name} for existing matches.\n"
+                + "\n".join(mismatches[:20])
+            )
+
+    primary["_source_priority"] = 1
+    world_cup["_source_priority"] = 0
+    combined = pd.concat([world_cup, primary], ignore_index=True, sort=False)
+    combined = combined.sort_values(
+        by=["_date_key", "_home_team_key", "_away_team_key", "_source_priority"],
+        ascending=[True, True, True, True],
+        kind="mergesort",
+    )
+    combined = combined.drop_duplicates(
+        subset=["_date_key", "_home_team_key", "_away_team_key"], keep="first"
+    )
+    return combined.drop(
+        columns=["_date_key", "_home_team_key", "_away_team_key", "_source_priority"]
+    )
+
 results_raw = load_csv_with_manual_overlay("results.csv", RESULTS_KEY)
 shootouts_raw = load_csv_with_manual_overlay("shootouts.csv", RESULTS_KEY)
+wc_results_raw, wc_shootouts_raw, wc_completed_raw = world_cup_results_for_clean_results()
+results_raw = combine_with_world_cup_rows(
+    results_raw,
+    wc_results_raw,
+    RESULTS_KEY,
+    ["home_score", "away_score", "tournament", "city", "country", "neutral"],
+    source_name="results",
+)
+shootouts_raw = combine_with_world_cup_rows(
+    shootouts_raw,
+    wc_shootouts_raw,
+    RESULTS_KEY,
+    ["winner", "first_shooter"],
+    source_name="shootouts",
+)
 
 results_merged = pd.merge(
     results_raw,
@@ -497,6 +586,8 @@ if not ARGS.no_goalscorers and goalscorers_path.exists():
         "away_score_90",
         "away_score_120",
     ]:
+        if col not in results.columns:
+            results[col] = 0
         results[col] = results[col].fillna(0)
 
     home_45 = results["home_score_45"]
@@ -660,7 +751,43 @@ if extra_time_ref_path.exists():
             mask &= results["date"] <= row.end_date
         no_extra_time_rule.loc[mask] = bool(row.no_extra_time)
 
+manual_score_cols = [
+    "home_score_90",
+    "away_score_90",
+    "home_score_120",
+    "away_score_120",
+]
+for col in manual_score_cols:
+    if col not in results.columns:
+        results[col] = pd.NA
+
+manual_had_extra_time = (
+    results["went_extra_time"].fillna(False)
+    if "went_extra_time" in results.columns
+    else pd.Series(False, index=results.index, dtype=bool)
+)
+manual_had_penalties = (
+    results["went_penalties"].fillna(False)
+    if "went_penalties" in results.columns
+    else pd.Series(False, index=results.index, dtype=bool)
+)
+
 results["had_penalties"] = results["shootout_winner"].notna()
+penalty_flag_conflict = (
+    results["went_penalties"].notna() & (manual_had_penalties ^ results["had_penalties"])
+    if "went_penalties" in results.columns
+    else pd.Series(False, index=results.index, dtype=bool)
+)
+if "went_penalties" in results.columns and penalty_flag_conflict.any():
+    sample = results.loc[
+        penalty_flag_conflict,
+        ["date", "home_team", "away_team", "shootout_winner", "went_penalties"],
+    ].head(20)
+    raise ValueError(
+        "[results_wc2026] went_penalties conflicts with shootout_winner.\n"
+        f"{sample.to_string(index=False)}"
+    )
+
 had_extra_time_from_goals = (
     results["had_extra_time"]
     if "had_extra_time" in results.columns
@@ -677,13 +804,16 @@ if conflict.any():
         f"{sample.to_string(index=False)}"
     )
 
-results["had_extra_time"] = had_extra_time_from_goals | (
+results["had_extra_time"] = had_extra_time_from_goals | manual_had_extra_time | (
     results["had_penalties"] & ~no_extra_time_rule
 )
 if "home_score_120" in results.columns and "away_score_120" in results.columns:
     results.loc[
         ~results["had_extra_time"], ["home_score_120", "away_score_120"]
     ] = np.nan
+
+if "score_reconciled" not in results.columns:
+    results["score_reconciled"] = False
 
 
 results.to_csv(MATCH_RESULTS_DIR / "results_clean.csv", index=False)

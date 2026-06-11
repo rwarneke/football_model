@@ -11,6 +11,8 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
+from src.world_cup_results import copy_results_wc2026_to_public
+
 OPPONENT_STAGE_KEYS = [
     ("Round of 32", "R32_opponent_probability"),
     ("Round of 16", "R16_opponent_probability"),
@@ -296,6 +298,7 @@ def main():
         source = os.path.join(output_dir, filename)
         if os.path.exists(source):
             shutil.copy2(source, public_output_dir)
+    copy_results_wc2026_to_public()
 
 
 if __name__ == "__main__":

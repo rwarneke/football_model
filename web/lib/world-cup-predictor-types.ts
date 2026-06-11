@@ -73,6 +73,25 @@ export type TeamStageProbabilities = {
   [key: string]: Record<string, number>;
 };
 
+export type CompletedWorldCupMatch = {
+  matchId: number;
+  date: string;
+  stage: string;
+  group: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  stadium: string;
+  city: string;
+  country: string;
+  neutral: boolean | null;
+  homeScore: number;
+  awayScore: number;
+  wentExtraTime: boolean;
+  wentPenalties: boolean;
+  penaltyWinner: string | null;
+  winner: string | null;
+};
+
 export type WorldCupPredictorData = {
   groups: GroupDefinition[];
   groupMatches: GroupMatch[];
@@ -82,4 +101,5 @@ export type WorldCupPredictorData = {
   flags: Record<string, string | null>;
   winProbabilities: WinProbabilities;
   simulationTeamProbabilities: Record<string, TeamStageProbabilities>;
+  completedMatches: CompletedWorldCupMatch[];
 };

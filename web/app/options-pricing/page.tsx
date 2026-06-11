@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { stat } from "node:fs/promises";
+import path from "node:path";
 import { WorldCupOptionPricingPage } from "@/components/world-cup-option-pricing-page";
 import { loadWorldCupOptionPricing } from "@/lib/world-cup";
 
@@ -10,13 +12,41 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function OptionsPricingPage() {
-  const pricing = await loadWorldCupOptionPricing();
-  const lastUpdated = new Date().toLocaleDateString("en-US", {
+async function modelOutputUpdatedLabel(dirName: string) {
+  const stats = await stat(
+    path.join(process.cwd(), "public", dirName.replace(/^\/+/, ""), "simulation_results.csv")
+  );
+  return stats.mtime.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
+}
+
+async function loadPretournamentPricing() {
+  try {
+    return await loadWorldCupOptionPricing("/model_output_pretournament");
+  } catch {
+    return await loadWorldCupOptionPricing("/model_output");
+  }
+}
+
+async function pretournamentUpdatedLabel() {
+  try {
+    return await modelOutputUpdatedLabel("/model_output_pretournament");
+  } catch {
+    return await modelOutputUpdatedLabel("/model_output");
+  }
+}
+
+export default async function OptionsPricingPage() {
+  const [current, pretournament, currentUpdatedLabel, pretournamentUpdated] =
+    await Promise.all([
+      loadWorldCupOptionPricing("/model_output"),
+      loadPretournamentPricing(),
+      modelOutputUpdatedLabel("/model_output"),
+      pretournamentUpdatedLabel(),
+    ]);
 
   return (
     <main className="px-2 pb-16 pt-8 lg:px-6">
@@ -32,12 +62,14 @@ export default async function OptionsPricingPage() {
             Fair values from tournament simulations, split into progression and 90&apos; win value,
             with call and put prices on total team value at strikes 20, 40, 60, and 80.
           </p>
-          <div className="flex items-center gap-4 text-sm text-ink-400">
-            <span>Updated {lastUpdated}</span>
-          </div>
         </header>
 
-        <WorldCupOptionPricingPage {...pricing} />
+        <WorldCupOptionPricingPage
+          current={current}
+          pretournament={pretournament}
+          currentUpdatedLabel={currentUpdatedLabel}
+          pretournamentUpdatedLabel={pretournamentUpdated}
+        />
       </div>
     </main>
   );

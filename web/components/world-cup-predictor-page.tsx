@@ -2134,6 +2134,7 @@ function MatchCard({
   orientation,
   flags,
   disabled,
+  locked = false,
   stackMode,
   fixedHeight,
   homeBoxRef,
@@ -2167,6 +2168,7 @@ function MatchCard({
   orientation: "horizontal" | "vertical";
   flags: Record<string, string | null>;
   disabled?: boolean;
+  locked?: boolean;
   stackMode?: "centered";
   fixedHeight?: number;
   homeBoxRef?: React.Ref<HTMLDivElement>;
@@ -2396,8 +2398,8 @@ function MatchCard({
             className={cn(
               "w-7 h-6 sm:w-8 sm:h-7 rounded-md text-center text-xs sm:text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors",
               !isScoreSet && "bg-slate-100 text-slate-400 placeholder:text-slate-400",
-              isScoreSet && isWin && "bg-transparent text-blue-700",
-              isScoreSet && isDraw && "bg-transparent text-blue-700",
+              isScoreSet && isWin && (locked ? "bg-transparent text-blue-800" : "bg-transparent text-blue-700"),
+              isScoreSet && isDraw && (locked ? "bg-transparent text-blue-800" : "bg-transparent text-blue-700"),
               isScoreSet && !isWin && !isDraw && "bg-transparent text-slate-400",
               !isPickableMatch && "cursor-default opacity-60"
             )}
@@ -2450,7 +2452,7 @@ function MatchCard({
               side === "home" && "text-right",
               !isPickableMatch && "text-slate-400",
               !isScoreSet && isPickableMatch && "font-medium text-slate-900",
-              isScoreSet && isWin && "font-semibold text-slate-900",
+              isScoreSet && isWin && "font-bold text-slate-900",
               isScoreSet && isDraw && "font-medium text-slate-700",
               isScoreSet && isLoser && "font-medium text-slate-500"
             )}
@@ -2886,6 +2888,7 @@ function KnockoutMatchCard({
   awayRowRef,
   mirrored,
   compactMode,
+  locked = false,
   className,
 }: {
   homeTeam: string;
@@ -2905,11 +2908,12 @@ function KnockoutMatchCard({
   awayRowRef?: React.Ref<HTMLButtonElement>;
   mirrored?: boolean;
   compactMode?: boolean;
+  locked?: boolean;
   className?: string;
 }) {
   const placeholderHome = !isConcreteTeam(homeTeam);
   const placeholderAway = !isConcreteTeam(awayTeam);
-  const isPickableMatch = !placeholderHome && !placeholderAway;
+  const isPickableMatch = !locked && !placeholderHome && !placeholderAway;
   const isPendingMatch =
     (placeholderHome && !placeholderAway) ||
     (!placeholderHome && placeholderAway);
@@ -2962,7 +2966,7 @@ function KnockoutMatchCard({
           "block min-w-0 truncate text-xs sm:text-sm leading-[20px]",
           textAlign,
           !isResolved && "font-medium text-slate-900",
-          isResolved && isWinner && "font-semibold text-slate-900",
+          isResolved && isWinner && "font-bold text-slate-900",
           isResolved && isLoser && "font-medium text-slate-700"
         )}
       >
@@ -2983,8 +2987,12 @@ function KnockoutMatchCard({
     const isChampionRow = isFinalResolved && isWinner;
     
     // Gradient directions for winner highlight
-    const normalGradient = "bg-[linear-gradient(90deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]";
-    const mirroredGradient = "bg-[linear-gradient(270deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]";
+    const normalGradient = locked
+      ? "bg-[linear-gradient(90deg,transparent_0%,rgb(191,219,254)_10%,rgb(191,219,254)_100%)]"
+      : "bg-[linear-gradient(90deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]";
+    const mirroredGradient = locked
+      ? "bg-[linear-gradient(270deg,transparent_0%,rgb(191,219,254)_10%,rgb(191,219,254)_100%)]"
+      : "bg-[linear-gradient(270deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]";
     const normalChampionGradient = "bg-[linear-gradient(90deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]";
     const mirroredChampionGradient = "bg-[linear-gradient(270deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]";
     
@@ -3047,6 +3055,8 @@ function KnockoutMatchCard({
                   isResolved && isWinner
                     ? isChampionRow
                       ? "bg-amber-300"
+                      : locked
+                      ? "bg-blue-400"
                       : "bg-blue-200"
                     : "bg-transparent"
                 )}
@@ -3077,6 +3087,8 @@ function KnockoutMatchCard({
                   isResolved && isWinner
                     ? isChampionRow
                       ? "bg-amber-300"
+                      : locked
+                      ? "bg-blue-400"
                       : "bg-blue-200"
                     : "bg-transparent"
                 )}
@@ -3159,7 +3171,7 @@ function KnockoutMatchCard({
           disabled={!isPickableMatch}
           className={cn(
             "relative z-10 flex w-full flex-1 items-center justify-center p-1",
-            isResolved && isWinner && !isChampionRow && "bg-blue-200",
+            isResolved && isWinner && !isChampionRow && (locked ? "bg-blue-300" : "bg-blue-200"),
             isChampionRow && "bg-amber-200",
             isPickableMatch ? "cursor-pointer" : "cursor-default"
           )}
@@ -4047,6 +4059,7 @@ type GroupStageCardsProps = {
   groupTables: Array<{ group: GroupDefinition; rows: GroupTableRow[] }>;
   resolvedGroupMatches: GroupMatch[];
   groupScores: Record<string, MatchScore>;
+  lockedGroupMatchIds: Set<string>;
   updateGroupScore: (id: string | number, side: "home" | "away", value: number | null) => void;
   updateGroupScorePair: (id: string | number, home: number | null, away: number | null) => void;
   winProbabilities: WinProbabilities;
@@ -4076,12 +4089,14 @@ type GroupStageCardsProps = {
   allGroupMatchesComplete: boolean;
   flags: Record<string, string | null>;
   isTabbed: boolean;
+  lockResultsActive: boolean;
 };
 
 function GroupStageCards({
   groupTables,
   resolvedGroupMatches,
   groupScores,
+  lockedGroupMatchIds,
   updateGroupScore,
   updateGroupScorePair,
   winProbabilities,
@@ -4102,6 +4117,7 @@ function GroupStageCards({
   allGroupMatchesComplete,
   flags,
   isTabbed,
+  lockResultsActive,
 }: GroupStageCardsProps) {
   const [activeGroupId, setActiveGroupId] = React.useState<string>(
     groupTables[0]?.group.id ?? ""
@@ -4134,6 +4150,9 @@ function GroupStageCards({
       return !score || score.home === null || score.away === null;
     });
     const hasPredictedGroupMatches = matches.some((match) => {
+      if (lockResultsActive && lockedGroupMatchIds.has(String(match.id))) {
+        return false;
+      }
       const score = groupScores[String(match.id)];
       return score && score.home !== null && score.away !== null;
     });
@@ -4245,6 +4264,8 @@ function GroupStageCards({
                   allowDraw
                   orientation="horizontal"
                   flags={flags}
+                  disabled={lockResultsActive && lockedGroupMatchIds.has(String(match.id))}
+                  locked={lockResultsActive && lockedGroupMatchIds.has(String(match.id))}
                   homeWinProb={probabilities.homeWinProb}
                   awayWinProb={probabilities.awayWinProb}
                   drawProb={probabilities.drawProb}
@@ -4483,6 +4504,14 @@ export function WorldCupPredictorPage({
 
 function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const [funnyRuns, setFunnyRuns] = React.useState<number | null>(null);
+  const [showPretournament, setShowPretournament] = React.useState(false);
+  const [pretournamentData, setPretournamentData] = React.useState<WorldCupPredictorData | null>(
+    null
+  );
+  const [pretournamentLoadError, setPretournamentLoadError] = React.useState<string | null>(
+    null
+  );
+  const showingCurrent = !showPretournament;
   const [groupScores, setGroupScores] = React.useState<
     Record<string, MatchScore>
   >({});
@@ -4565,6 +4594,42 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     losers: new Map<number, string>(),
     matches: [],
   };
+  const activeWinProbabilities =
+    showPretournament && pretournamentData
+      ? pretournamentData.winProbabilities
+      : data.winProbabilities;
+  const activeSimulationTeamProbabilities =
+    showPretournament && pretournamentData
+      ? pretournamentData.simulationTeamProbabilities
+      : data.simulationTeamProbabilities;
+
+  React.useEffect(() => {
+    if (!showPretournament || pretournamentData) {
+      return;
+    }
+    let canceled = false;
+    loadWorldCupPredictorDataClient("/model_output_pretournament")
+      .then((nextData) => {
+        if (canceled) {
+          return;
+        }
+        setPretournamentData(nextData);
+        setPretournamentLoadError(null);
+      })
+      .catch((error) => {
+        if (canceled) {
+          return;
+        }
+        setPretournamentLoadError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load pre-tournament predictor data."
+        );
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [pretournamentData, showPretournament]);
 
   React.useEffect(() => {
     shareStatusRef.current = shareStatus;
@@ -4826,6 +4891,40 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     }
     return mapping;
   }, [data.knockoutMatches]);
+  const lockedGroupScores = React.useMemo(() => {
+    const locked: Record<string, MatchScore> = {};
+    data.completedMatches
+      .filter((match) => match.stage === "Group")
+      .forEach((match) => {
+        locked[String(match.matchId)] = {
+          home: match.homeScore,
+          away: match.awayScore,
+        };
+      });
+    return locked;
+  }, [data.completedMatches]);
+  const lockedKnockoutWinners = React.useMemo(() => {
+    const locked: Record<string, WinnerSelection> = {};
+    data.completedMatches
+      .filter((match) => match.stage !== "Group")
+      .forEach((match) => {
+        if (match.winner === match.homeTeam) {
+          locked[String(match.matchId)] = "home";
+        } else if (match.winner === match.awayTeam) {
+          locked[String(match.matchId)] = "away";
+        }
+      });
+    return locked;
+  }, [data.completedMatches]);
+  const lockedGroupMatchIds = React.useMemo(
+    () => new Set(Object.keys(lockedGroupScores)),
+    [lockedGroupScores]
+  );
+  const lockedKnockoutMatchIds = React.useMemo(
+    () => new Set(Object.keys(lockedKnockoutWinners)),
+    [lockedKnockoutWinners]
+  );
+  const lockResultsActive = !showPretournament;
 
   const getMatchProbabilityLabels = React.useCallback(
     ({
@@ -4842,7 +4941,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       neutralOverride?: boolean | null;
     }): MatchProbabilityLabels => {
       const values = resolveMatchProbabilities({
-        probabilities: data.winProbabilities,
+        probabilities: activeWinProbabilities,
         homeTeam,
         awayTeam,
         allowDraw,
@@ -4863,7 +4962,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         drawProb: allowDraw ? formatProbability(values.draw, useDecimal) ?? null : null,
       };
     },
-    [data.winProbabilities]
+    [activeWinProbabilities]
   );
 
   const qualifierDependents = React.useMemo(() => {
@@ -5103,6 +5202,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const updateKnockoutWinner = React.useCallback(
     (id: string | number, selection: WinnerSelection) => {
       const key = String(id);
+      if (lockResultsActive && lockedKnockoutMatchIds.has(key)) {
+        return;
+      }
       setAutoKnockoutWinners((prev) => {
         if (!prev[key]) {
           return prev;
@@ -5119,7 +5221,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         return clearDependentSelections(next, key, knockoutDependents);
       });
     },
-    [knockoutDependents]
+    [knockoutDependents, lockResultsActive, lockedKnockoutMatchIds]
   );
 
   const qualifierState = React.useMemo(
@@ -5482,6 +5584,113 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     setAutoKnockoutWinners(snapshot.autoKnockoutWinners);
   }, []);
 
+  const enforceLockedResults = React.useCallback(() => {
+    if (!lockResultsActive) {
+      return;
+    }
+    let nextGroupScores = groupScores;
+    let nextAutoGroupScores = autoGroupScores;
+    let nextKnockoutWinners = knockoutWinners;
+    let nextAutoKnockoutWinners = autoKnockoutWinners;
+    let changed = false;
+
+    for (const [matchId, lockedScore] of Object.entries(lockedGroupScores)) {
+      const existing = nextGroupScores[matchId];
+      if (
+        existing?.home !== lockedScore.home ||
+        existing?.away !== lockedScore.away
+      ) {
+        nextGroupScores = {
+          ...nextGroupScores,
+          [matchId]: { home: lockedScore.home, away: lockedScore.away },
+        };
+        changed = true;
+      }
+    }
+    for (const matchId of Object.keys(lockedGroupScores)) {
+      if (nextAutoGroupScores[matchId]) {
+        if (nextAutoGroupScores === autoGroupScores) {
+          nextAutoGroupScores = { ...nextAutoGroupScores };
+        }
+        delete nextAutoGroupScores[matchId];
+        changed = true;
+      }
+    }
+
+    if (nextGroupScores !== groupScores) {
+      const cleared = computeClearedKnockoutSelections(
+        nextKnockoutWinners,
+        groupScores,
+        nextGroupScores
+      );
+      nextKnockoutWinners = cleared.nextWinners;
+      if (cleared.clearedIds.length > 0) {
+        if (nextAutoKnockoutWinners === autoKnockoutWinners) {
+          nextAutoKnockoutWinners = { ...nextAutoKnockoutWinners };
+        }
+        cleared.clearedIds.forEach((matchId) => {
+          delete nextAutoKnockoutWinners[matchId];
+        });
+        changed = true;
+      }
+    }
+
+    const sortedLockedKnockouts = Object.keys(lockedKnockoutWinners).sort(
+      (a, b) => Number(a) - Number(b)
+    );
+    for (const matchId of sortedLockedKnockouts) {
+      const lockedSelection = lockedKnockoutWinners[matchId] ?? null;
+      const previous = nextKnockoutWinners[matchId] ?? null;
+      if (previous !== lockedSelection) {
+        const updated = { ...nextKnockoutWinners, [matchId]: lockedSelection };
+        const cleared = clearDependentSelections(updated, matchId, knockoutDependents);
+        const clearedIds = Object.keys(updated).filter(
+          (id) => updated[id] && cleared[id] === null
+        );
+        nextKnockoutWinners = cleared;
+        if (clearedIds.length > 0) {
+          if (nextAutoKnockoutWinners === autoKnockoutWinners) {
+            nextAutoKnockoutWinners = { ...nextAutoKnockoutWinners };
+          }
+          clearedIds.forEach((id) => {
+            delete nextAutoKnockoutWinners[id];
+          });
+        }
+        changed = true;
+      }
+      if (nextAutoKnockoutWinners[matchId]) {
+        if (nextAutoKnockoutWinners === autoKnockoutWinners) {
+          nextAutoKnockoutWinners = { ...nextAutoKnockoutWinners };
+        }
+        delete nextAutoKnockoutWinners[matchId];
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      return;
+    }
+    setGroupScores(nextGroupScores);
+    setAutoGroupScores(nextAutoGroupScores);
+    setKnockoutWinners(nextKnockoutWinners);
+    setAutoKnockoutWinners(nextAutoKnockoutWinners);
+  }, [
+    autoGroupScores,
+    autoKnockoutWinners,
+    clearDependentSelections,
+    computeClearedKnockoutSelections,
+    groupScores,
+    knockoutDependents,
+    knockoutWinners,
+    lockResultsActive,
+    lockedGroupScores,
+    lockedKnockoutWinners,
+  ]);
+
+  React.useEffect(() => {
+    enforceLockedResults();
+  }, [enforceLockedResults]);
+
   const progressionFunnyPenalty = React.useCallback(
     (snapshot: AutopredictSnapshot) => {
       const terminalStages = new Map<string, FinalProgressionStage>();
@@ -5638,7 +5847,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       let penalty = 0;
       terminalStages.forEach((stage, team) => {
         const exactProbability = exactProgressionProbability(
-          data.simulationTeamProbabilities[team],
+          activeSimulationTeamProbabilities[team],
           stage
         );
         if (exactProbability === null) {
@@ -5648,7 +5857,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       });
       return penalty;
     },
-    [data.groupMatches, data.groups, data.knockoutMatches, data.qualifiers, data.roundOf32Combos, data.simulationTeamProbabilities, matchStageById]
+    [activeSimulationTeamProbabilities, data.groupMatches, data.groups, data.knockoutMatches, data.qualifiers, data.roundOf32Combos, matchStageById]
   );
 
   const chooseAutopredictSnapshot = React.useCallback(
@@ -5696,7 +5905,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           return;
         }
         const matrix = resolveMatchScoreMatrix({
-          probabilities: data.winProbabilities,
+          probabilities: activeWinProbabilities,
           homeTeam: match.homeTeam,
           awayTeam: match.awayTeam,
           country: match.country,
@@ -5730,7 +5939,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     [
       computeClearedKnockoutSelections,
       createAutopredictSnapshot,
-      data.winProbabilities,
+      activeWinProbabilities,
       groupScores,
       resolvedGroupMatches,
     ]
@@ -5755,7 +5964,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         return;
       }
       const matrix = resolveMatchScoreMatrix({
-        probabilities: data.winProbabilities,
+        probabilities: activeWinProbabilities,
         homeTeam: match.homeTeam,
         awayTeam: match.awayTeam,
         country: match.country,
@@ -5788,7 +5997,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   }, [
     computeClearedKnockoutSelections,
     createAutopredictSnapshot,
-    data.winProbabilities,
+    activeWinProbabilities,
     groupScores,
     resolvedGroupMatches,
   ]);
@@ -5858,7 +6067,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
               return;
             }
             const values = resolveMatchProbabilities({
-              probabilities: data.winProbabilities,
+              probabilities: activeWinProbabilities,
               homeTeam: match.homeResolved,
               awayTeam: match.awayResolved,
               allowDraw: false,
@@ -5918,7 +6127,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       clearDependentSelections,
       createAutopredictSnapshot,
       data.qualifiers,
-      data.winProbabilities,
+      activeWinProbabilities,
       groupIdsBySlot,
       groupMatchIdsByTeam,
       knockoutDependents,
@@ -5990,7 +6199,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
             return;
           }
           const values = resolveMatchProbabilities({
-            probabilities: data.winProbabilities,
+            probabilities: activeWinProbabilities,
             homeTeam: match.homeResolved,
             awayTeam: match.awayResolved,
             allowDraw: false,
@@ -6057,7 +6266,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       clearDependentSelections,
       createAutopredictSnapshot,
       data.qualifiers,
-      data.winProbabilities,
+      activeWinProbabilities,
       groupIdsBySlot,
       groupMatchIdsByTeam,
       knockoutDependents,
@@ -6138,7 +6347,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         if (!isManual && !existingSelection) {
           if (!isPlaceholderLabel(homeResolved) && !isPlaceholderLabel(awayResolved)) {
             const values = resolveMatchProbabilities({
-              probabilities: data.winProbabilities,
+              probabilities: activeWinProbabilities,
               homeTeam: homeResolved,
               awayTeam: awayResolved,
               allowDraw: false,
@@ -6174,7 +6383,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       computeKnockoutContext,
       createAutopredictSnapshot,
       data.knockoutMatches,
-      data.winProbabilities,
+      activeWinProbabilities,
       groupScores,
       knockoutDependents,
       knockoutState.matches,
@@ -6284,7 +6493,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
             return;
           }
           const values = resolveMatchProbabilities({
-            probabilities: data.winProbabilities,
+            probabilities: activeWinProbabilities,
             homeTeam: match.homeResolved,
             awayTeam: match.awayResolved,
             allowDraw: false,
@@ -6356,7 +6565,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           return;
         }
         const matrix = resolveMatchScoreMatrix({
-          probabilities: data.winProbabilities,
+          probabilities: activeWinProbabilities,
           homeTeam: match.homeTeam,
           awayTeam: match.awayTeam,
           country: match.country,
@@ -6429,7 +6638,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         if (!isManual && !existingSelection) {
           if (!isPlaceholderLabel(homeResolved) && !isPlaceholderLabel(awayResolved)) {
             const values = resolveMatchProbabilities({
-              probabilities: data.winProbabilities,
+              probabilities: activeWinProbabilities,
               homeTeam: homeResolved,
               awayTeam: awayResolved,
               allowDraw: false,
@@ -6473,7 +6682,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     data.groupMatches,
     data.knockoutMatches,
     data.qualifiers,
-    data.winProbabilities,
+    activeWinProbabilities,
     groupIdsBySlot,
     groupMatchIdsByTeam,
     knockoutDependents,
@@ -6488,9 +6697,12 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
 
   const updateGroupScore = React.useCallback(
     (id: string | number, side: "home" | "away", value: number | null) => {
+      const key = String(id);
+      if (lockResultsActive && lockedGroupMatchIds.has(key)) {
+        return;
+      }
       let changed = false;
       let nextScores: Record<string, MatchScore> | null = null;
-      const key = String(id);
       setGroupScores((prev) => {
         const prevScore = prev[key] ?? { home: null, away: null };
         const nextScore = { ...prevScore, [side]: value };
@@ -6519,14 +6731,17 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         }
       }
     },
-    [clearKnockoutOnGroupChange]
+    [clearKnockoutOnGroupChange, lockResultsActive, lockedGroupMatchIds]
   );
 
   const updateGroupScorePair = React.useCallback(
     (id: string | number, home: number | null, away: number | null) => {
+      const key = String(id);
+      if (lockResultsActive && lockedGroupMatchIds.has(key)) {
+        return;
+      }
       let changed = false;
       let nextScores: Record<string, MatchScore> | null = null;
-      const key = String(id);
       setGroupScores((prev) => {
         const prevScore = prev[key] ?? { home: null, away: null };
         const nextScore = { home, away };
@@ -6553,7 +6768,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         clearKnockoutOnGroupChange(nextScores);
       }
     },
-    [clearKnockoutOnGroupChange]
+    [clearKnockoutOnGroupChange, lockResultsActive, lockedGroupMatchIds]
   );
 
   const resolvedGroups = React.useMemo(() => {
@@ -6627,10 +6842,13 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
 
   const hasAnyGroupPredictions = React.useMemo(() => {
     return resolvedGroupMatches.some((match) => {
+      if (lockResultsActive && lockedGroupMatchIds.has(String(match.id))) {
+        return false;
+      }
       const score = groupScores[String(match.id)];
       return score && score.home !== null && score.away !== null;
     });
-  }, [groupScores, resolvedGroupMatches]);
+  }, [groupScores, lockResultsActive, lockedGroupMatchIds, resolvedGroupMatches]);
 
   const qualifierPathPredictionStatus = React.useMemo(() => {
     const map = new Map<string, { hasUnpredicted: boolean; hasPredicted: boolean }>();
@@ -6887,9 +7105,12 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
   const hasAnyKnockoutPredictions = React.useMemo(() => {
     return knockoutState.matches.some((match) => {
       const key = String(match.id);
+      if (lockResultsActive && lockedKnockoutMatchIds.has(key)) {
+        return false;
+      }
       return (knockoutWinners[key] ?? null) !== null;
     });
-  }, [knockoutState.matches, knockoutWinners]);
+  }, [knockoutState.matches, knockoutWinners, lockResultsActive, lockedKnockoutMatchIds]);
 
   React.useEffect(() => {
     if (unpickableKnockoutIds.length === 0) {
@@ -8221,6 +8442,38 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           animation: hintPulse 1.6s ease-in-out infinite;
         }
       `}</style>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setShowPretournament((prev) => !prev)}
+          role="switch"
+          aria-checked={showingCurrent}
+          aria-label={showingCurrent ? "Current" : "Pre-tournament"}
+          className={cn(
+            "relative h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300",
+            showingCurrent ? "bg-slate-900" : "bg-slate-300"
+          )}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+              showingCurrent ? "translate-x-5" : "translate-x-0"
+            )}
+          />
+        </button>
+        <span className="text-sm text-slate-700">
+          {showingCurrent ? "Current" : "Pre-tournament"}
+        </span>
+        {showPretournament && !pretournamentData && !pretournamentLoadError ? (
+          <span className="text-sm text-ink-400">Loading pre-tournament model output...</span>
+        ) : null}
+      </div>
+      {pretournamentLoadError ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          {pretournamentLoadError}
+        </div>
+      ) : null}
       {hasQualifiers ? (
         <>
       <div className="h-px w-full bg-slate-200/80" />
@@ -8579,9 +8832,10 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                 groupTables={groupTables}
                 resolvedGroupMatches={resolvedGroupMatches}
                 groupScores={groupScores}
+                lockedGroupMatchIds={lockedGroupMatchIds}
                 updateGroupScore={updateGroupScore}
                 updateGroupScorePair={updateGroupScorePair}
-                winProbabilities={data.winProbabilities}
+                winProbabilities={activeWinProbabilities}
                 groupsWithUnresolvedParticipants={groupsWithUnresolvedParticipants}
                 groupQualifierPaths={groupQualifierPaths}
                 showGroupHint={showGroupHint}
@@ -8599,6 +8853,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                 allGroupMatchesComplete={allGroupMatchesComplete}
                 flags={data.flags}
                 isTabbed={isGroupTabbed}
+                lockResultsActive={lockResultsActive}
               />
             </div>
             {thirdPlaceRankingRows.length > 0 && (
@@ -9015,6 +9270,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                                   homeTeam={match.homeResolved ?? match.homeLabel}
                                   awayTeam={match.awayResolved ?? match.awayLabel}
                                   winnerSelection={knockoutWinners[String(match.id)] ?? null}
+                                  locked={lockResultsActive && lockedKnockoutMatchIds.has(String(match.id))}
                                   onWinnerSelect={(selection) =>
                                     updateKnockoutWinner(match.id, selection)
                                   }
@@ -9241,6 +9497,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                                   homeTeam={match.homeResolved ?? match.homeLabel}
                                   awayTeam={match.awayResolved ?? match.awayLabel}
                                   winnerSelection={knockoutWinners[String(match.id)] ?? null}
+                                  locked={lockResultsActive && lockedKnockoutMatchIds.has(String(match.id))}
                                   onWinnerSelect={(selection) =>
                                     updateKnockoutWinner(match.id, selection)
                                   }
@@ -9286,6 +9543,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                                           homeTeam={match.homeResolved ?? match.homeLabel}
                                           awayTeam={match.awayResolved ?? match.awayLabel}
                                           winnerSelection={knockoutWinners[String(match.id)] ?? null}
+                                          locked={lockResultsActive && lockedKnockoutMatchIds.has(String(match.id))}
                                           onWinnerSelect={(selection) =>
                                             updateKnockoutWinner(match.id, selection)
                                           }
@@ -9399,6 +9657,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
                                   homeTeam={match.homeResolved ?? match.homeLabel}
                                   awayTeam={match.awayResolved ?? match.awayLabel}
                                   winnerSelection={knockoutWinners[String(match.id)] ?? null}
+                                  locked={lockResultsActive && lockedKnockoutMatchIds.has(String(match.id))}
                                   onWinnerSelect={(selection) =>
                                     updateKnockoutWinner(match.id, selection)
                                   }

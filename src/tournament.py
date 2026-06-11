@@ -257,7 +257,10 @@ class WorldCup2026(Tournament):
     _GROUP_MATCHES_CACHE: Dict[str, pd.DataFrame] = {}
     _KNOCKOUT_MATCHES_CACHE: Dict[str, pd.DataFrame] = {}
     _ROUND_OF_32_CACHE: Optional[Dict[str, Dict[str, str]]] = None
-    _GROUP_STAGE_SCHEDULE_CACHE: Dict[Tuple[str, str], List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]]] = {}
+    _GROUP_STAGE_SCHEDULE_CACHE: Dict[
+        Tuple[str, str],
+        List[Tuple[int, int, pd.Timestamp, str, str, str, str, str, str]],
+    ] = {}
 
     def __init__(
         self,
@@ -275,6 +278,7 @@ class WorldCup2026(Tournament):
         group_matches_df: Optional[pd.DataFrame] = None,
         knockout_matches_df: Optional[pd.DataFrame] = None,
         round_of_32_combos: Optional[Dict[str, Dict[str, str]]] = None,
+        completed_match_results: Optional[pd.DataFrame] = None,
     ):
         self._provided_groups = groups
         self._provided_teams = teams
@@ -295,6 +299,9 @@ class WorldCup2026(Tournament):
         self._group_matches_df = group_matches_df
         self._knockout_matches_df = knockout_matches_df
         self._round_of_32_combos = round_of_32_combos
+        self._completed_match_results = self._prepare_completed_match_results(
+            completed_match_results
+        )
 
         if groups is not None:
             self.groups = {g: list(ts) for g, ts in groups.items()}
@@ -328,6 +335,124 @@ class WorldCup2026(Tournament):
         self.start_day = int(start_day)
         self.start_date = (
             pd.Timestamp(start_date) if start_date is not None else WORLD_CUP_START_DATE
+        )
+
+    @staticmethod
+    def _optional_int(value: object) -> Optional[int]:
+        if pd.isna(value):
+            return None
+        return int(value)
+
+    def _prepare_completed_match_results(
+        self, completed_match_results: Optional[pd.DataFrame]
+    ) -> Dict[int, Dict[str, object]]:
+        if completed_match_results is None:
+            return {}
+        df = completed_match_results.copy()
+        if "completed" in df.columns:
+            df = df.loc[df["completed"].fillna(False)].copy()
+        if df.empty:
+            return {}
+        if "match_id" not in df.columns:
+            raise ValueError("completed_match_results must include match_id")
+        df["match_id"] = pd.to_numeric(df["match_id"], errors="raise").astype(int)
+        if df["match_id"].duplicated().any():
+            dupes = df.loc[df["match_id"].duplicated(), "match_id"].tolist()
+            raise ValueError(
+                "completed_match_results contains duplicate match_id values: "
+                f"{sorted(set(dupes))}"
+            )
+        prepared: Dict[int, Dict[str, object]] = {}
+        for row in df.to_dict(orient="records"):
+            prepared[int(row["match_id"])] = row
+        return prepared
+
+    def _completed_match_for(self, match_id: int) -> Optional[Dict[str, object]]:
+        return self._completed_match_results.get(int(match_id))
+
+    def _materialize_completed_match(
+        self,
+        *,
+        match_id: int,
+        expected_home_team: str,
+        expected_away_team: str,
+        stage: str,
+        group: Optional[str],
+        day: int,
+        match_date: Optional[pd.Timestamp],
+        stadium: Optional[str],
+        city: Optional[str],
+        country: Optional[str],
+        allow_draw: bool,
+    ) -> Optional[MatchResult]:
+        completed = self._completed_match_for(match_id)
+        if completed is None:
+            return None
+
+        actual_home = str(completed.get("home_team", "")).strip()
+        actual_away = str(completed.get("away_team", "")).strip()
+        if actual_home != expected_home_team or actual_away != expected_away_team:
+            raise ValueError(
+                f"Completed match {match_id} does not match the resolved bracket.\n"
+                f"Expected: {expected_home_team} vs {expected_away_team}\n"
+                f"Found: {actual_home} vs {actual_away}"
+            )
+
+        actual_stage = str(completed.get("stage", "")).strip()
+        if actual_stage != stage:
+            raise ValueError(
+                f"Completed match {match_id} has stage {actual_stage!r}, expected {stage!r}."
+            )
+        actual_group = str(completed.get("group") or "").strip() or None
+        if actual_group != (group or None):
+            raise ValueError(
+                f"Completed match {match_id} has group {actual_group!r}, expected {group!r}."
+            )
+
+        home_score = self._optional_int(completed.get("home_score"))
+        away_score = self._optional_int(completed.get("away_score"))
+        home_score_90 = self._optional_int(completed.get("home_score_90"))
+        away_score_90 = self._optional_int(completed.get("away_score_90"))
+        home_score_120 = self._optional_int(completed.get("home_score_120"))
+        away_score_120 = self._optional_int(completed.get("away_score_120"))
+        if home_score is None or away_score is None:
+            raise ValueError(f"Completed match {match_id} is missing final scores.")
+
+        went_extra_time = bool(completed.get("went_extra_time", False))
+        went_penalties = bool(completed.get("went_penalties", False))
+        penalty_winner = completed.get("penalty_winner")
+        penalty_winner = (
+            str(penalty_winner).strip() if penalty_winner is not None and not pd.isna(penalty_winner) else None
+        )
+        winner = completed.get("winner")
+        winner = str(winner).strip() if winner is not None and not pd.isna(winner) else None
+        if not allow_draw and not winner:
+            raise ValueError(f"Completed knockout match {match_id} is missing a winner.")
+
+        neutral_value = completed.get("neutral")
+        neutral = True if pd.isna(neutral_value) else bool(neutral_value)
+
+        return MatchResult(
+            stage=stage,
+            day=day,
+            date=match_date,
+            home_team=expected_home_team,
+            away_team=expected_away_team,
+            home_score=home_score,
+            away_score=away_score,
+            is_neutral=neutral,
+            stadium=stadium,
+            city=city,
+            country=country,
+            group=group,
+            home_score_90=home_score_90,
+            away_score_90=away_score_90,
+            home_score_120=home_score_120,
+            away_score_120=away_score_120,
+            went_extra_time=went_extra_time,
+            went_penalties=went_penalties,
+            penalty_winner=penalty_winner,
+            winner=winner,
         )
 
     def _simulate(self, model: Model, rng: np.random.Generator) -> None:
@@ -1841,22 +1966,36 @@ class WorldCup2026(Tournament):
             away_team = resolve_label(away_label, home_label)
 
             day = self._date_to_day(row.date)
-            res = self._simulate_match(
-                model,
-                rng,
-                states,
-                day=day,
-                match_date=pd.Timestamp(row.date),
-                home_team=home_team,
-                away_team=away_team,
+            res = self._materialize_completed_match(
+                match_id=int(row.match_id),
+                expected_home_team=home_team,
+                expected_away_team=away_team,
                 stage=str(row.stage).strip(),
                 group=None,
-                allow_draw=False,
-                neutral_override=None,
+                day=day,
+                match_date=pd.Timestamp(row.date),
                 stadium=getattr(row, "stadium", "") or "",
                 city=getattr(row, "city", "") or "",
                 country=getattr(row, "country", "") or "",
+                allow_draw=False,
             )
+            if res is None:
+                res = self._simulate_match(
+                    model,
+                    rng,
+                    states,
+                    day=day,
+                    match_date=pd.Timestamp(row.date),
+                    home_team=home_team,
+                    away_team=away_team,
+                    stage=str(row.stage).strip(),
+                    group=None,
+                    allow_draw=False,
+                    neutral_override=None,
+                    stadium=getattr(row, "stadium", "") or "",
+                    city=getattr(row, "city", "") or "",
+                    country=getattr(row, "country", "") or "",
+                )
             results.append(res)
             results_by_match[int(row.match_id)] = res
 
@@ -1940,22 +2079,40 @@ class WorldCup2026(Tournament):
             away_team = resolve_label(away_label, home_label)
 
             day = self._date_to_day(row.date)
-            home_team, away_team, _hs, _as, winner, _group = self._simulate_match_fast(
-                model,
-                rng,
-                states,
-                day=day,
-                match_date=pd.Timestamp(row.date),
-                home_team=home_team,
-                away_team=away_team,
+            completed = self._materialize_completed_match(
+                match_id=int(row.match_id),
+                expected_home_team=home_team,
+                expected_away_team=away_team,
                 stage=str(row.stage).strip(),
                 group=None,
-                allow_draw=False,
-                neutral_override=None,
+                day=day,
+                match_date=pd.Timestamp(row.date),
                 stadium=getattr(row, "stadium", "") or "",
                 city=getattr(row, "city", "") or "",
                 country=getattr(row, "country", "") or "",
+                allow_draw=False,
             )
+            if completed is None:
+                home_team, away_team, _hs, _as, winner, _group = self._simulate_match_fast(
+                    model,
+                    rng,
+                    states,
+                    day=day,
+                    match_date=pd.Timestamp(row.date),
+                    home_team=home_team,
+                    away_team=away_team,
+                    stage=str(row.stage).strip(),
+                    group=None,
+                    allow_draw=False,
+                    neutral_override=None,
+                    stadium=getattr(row, "stadium", "") or "",
+                    city=getattr(row, "city", "") or "",
+                    country=getattr(row, "country", "") or "",
+                )
+            else:
+                home_team = completed.home_team
+                away_team = completed.away_team
+                winner = completed.winner or ""
             stage = str(row.stage).strip()
             loser = away_team if winner == home_team else home_team
             if stage == "Third place":
@@ -1984,7 +2141,7 @@ class WorldCup2026(Tournament):
 
     def _group_stage_schedule(
         self, model: Model
-    ) -> List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]]:
+    ) -> List[Tuple[int, int, pd.Timestamp, str, str, str, str, str, str]]:
         df = self._load_group_matches(model)
         slot_winners = self.slot_winners or {}
 
@@ -2017,10 +2174,11 @@ class WorldCup2026(Tournament):
             sort_cols.append("match_id")
         df = df.sort_values(sort_cols)
 
-        matches: List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]] = []
+        matches: List[Tuple[int, int, pd.Timestamp, str, str, str, str, str, str]] = []
         for row in df.itertuples(index=False):
             matches.append(
                 (
+                    int(row.match_id),
                     int(row.day),
                     row.date,
                     str(row.group),
@@ -2035,7 +2193,7 @@ class WorldCup2026(Tournament):
 
     def _group_stage_schedule_fast(
         self, model: Model
-    ) -> List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]]:
+    ) -> List[Tuple[int, int, pd.Timestamp, str, str, str, str, str, str]]:
         df = self._load_group_matches(model)
         slot_winners = self.slot_winners or {}
         cache_key = (
@@ -2069,10 +2227,11 @@ class WorldCup2026(Tournament):
             sort_cols.append("match_id")
         df = df.sort_values(sort_cols)
 
-        matches: List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]] = []
+        matches: List[Tuple[int, int, pd.Timestamp, str, str, str, str, str, str]] = []
         for row in df.itertuples(index=False):
             matches.append(
                 (
+                    int(row.match_id),
                     int(row.day),
                     row.date,
                     str(row.group),
@@ -2096,25 +2255,39 @@ class WorldCup2026(Tournament):
         model: Model,
         rng: np.random.Generator,
         states: Dict[str, TeamSimState],
-        matches: List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]],
+        matches: List[Tuple[int, int, pd.Timestamp, str, str, str, str, str, str]],
     ) -> List[MatchResult]:
         results: List[MatchResult] = []
-        for day, match_date, group, home, away, stadium, city, country in matches:
-            res = self._simulate_match(
-                model,
-                rng,
-                states,
-                day=day,
-                match_date=match_date,
-                home_team=home,
-                away_team=away,
+        for match_id, day, match_date, group, home, away, stadium, city, country in matches:
+            res = self._materialize_completed_match(
+                match_id=match_id,
+                expected_home_team=home,
+                expected_away_team=away,
                 stage="Group",
                 group=group,
-                allow_draw=True,
+                day=day,
+                match_date=match_date,
                 stadium=stadium,
                 city=city,
                 country=country,
+                allow_draw=True,
             )
+            if res is None:
+                res = self._simulate_match(
+                    model,
+                    rng,
+                    states,
+                    day=day,
+                    match_date=match_date,
+                    home_team=home,
+                    away_team=away,
+                    stage="Group",
+                    group=group,
+                    allow_draw=True,
+                    stadium=stadium,
+                    city=city,
+                    country=country,
+                )
             results.append(res)
         return results
 
@@ -2123,7 +2296,7 @@ class WorldCup2026(Tournament):
         model: Model,
         rng: np.random.Generator,
         states: Dict[str, TeamSimState],
-        matches: List[Tuple[int, pd.Timestamp, str, str, str, str, str, str]],
+        matches: List[Tuple[int, int, pd.Timestamp, str, str, str, str, str, str]],
     ) -> Tuple[
         List[Tuple[str, str, int, int, Optional[str], Optional[str]]],
         Dict[str, Dict[str, Dict[str, int]]],
@@ -2133,22 +2306,43 @@ class WorldCup2026(Tournament):
             g: {t: {"points": 0, "gf": 0, "ga": 0, "gd": 0, "w": 0, "d": 0, "l": 0} for t in ts}
             for g, ts in self.groups.items()
         }
-        for day, match_date, group, home, away, stadium, city, country in matches:
-            home_team, away_team, hs, as_, winner, grp = self._simulate_match_fast(
-                model,
-                rng,
-                states,
-                day=day,
-                match_date=match_date,
-                home_team=home,
-                away_team=away,
+        for match_id, day, match_date, group, home, away, stadium, city, country in matches:
+            completed = self._materialize_completed_match(
+                match_id=match_id,
+                expected_home_team=home,
+                expected_away_team=away,
                 stage="Group",
                 group=group,
-                allow_draw=True,
+                day=day,
+                match_date=match_date,
                 stadium=stadium,
                 city=city,
                 country=country,
+                allow_draw=True,
             )
+            if completed is None:
+                home_team, away_team, hs, as_, winner, grp = self._simulate_match_fast(
+                    model,
+                    rng,
+                    states,
+                    day=day,
+                    match_date=match_date,
+                    home_team=home,
+                    away_team=away,
+                    stage="Group",
+                    group=group,
+                    allow_draw=True,
+                    stadium=stadium,
+                    city=city,
+                    country=country,
+                )
+            else:
+                home_team = completed.home_team
+                away_team = completed.away_team
+                hs = completed.home_score
+                as_ = completed.away_score
+                winner = completed.winner
+                grp = completed.group
             results.append((home_team, away_team, hs, as_, winner, grp))
             table = tables[group]
             table[home_team]["gf"] += hs
