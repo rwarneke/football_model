@@ -3,6 +3,7 @@
 import argparse
 import numpy as np
 import pandas as pd
+from numbers import Number
 from pathlib import Path
 
 from src.world_cup_results import world_cup_results_for_clean_results
@@ -122,6 +123,11 @@ def combine_with_world_cup_rows(
                     continue
                 if isinstance(left, (bool, np.bool_)) or isinstance(right, (bool, np.bool_)):
                     if bool(left) != bool(right):
+                        row_mismatch = True
+                        break
+                    continue
+                if isinstance(left, Number) and isinstance(right, Number):
+                    if float(left) != float(right):
                         row_mismatch = True
                         break
                     continue

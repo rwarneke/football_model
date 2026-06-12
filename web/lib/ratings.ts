@@ -16,7 +16,7 @@ export type RatingRow = z.infer<typeof ratingRowSchema> & {
 };
 
 const DATA_DIR = "/model_output";
-const DATA_FILE = `${DATA_DIR}/ratings_current.csv`;
+const DATA_FILE_NAME = "ratings_current.csv";
 const HISTORY_DATA_FILE = `${DATA_DIR}/ratings_history_yearly.csv`;
 const CONFEDERATIONS_FILE = "/reference_data/confederations.csv";
 
@@ -150,9 +150,9 @@ function pickConfederation(
   );
 }
 
-export async function loadRatings(): Promise<RatingRow[]> {
+export async function loadRatings(modelOutputDir = DATA_DIR): Promise<RatingRow[]> {
   const [contents, confederationsContents] = await Promise.all([
-    readPublicText(DATA_FILE),
+    readPublicText(`${modelOutputDir}/${DATA_FILE_NAME}`),
     readPublicText(CONFEDERATIONS_FILE),
   ]);
   const confederationsMap = buildConfederationsMap(confederationsContents);

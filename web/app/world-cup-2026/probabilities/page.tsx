@@ -28,6 +28,14 @@ async function loadPretournamentProbabilities() {
   }
 }
 
+async function loadPretournamentRatings() {
+  try {
+    return await loadRatings("/model_output_pretournament");
+  } catch {
+    return await loadRatings("/model_output");
+  }
+}
+
 async function pretournamentUpdatedLabel() {
   try {
     return await modelOutputUpdatedLabel("/model_output_pretournament");
@@ -37,25 +45,46 @@ async function pretournamentUpdatedLabel() {
 }
 
 export default async function WorldCupProbabilitiesRoute() {
-  const [current, pretournament, ratings, currentUpdatedLabel, pretournamentUpdated] =
+  const [
+    current,
+    pretournament,
+    currentRatings,
+    pretournamentRatings,
+    currentUpdatedLabel,
+    pretournamentUpdated,
+  ] =
     await Promise.all([
       loadWorldCupProbabilities("/model_output"),
       loadPretournamentProbabilities(),
-      loadRatings(),
+      loadRatings("/model_output"),
+      loadPretournamentRatings(),
       modelOutputUpdatedLabel("/model_output"),
       pretournamentUpdatedLabel(),
     ]);
-  const ratingsMap = new Map(
-    ratings.map((row) => [
-      row.team,
+  const buildRatingsMap = (ratings: Awaited<ReturnType<typeof loadRatings>>) =>
+    new Map(
+      ratings.map((row) => [
+        row.team,
+        {
+          ratingOverall: row.rating,
+          ratingAttack: row.rating_attack,
+          ratingDefense: row.rating_defense,
+        },
+      ])
+    );
+  const currentRatingsMap = buildRatingsMap(currentRatings);
+  const pretournamentRatingsMap = buildRatingsMap(pretournamentRatings);
+  const attachRatings = (
+    rows: typeof current.rows,
+    ratingsMap: Map<
+      string,
       {
-        ratingOverall: row.rating,
-        ratingAttack: row.rating_attack,
-        ratingDefense: row.rating_defense,
-      },
-    ])
-  );
-  const attachRatings = (rows: typeof current.rows) =>
+        ratingOverall: number;
+        ratingAttack: number;
+        ratingDefense: number;
+      }
+    >
+  ) =>
     rows.map((row) => {
       const rating = ratingsMap.get(row.team);
       return {
@@ -83,10 +112,13 @@ export default async function WorldCupProbabilitiesRoute() {
         </header>
 
         <WorldCupProbabilitiesPage
-          current={{ columns: current.columns, rows: attachRatings(current.rows) }}
+          current={{
+            columns: current.columns,
+            rows: attachRatings(current.rows, currentRatingsMap),
+          }}
           pretournament={{
             columns: pretournament.columns,
-            rows: attachRatings(pretournament.rows),
+            rows: attachRatings(pretournament.rows, pretournamentRatingsMap),
           }}
           currentUpdatedLabel={currentUpdatedLabel}
           pretournamentUpdatedLabel={pretournamentUpdated}
