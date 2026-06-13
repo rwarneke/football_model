@@ -6,6 +6,7 @@ import path from "node:path";
 import { loadRatings } from "@/lib/ratings";
 import { loadWorldCupProbabilities } from "@/lib/world-cup";
 import { loadWorldCupMatches } from "@/lib/world-cup-matches";
+import { loadCompletedWorldCupMatches } from "@/lib/world-cup-results";
 import type { WinProbabilities, WinProbabilityEntry } from "@/lib/world-cup-predictor-types";
 import {
   isCompactWinProbabilities,
@@ -272,6 +273,7 @@ export default async function HomePage() {
   );
   const worldCup = await loadWorldCupProbabilities();
   const matches = await loadWorldCupMatches();
+  const completedMatches = await loadCompletedWorldCupMatches();
   const winProbabilities = await loadWinProbabilities();
   const stageColumns = ["Reach SF", "Reach Final", "Champion"];
   const topStageRows = [...worldCup.rows]
@@ -287,15 +289,10 @@ export default async function HomePage() {
     );
   }, 0);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const completedMatchIds = new Set(completedMatches.map((match) => String(match.matchId)));
   const upcomingMatches = matches
     .filter((match) => {
-      const matchDate = new Date(`${match.date}T00:00:00`);
-      if (Number.isNaN(matchDate.getTime())) {
-        return false;
-      }
-      if (matchDate < today) {
+      if (completedMatchIds.has(String(match.id))) {
         return false;
       }
       return !isPlaceholderLabel(match.home) && !isPlaceholderLabel(match.away);

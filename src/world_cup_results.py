@@ -22,6 +22,11 @@ HOST_TEAM_COUNTRIES = {
     "Mexico": "Mexico",
 }
 
+COUNTRY_ALIASES = {
+    "usa": "usa",
+    "united states": "usa",
+}
+
 RESULTS_WC2026_REQUIRED_COLUMNS = [
     "match_id",
     "date",
@@ -96,6 +101,13 @@ def _normalize_string(value: Any) -> str:
         return ""
     text = str(value).strip()
     return "" if text.lower() == "nan" else text
+
+
+def _normalize_country(value: Any) -> str:
+    text = _normalize_string(value)
+    if not text:
+        return ""
+    return COUNTRY_ALIASES.get(text.casefold(), text.casefold())
 
 
 def _normalize_bool(value: Any) -> bool | None:
@@ -174,7 +186,7 @@ def load_results_wc2026() -> pd.DataFrame:
             f"{missing_rows}"
         )
 
-    for col in ("stage", "stadium", "city", "country", "tournament"):
+    for col in ("stage", "stadium", "city", "tournament"):
         expected = merged[f"{col}_schedule"].map(_normalize_string)
         provided = merged[col].map(_normalize_string)
         mismatch = provided != expected
@@ -187,6 +199,19 @@ def load_results_wc2026() -> pd.DataFrame:
                 f"results_wc2026.csv has unexpected values in column {col}.\n"
                 f"{sample.to_string(index=False)}"
             )
+
+    expected_country = merged["country_schedule"].map(_normalize_country)
+    provided_country = merged["country"].map(_normalize_country)
+    country_mismatch = provided_country != expected_country
+    if country_mismatch.any():
+        sample = merged.loc[
+            country_mismatch,
+            ["match_id", "country_schedule", "country"],
+        ].head(10)
+        raise ValueError(
+            "results_wc2026.csv has unexpected values in column country.\n"
+            f"{sample.to_string(index=False)}"
+        )
 
     expected_groups = merged["group_schedule"].map(_normalize_string)
     provided_groups = merged["group"].map(_normalize_string)
@@ -463,14 +488,14 @@ def load_results_wc2026() -> pd.DataFrame:
         [
             "match_id",
             "date",
-            "stage_schedule",
-            "group_schedule",
+            "stage",
+            "group",
             "home_team",
             "away_team",
-            "stadium_schedule",
-            "city_schedule",
-            "country_schedule",
-            "tournament_schedule",
+            "stadium",
+            "city",
+            "country",
+            "tournament",
             "neutral",
             "home_score",
             "away_score",
@@ -485,16 +510,7 @@ def load_results_wc2026() -> pd.DataFrame:
             "winner",
             "completed",
         ]
-    ].rename(
-        columns={
-            "stage_schedule": "stage",
-            "group_schedule": "group",
-            "stadium_schedule": "stadium",
-            "city_schedule": "city",
-            "country_schedule": "country",
-            "tournament_schedule": "tournament",
-        }
-    )
+    ]
 
 
 def world_cup_results_for_clean_results() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
