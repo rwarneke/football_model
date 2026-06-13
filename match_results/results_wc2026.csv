@@ -1,7 +1,7 @@
 match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,neutral,home_score,away_score,home_score_90,away_score_90,home_score_120,away_score_120,went_extra_time,went_penalties,penalty_winner,first_shooter
 1,2026-06-11,Group,A,Mexico,South Africa,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,2,0,2,0,NA,NA,False,False,NA,NA
 2,2026-06-11,Group,A,South Korea,Czechia,Estadio Akron,Zapopan,Mexico,FIFA World Cup,True,2,1,2,1,NA,NA,False,False,NA,NA
-3,2026-06-12,Group,B,Canada,Bosnia and Herzegovina,BMO Field,Toronto,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+3,2026-06-12,Group,B,Canada,Bosnia and Herzegovina,BMO Field,Toronto,Canada,FIFA World Cup,False,1,1,1,1,NA,NA,False,False,NA,NA
 4,2026-06-12,Group,D,USA,Paraguay,SoFi Stadium,Inglewood,USA,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 5,2026-06-13,Group,C,Haiti,Scotland,Gillette Stadium,Foxborough,USA,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 6,2026-06-13,Group,D,Australia,Turkey,BC Place,Vancouver,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA

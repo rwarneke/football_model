@@ -130,11 +130,14 @@ function formatOpponentProbability(value: number, mode: "percent" | "decimal") {
   return formatProbability(value, "U", mode);
 }
 
-function probabilityBackground(value: number) {
+function probabilityBackground(value: number, maxValue: number) {
   if (!Number.isFinite(value)) {
     return undefined;
   }
-  const clamped = Math.max(0, Math.min(value, 1));
+  if (!Number.isFinite(maxValue) || maxValue <= 0) {
+    return undefined;
+  }
+  const clamped = Math.max(0, Math.min(value / maxValue, 1));
   let alpha = 0;
   if (clamped <= 0.9) {
     if (clamped <= 0.1) {
@@ -268,6 +271,19 @@ export function WorldCupProbabilitiesTable({
   }, [primarySortId, standardDescForColumn, tiebreakOrder]);
 
   const [sorting, setSorting] = React.useState<SortingState>(() => primarySorting);
+  const probabilityColumnMax = React.useMemo(
+    () =>
+      Object.fromEntries(
+        columns.map((column) => {
+          const columnMax = rows.reduce(
+            (max, row) => Math.max(max, Number(row.values[column] ?? 0)),
+            0
+          );
+          return [column, Math.min(columnMax * 1.1, 1)];
+        })
+      ) as Record<string, number>,
+    [columns, rows]
+  );
 
   const handleSortToggle = React.useCallback(
     (columnId: string) => {
@@ -632,7 +648,10 @@ export function WorldCupProbabilitiesTable({
                           }`}
                           style={{
                             ...(columnMeta?.isProbability
-                              ? probabilityBackground(cell.getValue<number>())
+                              ? probabilityBackground(
+                                  cell.getValue<number>(),
+                                  probabilityColumnMax[cell.column.id] ?? 1
+                                )
                               : {}),
                             ...(columnMeta?.isRating
                               ? ratingBackground(cell.getValue<number>())
