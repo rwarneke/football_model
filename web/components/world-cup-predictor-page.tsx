@@ -2398,8 +2398,8 @@ function MatchCard({
             className={cn(
               "w-7 h-6 sm:w-8 sm:h-7 rounded-md text-center text-xs sm:text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none [-moz-appearance:textfield] [-webkit-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors",
               !isScoreSet && "bg-slate-100 text-slate-400 placeholder:text-slate-400",
-              isScoreSet && isWin && (locked ? "bg-transparent text-blue-800" : "bg-transparent text-blue-700"),
-              isScoreSet && isDraw && (locked ? "bg-transparent text-blue-800" : "bg-transparent text-blue-700"),
+              isScoreSet && isWin && (locked ? "bg-transparent text-slate-700" : "bg-transparent text-blue-700"),
+              isScoreSet && isDraw && (locked ? "bg-transparent text-slate-700" : "bg-transparent text-blue-700"),
               isScoreSet && !isWin && !isDraw && "bg-transparent text-slate-400",
               !isPickableMatch && "cursor-default opacity-60"
             )}
@@ -2481,9 +2481,9 @@ function MatchCard({
           background: `linear-gradient(to right, 
             transparent 0%, 
             transparent 35%, 
-            rgb(219, 234, 254) 40%, 
-            rgb(219, 234, 254) 50%, 
-            rgb(219, 234, 254) 60%, 
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 40%, 
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 50%, 
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 60%, 
             transparent 65%, 
             transparent 100%)`
         };
@@ -2491,9 +2491,9 @@ function MatchCard({
         // For home wins: gradient starts from left edge, fades to white around home score, extending to cover score area
         return {
           background: `linear-gradient(to right, 
-            rgb(219, 234, 254) 0%, 
-            rgb(219, 234, 254) 35%, 
-            rgb(219, 234, 254) 42%, 
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 0%, 
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 35%, 
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 42%, 
             rgba(255, 255, 255, 0) 48%, 
             transparent 52%, 
             transparent 100%)`
@@ -2505,9 +2505,9 @@ function MatchCard({
             transparent 0%, 
             transparent 48%, 
             rgba(255, 255, 255, 0) 52%, 
-            rgb(219, 234, 254) 58%, 
-            rgb(219, 234, 254) 65%, 
-            rgb(219, 234, 254) 100%)`
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 58%, 
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 65%, 
+            ${locked ? "rgb(226, 232, 240)" : "rgb(219, 234, 254)"} 100%)`
         };
       }
       return {};
@@ -2988,10 +2988,10 @@ function KnockoutMatchCard({
     
     // Gradient directions for winner highlight
     const normalGradient = locked
-      ? "bg-[linear-gradient(90deg,transparent_0%,rgb(191,219,254)_10%,rgb(191,219,254)_100%)]"
+      ? "bg-[linear-gradient(90deg,transparent_0%,rgb(226,232,240)_10%,rgb(226,232,240)_100%)]"
       : "bg-[linear-gradient(90deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]";
     const mirroredGradient = locked
-      ? "bg-[linear-gradient(270deg,transparent_0%,rgb(191,219,254)_10%,rgb(191,219,254)_100%)]"
+      ? "bg-[linear-gradient(270deg,transparent_0%,rgb(226,232,240)_10%,rgb(226,232,240)_100%)]"
       : "bg-[linear-gradient(270deg,transparent_0%,rgb(219,234,254)_10%,rgb(219,234,254)_100%)]";
     const normalChampionGradient = "bg-[linear-gradient(90deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]";
     const mirroredChampionGradient = "bg-[linear-gradient(270deg,rgba(254,243,199,0)_0%,rgba(254,243,199,0.6)_10%,rgba(254,243,199,0.6)_100%)]";
@@ -3056,7 +3056,7 @@ function KnockoutMatchCard({
                     ? isChampionRow
                       ? "bg-amber-300"
                       : locked
-                      ? "bg-blue-400"
+                      ? "bg-slate-400"
                       : "bg-blue-200"
                     : "bg-transparent"
                 )}
@@ -3088,7 +3088,7 @@ function KnockoutMatchCard({
                     ? isChampionRow
                       ? "bg-amber-300"
                       : locked
-                      ? "bg-blue-400"
+                      ? "bg-slate-400"
                       : "bg-blue-200"
                     : "bg-transparent"
                 )}
@@ -3171,7 +3171,7 @@ function KnockoutMatchCard({
           disabled={!isPickableMatch}
           className={cn(
             "relative z-10 flex w-full flex-1 items-center justify-center p-1",
-            isResolved && isWinner && !isChampionRow && (locked ? "bg-blue-300" : "bg-blue-200"),
+            isResolved && isWinner && !isChampionRow && (locked ? "bg-slate-300" : "bg-blue-200"),
             isChampionRow && "bg-amber-200",
             isPickableMatch ? "cursor-pointer" : "cursor-default"
           )}
