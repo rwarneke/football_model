@@ -295,6 +295,12 @@ def load_results_wc2026() -> pd.DataFrame:
     )
     merged.loc[completed & merged["went_extra_time"].isna(), "went_extra_time"] = False
     merged.loc[completed & merged["went_penalties"].isna(), "went_penalties"] = False
+    went_extra_time = (
+        merged["went_extra_time"].astype("boolean").fillna(False).astype(bool)
+    )
+    went_penalties = (
+        merged["went_penalties"].astype("boolean").fillna(False).astype(bool)
+    )
 
     completed_knockout = completed & ~merged["stage_schedule"].eq("Group")
     unresolved_knockout_teams = completed_knockout & (
@@ -325,8 +331,7 @@ def load_results_wc2026() -> pd.DataFrame:
         )
 
     group_extra_time = completed & merged["stage_schedule"].eq("Group") & (
-        merged["went_extra_time"].fillna(False)
-        | merged["went_penalties"].fillna(False)
+        went_extra_time | went_penalties
     )
     if group_extra_time.any():
         sample = merged.loc[
@@ -362,7 +367,7 @@ def load_results_wc2026() -> pd.DataFrame:
             f"{sample.to_string(index=False)}"
         )
 
-    extra_time_without_scores = completed & merged["went_extra_time"].fillna(False) & (
+    extra_time_without_scores = completed & went_extra_time & (
         merged["home_score_120"].isna() | merged["away_score_120"].isna()
     )
     if extra_time_without_scores.any():
@@ -375,7 +380,7 @@ def load_results_wc2026() -> pd.DataFrame:
             f"{sample.to_string(index=False)}"
         )
 
-    knockout_without_extra_time_breakdown = completed_knockout & ~merged["went_extra_time"].fillna(False) & (
+    knockout_without_extra_time_breakdown = completed_knockout & ~went_extra_time & (
         (merged["home_score"] != merged["home_score_90"])
         | (merged["away_score"] != merged["away_score_90"])
         | merged["home_score_120"].notna()
@@ -399,7 +404,7 @@ def load_results_wc2026() -> pd.DataFrame:
             f"{sample.to_string(index=False)}"
         )
 
-    extra_time_final_mismatch = completed & merged["went_extra_time"].fillna(False) & (
+    extra_time_final_mismatch = completed & went_extra_time & (
         (merged["home_score"] != merged["home_score_120"])
         | (merged["away_score"] != merged["away_score_120"])
     )
@@ -419,10 +424,10 @@ def load_results_wc2026() -> pd.DataFrame:
             f"{sample.to_string(index=False)}"
         )
 
-    pens_mask = completed & merged["went_penalties"].fillna(False)
-    if (pens_mask & ~merged["went_extra_time"].fillna(False)).any():
+    pens_mask = completed & went_penalties
+    if (pens_mask & ~went_extra_time).any():
         sample = merged.loc[
-            pens_mask & ~merged["went_extra_time"].fillna(False),
+            pens_mask & ~went_extra_time,
             ["match_id", "went_extra_time", "went_penalties"],
         ].head(10)
         raise ValueError(
@@ -454,7 +459,7 @@ def load_results_wc2026() -> pd.DataFrame:
             f"{sample.to_string(index=False)}"
         )
 
-    unexpected_penalty_winner = completed & ~merged["went_penalties"].fillna(False) & merged["penalty_winner"].notna()
+    unexpected_penalty_winner = completed & ~went_penalties & merged["penalty_winner"].notna()
     if unexpected_penalty_winner.any():
         sample = merged.loc[
             unexpected_penalty_winner,
@@ -465,7 +470,7 @@ def load_results_wc2026() -> pd.DataFrame:
             f"{sample.to_string(index=False)}"
         )
 
-    drawn_knockouts_without_pens = completed_knockout & (merged["home_score"] == merged["away_score"]) & ~merged["went_penalties"].fillna(False)
+    drawn_knockouts_without_pens = completed_knockout & (merged["home_score"] == merged["away_score"]) & ~went_penalties
     if drawn_knockouts_without_pens.any():
         sample = merged.loc[
             drawn_knockouts_without_pens,

@@ -50,6 +50,10 @@ def infer_objects_compat(df_or_series):
         return df_or_series.infer_objects()
 
 
+def replace_empty_strings_with_na(df_or_series):
+    return infer_objects_compat(df_or_series.mask(df_or_series.eq(""), np.nan))
+
+
 def load_csv_with_manual_overlay(filename: str, key_columns: list[str]) -> pd.DataFrame:
     primary_path = MATCH_RESULTS_DIR / filename
     manual_path = MATCH_RESULTS_DIR / f"manual_{filename}"
@@ -202,7 +206,7 @@ results = results_merged.loc[fil]
 corrections_path = MATCH_RESULTS_DIR / "results_corrections.csv"
 if corrections_path.exists():
     corrections = pd.read_csv(corrections_path, keep_default_na=False)
-    corrections = infer_objects_compat(corrections.replace({"": np.nan}))
+    corrections = replace_empty_strings_with_na(corrections)
     corrections["date"] = pd.to_datetime(corrections["date"], errors="coerce")
 
     def parse_nullable_bool(val):
@@ -228,8 +232,8 @@ if corrections_path.exists():
     for col in ["home_score", "away_score", "neutral", "tournament"]:
         corr_col = f"{col}_corr"
         if corr_col in results.columns:
-            updated = results[corr_col].where(
-                results[corr_col].notna(), results[col]
+            updated = results[corr_col].mask(
+                results[corr_col].isna(), results[col]
             )
             results[col] = infer_objects_compat(updated)
             results = results.drop(columns=[corr_col])
@@ -768,12 +772,12 @@ for col in manual_score_cols:
         results[col] = pd.NA
 
 manual_had_extra_time = (
-    results["went_extra_time"].fillna(False)
+    results["went_extra_time"].astype("boolean").fillna(False).astype(bool)
     if "went_extra_time" in results.columns
     else pd.Series(False, index=results.index, dtype=bool)
 )
 manual_had_penalties = (
-    results["went_penalties"].fillna(False)
+    results["went_penalties"].astype("boolean").fillna(False).astype(bool)
     if "went_penalties" in results.columns
     else pd.Series(False, index=results.index, dtype=bool)
 )
