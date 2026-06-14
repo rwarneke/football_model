@@ -25,9 +25,9 @@ export default async function CurrentRatingsPage() {
             International Football Team Ratings
           </h1>
           <p className="text-base text-ink-200">
-            All current teams who have ever participated in FIFA World Cup
-            qualification are included (211 FIFA members plus 6 confederation
-            members).
+            Rating is the model's overall 0-100 strength scale. Tilt shows
+            whether a team leans more defensive or aggressive in the underlying
+            attack-versus-defense balance.
           </p>
           <div className="flex items-center gap-4 text-sm text-ink-400">
             <span>Updated {lastUpdated}</span>

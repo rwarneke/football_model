@@ -124,6 +124,5 @@ export async function loadCompletedWorldCupMatches(
             : null),
       } satisfies CompletedWorldCupMatch;
     })
-    .filter((row): row is CompletedWorldCupMatch => Boolean(row))
-    .sort((a, b) => a.matchId - b.matchId);
+    .filter((row): row is CompletedWorldCupMatch => Boolean(row));
 }

@@ -19,14 +19,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  formatRatingValue,
+  formatTiltValue,
+  ratingPillStyle,
+  tiltPillStyle,
+} from "@/lib/rating-display";
 import type { GroupRankProbabilities, OpponentProbabilities } from "@/lib/world-cup";
 type TableRowData = {
   team: string;
   flagPath: string;
   group?: string | null;
   ratingOverall?: number;
-  ratingAttack?: number;
-  ratingDefense?: number;
+  tilt?: number;
   opponentProbabilities: OpponentProbabilities;
   groupRankProbabilities: GroupRankProbabilities;
   values: Record<string, number>;
@@ -43,17 +48,10 @@ const percentFormatter = new Intl.NumberFormat("en", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
-const ratingFormatter = new Intl.NumberFormat("en", {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-
 const STAGES = ["R32", "R16", "QF", "SF", "Final"] as const;
 const MAX_OPPONENTS = 5;
 const OPPONENT_THRESHOLD = 0.001;
 const OPPONENT_CELL_MIN = "min-w-[2.5rem]";
-
-const ACCENT_DARK_RGB = "16, 185, 129";
 
 const SKIP_INITIALS = new Set(["and", "of", "the"]);
 
@@ -156,23 +154,6 @@ function probabilityBackground(value: number, maxValue: number) {
 
 const ACCENT_LIGHT_RGB = "147, 197, 253";
 
-function ratingBackground(value: number) {
-  if (!Number.isFinite(value)) {
-    return undefined;
-  }
-  const clamped = Math.max(0, Math.min(value, 100));
-  let alpha = 0;
-  if (clamped <= 40) {
-    alpha = (clamped / 40) * 0.1;
-  } else if (clamped <= 90) {
-    alpha = 0.1 + ((clamped - 40) / 50) * 0.3;
-  } else {
-    const scaled = (clamped - 90) / 10;
-    alpha = 0.4 + scaled * 0.3;
-  }
-  return { backgroundColor: `rgba(${ACCENT_DARK_RGB}, ${alpha})` };
-}
-
 function flagPathForTeam(team: string) {
   return `/flags/${team.replace(/ /g, "_")}.png`;
 }
@@ -229,6 +210,25 @@ function OpponentCell({
         {formatted}
       </span>
     </div>
+  );
+}
+
+function MetricPill({
+  value,
+  formatter,
+  style,
+}: {
+  value: number | null | undefined;
+  formatter: (value: number | null | undefined) => string;
+  style: React.CSSProperties;
+}) {
+  return (
+    <span
+      className="inline-flex min-w-[3.95rem] items-center justify-center rounded-full border px-1.5 py-1 text-[10px] font-mono font-semibold tabular-nums leading-none text-slate-700"
+      style={style}
+    >
+      {formatter(value)}
+    </span>
   );
 }
 
@@ -358,6 +358,50 @@ export function WorldCupProbabilitiesTable({
         ),
       },
       {
+        id: "rating",
+        header: () => (
+          <span className="block text-center whitespace-nowrap">
+            <span className="md:hidden">Rating</span>
+            <span className="hidden md:inline">{wrapHeaderLabel("Rating")}</span>
+          </span>
+        ),
+        accessorFn: (row) => row.ratingOverall ?? Number.NaN,
+        sortingFn: (a, b, id) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
+        meta: { isRating: true },
+        cell: ({ row }) => (
+          <div className="flex justify-center">
+            <MetricPill
+              value={row.original.ratingOverall}
+              formatter={formatRatingValue}
+              style={ratingPillStyle(row.original.ratingOverall)}
+            />
+          </div>
+        ),
+      },
+      {
+        id: "tilt",
+        header: () => (
+          <span className="block text-center whitespace-nowrap">
+            <span className="md:hidden">Tilt</span>
+            <span className="hidden md:inline">{wrapHeaderLabel("Tilt")}</span>
+          </span>
+        ),
+        accessorFn: (row) => row.tilt ?? Number.NaN,
+        sortingFn: (a, b, id) =>
+          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
+        meta: { isRating: true },
+        cell: ({ row }) => (
+          <div className="flex justify-center">
+            <MetricPill
+              value={row.original.tilt}
+              formatter={formatTiltValue}
+              style={tiltPillStyle(row.original.tilt)}
+            />
+          </div>
+        ),
+      },
+      {
         id: "group",
         header: () => (
           <span className="whitespace-nowrap">
@@ -454,66 +498,6 @@ export function WorldCupProbabilitiesTable({
           );
         },
       })),
-      {
-        id: "overall",
-        header: () => (
-          <span className="whitespace-nowrap">
-            <span className="md:hidden">OVR.</span>
-            <span className="hidden md:inline">{wrapHeaderLabel("Overall")}</span>
-          </span>
-        ),
-        accessorFn: (row) => row.ratingOverall ?? Number.NaN,
-        sortingFn: (a, b, id) =>
-          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
-        meta: { isRating: true },
-        cell: ({ row }) => (
-          <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
-            {Number.isFinite(row.original.ratingOverall)
-              ? ratingFormatter.format(row.original.ratingOverall ?? 0)
-              : ""}
-          </span>
-        ),
-      },
-      {
-        id: "attack",
-        header: () => (
-          <span className="whitespace-nowrap">
-            <span className="md:hidden">Att.</span>
-            <span className="hidden md:inline">{wrapHeaderLabel("Attack")}</span>
-          </span>
-        ),
-        accessorFn: (row) => row.ratingAttack ?? Number.NaN,
-        sortingFn: (a, b, id) =>
-          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
-        meta: { isRating: true },
-        cell: ({ row }) => (
-          <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
-            {Number.isFinite(row.original.ratingAttack)
-              ? ratingFormatter.format(row.original.ratingAttack ?? 0)
-              : ""}
-          </span>
-        ),
-      },
-      {
-        id: "defense",
-        header: () => (
-          <span className="whitespace-nowrap">
-            <span className="md:hidden">Def.</span>
-            <span className="hidden md:inline">{wrapHeaderLabel("Defense")}</span>
-          </span>
-        ),
-        accessorFn: (row) => row.ratingDefense ?? Number.NaN,
-        sortingFn: (a, b, id) =>
-          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
-        meta: { isRating: true },
-        cell: ({ row }) => (
-          <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
-            {Number.isFinite(row.original.ratingDefense)
-              ? ratingFormatter.format(row.original.ratingDefense ?? 0)
-              : ""}
-          </span>
-        ),
-      },
     ],
     [columns, probabilityMode, sorting, tiebreakOrder]
   );
@@ -560,10 +544,8 @@ export function WorldCupProbabilitiesTable({
                         ? "text-left w-[10rem] min-w-[7rem] xl:min-w-[10rem] shrink-0"
                         : columnMeta?.isGroup
                         ? "text-center whitespace-nowrap min-w-[3ch] xl:min-w-[4ch]"
-                        : header.id === "overall" ||
-                          header.id === "attack" ||
-                          header.id === "defense"
-                        ? "text-right whitespace-nowrap"
+                        : columnMeta?.isRating
+                        ? "text-center whitespace-nowrap"
                         : "text-right"
                     } px-1 xl:px-2 py-1.5 xl:py-2.5 text-[10px] xl:text-[11px] font-semibold uppercase tracking-wide text-slate-600 whitespace-normal 2xl:whitespace-nowrap ${
                       header.id === "flag"
@@ -638,7 +620,7 @@ export function WorldCupProbabilitiesTable({
                               ? "text-center min-w-[3ch] xl:min-w-[4ch]"
                               : "text-right"
                           } ${
-                            columnMeta?.isProbability || columnMeta?.isRating ? "pl-4" : ""
+                            columnMeta?.isProbability ? "pl-4" : ""
                           } ${
                             cell.column.id === "flag"
                               ? "sticky left-0 z-10 bg-white"
@@ -652,9 +634,6 @@ export function WorldCupProbabilitiesTable({
                                   cell.getValue<number>(),
                                   probabilityColumnMax[cell.column.id] ?? 1
                                 )
-                              : {}),
-                            ...(columnMeta?.isRating
-                              ? ratingBackground(cell.getValue<number>())
                               : {}),
                             ...(columnMeta?.minWidthCh
                               ? {

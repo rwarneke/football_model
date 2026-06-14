@@ -4,8 +4,16 @@ import * as React from "react";
 import Image from "next/image";
 import type { WorldCupMatch } from "@/lib/world-cup-matches";
 import type { CompletedWorldCupMatch } from "@/lib/world-cup-results";
+import type { RatingRow } from "@/lib/ratings";
+import {
+  formatRatingValue,
+  formatTiltValue,
+  ratingPillStyle,
+  tiltPillStyle,
+} from "@/lib/rating-display";
 import type { WinProbabilities, WinProbabilityEntry } from "@/lib/world-cup-predictor-types";
 import { buildScoreMatrix } from "@/lib/score-matrix";
+import { ChevronDown } from "lucide-react";
 import {
   isCompactWinProbabilities,
   parseCompactEntry,
@@ -380,6 +388,80 @@ function scoreMatrixHighlight(value: number) {
   return { backgroundColor: `rgba(${PROBABILITY_HIGHLIGHT_RGB}, ${alpha})` };
 }
 
+type TeamRatingsSummary = {
+  overall: number;
+  tilt: number;
+}
+
+function RatingsBadge({
+  label,
+  value,
+  variant,
+}: {
+  label: string;
+  value: number | null | undefined;
+  variant: "rating" | "tilt";
+}) {
+  return (
+    <span
+      className="inline-flex min-w-[3.95rem] items-center justify-center gap-1 rounded-full border px-1.5 py-1 text-[10px] font-mono font-semibold leading-none tabular-nums text-slate-700"
+      style={variant === "rating" ? ratingPillStyle(value) : tiltPillStyle(value)}
+    >
+      <span className="font-sans text-[8px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </span>
+      <span>{variant === "rating" ? formatRatingValue(value) : formatTiltValue(value)}</span>
+    </span>
+  );
+}
+
+function TeamRatingsPanel({
+  team,
+  ratings,
+  align = "left",
+  reverse = false,
+}: {
+  team: string;
+  ratings: TeamRatingsSummary | null;
+  align?: "left" | "right";
+  reverse?: boolean;
+}) {
+  const isPlaceholder = isPlaceholderLabel(team);
+  const badges = [
+    <RatingsBadge key="rating" label="Rating" value={ratings?.overall ?? null} variant="rating" />,
+    <RatingsBadge key="tilt" label="TILT" value={ratings?.tilt ?? null} variant="tilt" />,
+  ];
+  return (
+    <div className={`${align === "right" ? "text-right" : "text-left"}`}>
+      <div className={`flex flex-wrap gap-1.5 ${align === "right" ? "justify-end" : "justify-start"}`}>
+        {reverse ? [...badges].reverse() : badges}
+      </div>
+    </div>
+  );
+}
+
+function ExpandToggle({
+  expanded,
+  onToggle,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={expanded ? "Collapse details" : "Expand details"}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-100 hover:text-slate-700"
+    >
+      <ChevronDown
+        className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+        strokeWidth={2.25}
+      />
+    </button>
+  );
+}
+
 function shouldUseDecimalPrecision(values: (number | null | undefined)[]) {
   return values.some((v) => v !== null && v !== undefined && Number.isFinite(v) && v * 100 < 0.5);
 }
@@ -539,18 +621,37 @@ function formatDateHeading(date: string) {
 export function WorldCupMatchesPageClient({
   matches,
   completedMatches,
+  ratings,
   winProbabilities,
 }: {
   matches: WorldCupMatch[];
   completedMatches: CompletedWorldCupMatch[];
+  ratings: RatingRow[];
   winProbabilities: WinProbabilities;
 }) {
   const [probabilityMode, setProbabilityMode] = React.useState<"percent" | "decimal">("percent");
   const [query, setQuery] = React.useState("");
+  const [expandedMatches, setExpandedMatches] = React.useState<Record<string, boolean>>({});
   const completedById = React.useMemo(
     () => new Map(completedMatches.map((match) => [String(match.matchId), match])),
     [completedMatches]
   );
+  const ratingsByTeam = React.useMemo(
+    () =>
+      new Map(
+        ratings.map((row) => [
+          row.team,
+          {
+            overall: row.rating,
+            tilt: row.tilt,
+          } satisfies TeamRatingsSummary,
+        ])
+      ),
+    [ratings]
+  );
+  const toggleExpanded = React.useCallback((matchKey: string) => {
+    setExpandedMatches((current) => ({ ...current, [matchKey]: !current[matchKey] }));
+  }, []);
 
   const filteredUpcomingMatches = React.useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -819,14 +920,18 @@ export function WorldCupMatchesPageClient({
                 });
                 const scoreGrid = scoreMatrix ? buildScoreGrid(scoreMatrix) : null;
                 const marginRow = scoreMatrix ? buildMarginRow(scoreMatrix) : null;
+                const matchKey = `upcoming-${match.id}-${match.home}-${match.away}`;
+                const expanded = Boolean(expandedMatches[matchKey]);
+                const homeRatings = ratingsByTeam.get(match.home) ?? null;
+                const awayRatings = ratingsByTeam.get(match.away) ?? null;
 
                 return (
                   <div
                     key={`${match.id}-${match.home}-${match.away}`}
                     id={`match-${match.id}`}
-                    className="min-w-0 scroll-mt-24"
+                    className="mb-3 min-w-0 scroll-mt-24"
                   >
-                    <div className="h-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
+                    <div className="relative h-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
                       <div className="space-y-1">
                         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">
                           <span className="flex items-center gap-2 min-w-0">
@@ -865,6 +970,15 @@ export function WorldCupMatchesPageClient({
                             )}
                           </span>
                         </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+                        <TeamRatingsPanel team={match.home} ratings={homeRatings} />
+                        <TeamRatingsPanel
+                          team={match.away}
+                          ratings={awayRatings}
+                          align="right"
+                          reverse
+                        />
                       </div>
                       {requiresResult ? (
                         <div className="mt-3 space-y-3">
@@ -945,73 +1059,79 @@ export function WorldCupMatchesPageClient({
                           </div>
                         </div>
                       )}
-                      {marginRow ? (
-                        <div className="mt-3">
-                          <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                            Margin
-                          </div>
-                          <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
-                            {marginRow.map((cell, index) => (
-                              <div key={`margin-${cell.label}-${index}`} className="contents">
-                                <div className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
-                                  {cell.label}
-                                </div>
-                              </div>
-                            ))}
-                            {marginRow.map((cell, index) => (
-                              <div
-                                key={`margin-value-${cell.label}-${index}`}
-                                className="bg-white px-1 py-1 text-center tabular-nums"
-                                style={scoreMatrixHighlight(cell.value)}
-                              >
-                                {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                      {scoreGrid ? (
-                        <div className="mt-3">
-                          <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                            {requiresResult ? "Score Matrix (90')" : "Score Matrix"}
-                          </div>
-                          <div className="mt-2 w-full overflow-x-auto">
-                            <div className="min-w-full w-full">
-                              <div className="grid w-full min-w-[22rem] grid-cols-[1.5rem_repeat(6,minmax(0,1fr))] gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
-                                <div className="bg-slate-50 px-1 py-1 text-center font-semibold uppercase text-slate-500">
-                                  H/A
-                                </div>
-                                {SCORE_LABELS.map((label) => (
-                                  <div
-                                    key={`col-${label}`}
-                                    className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500"
-                                  >
-                                    {label}
+                      {(marginRow || scoreGrid) && expanded ? (
+                        <div className="mt-3 border-t border-slate-100 pt-3">
+                          <div className="space-y-3">
+                              {marginRow ? (
+                                <div>
+                                  <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                                    Margin
                                   </div>
-                                ))}
-                                {scoreGrid.map((row, rowIndex) => (
-                                  <React.Fragment key={`row-${rowIndex}`}>
-                                    <div className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
-                                      {SCORE_LABELS[rowIndex]}
-                                    </div>
-                                    {row.map((value, colIndex) => (
-                                      <div
-                                        key={`cell-${rowIndex}-${colIndex}`}
-                                        className="bg-white px-1 py-1 text-center tabular-nums"
-                                        style={scoreMatrixHighlight(value)}
-                                      >
-                                        {formatProbabilityLabel(
-                                          value,
-                                          probabilityMode,
-                                          true
-                                        ).replace("%", "")}
+                                  <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                                    {marginRow.map((cell, index) => (
+                                      <div key={`margin-${cell.label}-${index}`} className="contents">
+                                        <div className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                                          {cell.label}
+                                        </div>
                                       </div>
                                     ))}
-                                  </React.Fragment>
-                                ))}
-                              </div>
+                                    {marginRow.map((cell, index) => (
+                                      <div
+                                        key={`margin-value-${cell.label}-${index}`}
+                                        className="bg-white px-1 py-1 text-center tabular-nums"
+                                        style={scoreMatrixHighlight(cell.value)}
+                                      >
+                                        {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {scoreGrid ? (
+                                <div>
+                                  <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                                    {requiresResult ? "Score Matrix (90')" : "Score Matrix"}
+                                  </div>
+                                  <div className="mt-2 w-full overflow-x-auto">
+                                    <div className="min-w-full w-full">
+                                      <div className="grid w-full min-w-[22rem] grid-cols-[1.5rem_repeat(6,minmax(0,1fr))] gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                                        <div className="bg-slate-50 px-1 py-1 text-center font-semibold uppercase text-slate-500">
+                                          H/A
+                                        </div>
+                                        {SCORE_LABELS.map((label) => (
+                                          <div
+                                            key={`col-${label}`}
+                                            className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500"
+                                          >
+                                            {label}
+                                          </div>
+                                        ))}
+                                        {scoreGrid.map((row, rowIndex) => (
+                                          <React.Fragment key={`row-${rowIndex}`}>
+                                            <div className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                                              {SCORE_LABELS[rowIndex]}
+                                            </div>
+                                            {row.map((value, colIndex) => (
+                                              <div
+                                                key={`cell-${rowIndex}-${colIndex}`}
+                                                className="bg-white px-1 py-1 text-center tabular-nums"
+                                                style={scoreMatrixHighlight(value)}
+                                              >
+                                                {formatProbabilityLabel(
+                                                  value,
+                                                  probabilityMode,
+                                                  true
+                                                ).replace("%", "")}
+                                              </div>
+                                            ))}
+                                          </React.Fragment>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
-                          </div>
                         </div>
                       ) : null}
                       <div className="mt-auto pt-3 flex items-end justify-between gap-3">
@@ -1028,6 +1148,16 @@ export function WorldCupMatchesPageClient({
                           {match.stage}
                         </div>
                       </div>
+                      {(marginRow || scoreGrid) ? (
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex translate-y-1/2 justify-center">
+                          <div className="pointer-events-auto bg-white px-1">
+                            <ExpandToggle
+                              expanded={expanded}
+                              onToggle={() => toggleExpanded(matchKey)}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -1063,9 +1193,13 @@ export function WorldCupMatchesPageClient({
                 margin >= 3 ? 0 : margin === 2 ? 1 : margin === 1 ? 2 : margin === 0 ? 3 : margin === -1 ? 4 : margin === -2 ? 5 : 6;
               const actualHomeBucket = Math.min(match.homeScore, 5);
               const actualAwayBucket = Math.min(match.awayScore, 5);
+              const matchKey = `past-${match.matchId}`;
+              const expanded = Boolean(expandedMatches[matchKey]);
+              const homeRatings = ratingsByTeam.get(match.homeTeam) ?? null;
+              const awayRatings = ratingsByTeam.get(match.awayTeam) ?? null;
               return (
-                <div key={`past-${match.matchId}`} className="min-w-0">
-                  <div className="h-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
+                <div key={`past-${match.matchId}`} className="mb-3 min-w-0">
+                  <div className="relative h-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">
                       <span className={`flex items-center gap-2 min-w-0 ${awayWon ? "opacity-40" : "opacity-100"}`}>
                         <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
@@ -1103,91 +1237,116 @@ export function WorldCupMatchesPageClient({
                         </span>
                       </span>
                     </div>
-                    {marginRow ? (
-                      <div className="mt-3">
-                        <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                          Margin
-                        </div>
-                        <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
-                          {marginRow.map((cell, index) => (
-                            <div key={`past-margin-label-${match.matchId}-${index}`} className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
-                              {cell.label}
-                            </div>
-                          ))}
-                          {marginRow.map((cell, index) => (
-                            <div
-                              key={`past-margin-value-${match.matchId}-${index}`}
-                              className={`bg-white px-1 py-1 text-center tabular-nums ${index === actualMarginIndex ? "text-blue-800" : "opacity-30"}`}
-                              style={index === actualMarginIndex ? scoreMatrixHighlight(cell.value) : undefined}
-                            >
-                              {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {scoreGrid ? (
-                      <div className="mt-3">
-                        <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                          Exact score
-                        </div>
-                        <div className="mt-2 w-full overflow-x-auto">
-                          <div className="min-w-full w-full">
-                            <div className="grid w-full min-w-[22rem] grid-cols-[1.5rem_repeat(6,minmax(0,1fr))] gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
-                              <div className="bg-slate-50 px-1 py-1 text-center font-semibold uppercase text-slate-500">
-                                H/A
-                              </div>
-                              {SCORE_LABELS.map((label) => (
-                                <div
-                                  key={`past-col-${match.matchId}-${label}`}
-                                  className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500"
-                                >
-                                  {label}
+                    <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+                      <TeamRatingsPanel team={match.homeTeam} ratings={homeRatings} />
+                      <TeamRatingsPanel
+                        team={match.awayTeam}
+                        ratings={awayRatings}
+                        align="right"
+                        reverse
+                      />
+                    </div>
+                    {(marginRow || scoreGrid) && expanded ? (
+                      <div className="mt-3 border-t border-slate-100 pt-3">
+                        <div className="space-y-3">
+                            {marginRow ? (
+                              <div>
+                                <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                                  Margin
                                 </div>
-                              ))}
-                              {scoreGrid.map((row, rowIndex) => (
-                                <React.Fragment key={`past-row-${match.matchId}-${rowIndex}`}>
-                                  <div className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
-                                    {SCORE_LABELS[rowIndex]}
-                                  </div>
-                                  {row.map((value, colIndex) => {
-                                    const isActual =
-                                      rowIndex === actualHomeBucket &&
-                                      colIndex === actualAwayBucket;
-                                    return (
-                                      <div
-                                        key={`past-cell-${match.matchId}-${rowIndex}-${colIndex}`}
-                                        className={`bg-white px-1 py-1 text-center tabular-nums ${isActual ? "text-blue-800" : "opacity-25"}`}
-                                        style={isActual ? scoreMatrixHighlight(value) : undefined}
-                                      >
-                                        {formatProbabilityLabel(
-                                          value,
-                                          probabilityMode,
-                                          true
-                                        ).replace("%", "")}
+                                <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                                  {marginRow.map((cell, index) => (
+                                    <div key={`past-margin-label-${match.matchId}-${index}`} className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                                      {cell.label}
+                                    </div>
+                                  ))}
+                                  {marginRow.map((cell, index) => (
+                                    <div
+                                      key={`past-margin-value-${match.matchId}-${index}`}
+                                      className={`bg-white px-1 py-1 text-center tabular-nums ${index === actualMarginIndex ? "text-blue-800" : "opacity-30"}`}
+                                      style={index === actualMarginIndex ? scoreMatrixHighlight(cell.value) : undefined}
+                                    >
+                                      {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+                            {scoreGrid ? (
+                              <div>
+                                <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                                  Exact score
+                                </div>
+                                <div className="mt-2 w-full overflow-x-auto">
+                                  <div className="min-w-full w-full">
+                                    <div className="grid w-full min-w-[22rem] grid-cols-[1.5rem_repeat(6,minmax(0,1fr))] gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                                      <div className="bg-slate-50 px-1 py-1 text-center font-semibold uppercase text-slate-500">
+                                        H/A
                                       </div>
-                                    );
-                                  })}
-                                </React.Fragment>
-                              ))}
-                            </div>
+                                      {SCORE_LABELS.map((label) => (
+                                        <div
+                                          key={`past-col-${match.matchId}-${label}`}
+                                          className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500"
+                                        >
+                                          {label}
+                                        </div>
+                                      ))}
+                                      {scoreGrid.map((row, rowIndex) => (
+                                        <React.Fragment key={`past-row-${match.matchId}-${rowIndex}`}>
+                                          <div className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                                            {SCORE_LABELS[rowIndex]}
+                                          </div>
+                                          {row.map((value, colIndex) => {
+                                            const isActual =
+                                              rowIndex === actualHomeBucket &&
+                                              colIndex === actualAwayBucket;
+                                            return (
+                                              <div
+                                                key={`past-cell-${match.matchId}-${rowIndex}-${colIndex}`}
+                                                className={`bg-white px-1 py-1 text-center tabular-nums ${isActual ? "text-blue-800" : "opacity-25"}`}
+                                                style={isActual ? scoreMatrixHighlight(value) : undefined}
+                                              >
+                                                {formatProbabilityLabel(
+                                                  value,
+                                                  probabilityMode,
+                                                  true
+                                                ).replace("%", "")}
+                                              </div>
+                                            );
+                                          })}
+                                        </React.Fragment>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
-                        </div>
                       </div>
                     ) : null}
-                    <div className="mt-auto pt-3 flex items-end justify-between gap-3">
-                      <div className="text-sm text-slate-600 w-[60%] whitespace-normal break-words">
-                        {match.city || match.country
-                          ? `${match.city}${match.city && match.country ? ", " : ""}${match.country}`
+                      <div className="mt-auto pt-3 flex items-end justify-between gap-3">
+                        <div className="text-sm text-slate-600 w-[60%] whitespace-normal break-words">
+                          {match.city || match.country
+                            ? `${match.city}${match.city && match.country ? ", " : ""}${match.country}`
                           : "TBD"}
                       </div>
                       <div className="text-xs uppercase tracking-wide text-slate-500 text-right w-[40%] whitespace-normal break-words">
-                        {match.stage}
+                          {match.stage}
+                        </div>
                       </div>
+                      {(marginRow || scoreGrid) ? (
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex translate-y-1/2 justify-center">
+                          <div className="pointer-events-auto bg-white px-1">
+                            <ExpandToggle
+                              expanded={expanded}
+                              onToggle={() => toggleExpanded(matchKey)}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                </div>
-              );
+                );
             })}
           </div>
         )}

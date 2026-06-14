@@ -125,6 +125,8 @@ def main():
     df_state["rating_attack"] = rating_func(df_state["mu_attack"])
     df_state["rating_defense"] = rating_func(df_state["mu_defense"])
     df_state["rating"] = rating_func(df_state["quality"] / 2)
+    df_state["tilt"] = df_state["mu_attack"] - df_state["mu_defense"]
+    df_state["display_tilt"] = 10 * np.tanh(df_state["tilt"] / 0.5)
 
     df_history = df_state.set_index(["date", "team"]).unstack().ffill()
 

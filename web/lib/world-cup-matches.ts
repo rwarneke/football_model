@@ -19,11 +19,29 @@ const REFERENCE_DIR = "/reference_data";
 const GROUP_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_group_matches.csv`;
 const KNOCKOUT_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_knockout_matches.csv`;
 const QUALIFIERS_FILE = `${REFERENCE_DIR}/world_cup_2026_remaining_qualifiers.csv`;
+const RESULTS_ORDER_FILE = "/model_output/results_wc2026.csv";
 
 async function readPublicText(filePath: string) {
   const normalized = filePath.replace(/^\/+/, "");
   const fullPath = path.join(PUBLIC_DIR, normalized);
   return readFile(fullPath, "utf8");
+}
+
+async function loadWorldCupOrderMap() {
+  try {
+    const contents = await readPublicText(RESULTS_ORDER_FILE);
+    const rows = parseCsv(contents).rows;
+    return new Map(
+      rows
+        .map((row, index) => {
+          const matchId = row.match_id?.trim() ?? "";
+          return matchId ? [matchId, index] : null;
+        })
+        .filter((entry): entry is [string, number] => Boolean(entry))
+    );
+  } catch {
+    return null;
+  }
 }
 
 function parseCsv(contents: string) {
@@ -81,10 +99,11 @@ function formatQualifierStage(stage: string, path: string) {
 }
 
 export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
-  const [groupContents, knockoutContents, qualifierContents] = await Promise.all([
+  const [groupContents, knockoutContents, qualifierContents, worldCupOrderMap] = await Promise.all([
     readPublicText(GROUP_MATCHES_FILE),
     readPublicText(KNOCKOUT_MATCHES_FILE),
     readPublicText(QUALIFIERS_FILE),
+    loadWorldCupOrderMap(),
   ]);
 
   const groupRows = parseCsv(groupContents).rows;
@@ -137,5 +156,22 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
 
   return [...qualifierMatches, ...groupMatches, ...knockoutMatches]
     .filter((match) => match.date)
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort((a, b) => {
+      const aOrder = worldCupOrderMap?.get(a.id);
+      const bOrder = worldCupOrderMap?.get(b.id);
+      if (aOrder !== undefined && bOrder !== undefined) {
+        return aOrder - bOrder;
+      }
+      if (aOrder !== undefined) {
+        return 1;
+      }
+      if (bOrder !== undefined) {
+        return -1;
+      }
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) {
+        return dateCompare;
+      }
+      return a.id.localeCompare(b.id);
+    });
 }

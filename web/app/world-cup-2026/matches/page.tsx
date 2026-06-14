@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadWorldCupMatches } from "@/lib/world-cup-matches";
 import { loadCompletedWorldCupMatches } from "@/lib/world-cup-results";
+import { loadRatings } from "@/lib/ratings";
 import type { WinProbabilities } from "@/lib/world-cup-predictor-types";
 import { WorldCupMatchesPageClient } from "@/components/world-cup-matches-page";
 
@@ -12,9 +13,10 @@ async function loadWinProbabilities(): Promise<WinProbabilities> {
 }
 
 export default async function WorldCupMatchesPage() {
-  const [matches, completedMatches, winProbabilities] = await Promise.all([
+  const [matches, completedMatches, ratings, winProbabilities] = await Promise.all([
     loadWorldCupMatches(),
     loadCompletedWorldCupMatches(),
+    loadRatings(),
     loadWinProbabilities(),
   ]);
   const lastUpdated = new Date().toLocaleDateString("en-US", {
@@ -41,6 +43,7 @@ export default async function WorldCupMatchesPage() {
         <WorldCupMatchesPageClient
           matches={matches}
           completedMatches={completedMatches}
+          ratings={ratings}
           winProbabilities={winProbabilities}
         />
       </div>

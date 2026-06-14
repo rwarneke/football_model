@@ -3,6 +3,12 @@
 import * as React from "react";
 import Image from "next/image";
 import type { RatingRow } from "@/lib/ratings";
+import {
+  formatRatingValue,
+  formatTiltValue,
+  ratingPillStyle,
+  tiltPillStyle,
+} from "@/lib/rating-display";
 import { fetchJsonWithGzipFallback } from "@/lib/fetch-json-gzip-client";
 import type { WinProbabilities, WinProbabilityEntry } from "@/lib/world-cup-predictor-types";
 import { buildScoreMatrix } from "@/lib/score-matrix";
@@ -24,8 +30,7 @@ type TeamOption = {
   flagPath: string | null;
   confederation: string | null;
   rating: number;
-  ratingAttack: number;
-  ratingDefense: number;
+  tilt: number;
   worldRank: number;
   confederationRank: number | null;
 };
@@ -468,8 +473,7 @@ export function TeamMatchupPage({
         flagPath: row.flagPath,
         confederation: row.confederation,
         rating: row.rating,
-        ratingAttack: row.rating_attack,
-        ratingDefense: row.rating_defense,
+        tilt: row.tilt,
         worldRank: index + 1,
         confederationRank: row.confederation ? nextConfedRank : null,
       };
@@ -1139,9 +1143,22 @@ function TeamSummaryCard({
       </div>
 
       <dl className="mt-4 space-y-2.5 text-sm">
-        <MetricRow label="Overall" value={team.rating.toFixed(1)} />
-        <MetricRow label="Offense" value={team.ratingAttack.toFixed(1)} />
-        <MetricRow label="Defense" value={team.ratingDefense.toFixed(1)} />
+        <MetricRow
+          label="Rating"
+          value={
+            <SmallMetricPill style={ratingPillStyle(team.rating)}>
+              {formatRatingValue(team.rating)}
+            </SmallMetricPill>
+          }
+        />
+        <MetricRow
+          label="Tilt"
+          value={
+            <SmallMetricPill style={tiltPillStyle(team.tilt)}>
+              {formatTiltValue(team.tilt)}
+            </SmallMetricPill>
+          }
+        />
         <MetricRow label="World rank" value={`#${team.worldRank}`} />
         <MetricRow
           label="Confed. rank"
@@ -1161,12 +1178,29 @@ function MetricRow({
   value,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <dt className="text-slate-500">{label}</dt>
       <dd className="text-right font-medium tabular-nums text-slate-900">{value}</dd>
     </div>
+  );
+}
+
+function SmallMetricPill({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style: React.CSSProperties;
+}) {
+  return (
+    <span
+      className="inline-flex min-w-[3.5rem] items-center justify-center rounded-full border px-1.5 py-1 text-[10px] font-mono font-semibold leading-none tabular-nums text-slate-700"
+      style={style}
+    >
+      {children}
+    </span>
   );
 }

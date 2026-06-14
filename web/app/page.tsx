@@ -4,6 +4,12 @@ import Link from "next/link";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadRatings } from "@/lib/ratings";
+import {
+  formatRatingValue,
+  formatTiltValue,
+  ratingPillStyle,
+  tiltPillStyle,
+} from "@/lib/rating-display";
 import { loadWorldCupProbabilities } from "@/lib/world-cup";
 import { loadWorldCupMatches } from "@/lib/world-cup-matches";
 import { loadCompletedWorldCupMatches } from "@/lib/world-cup-results";
@@ -18,17 +24,11 @@ export const metadata: Metadata = {
   title: "TheBackPost Football Analytics",
 };
 
-const ratingFormatter = new Intl.NumberFormat("en", {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-
 const percentFormatter = new Intl.NumberFormat("en", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
 
-const ACCENT_DARK_RGB = "16, 185, 129";
 const ACCENT_LIGHT_RGB = "147, 197, 253";
 const HOST_TEAM_COUNTRIES: Record<string, string> = {
   USA: "USA",
@@ -37,20 +37,6 @@ const HOST_TEAM_COUNTRIES: Record<string, string> = {
   Mexico: "Mexico",
 };
 const HOST_TEAMS = new Set(["USA", "Canada", "Mexico"]);
-
-function ratingBackground(value: number, minValue: number) {
-  if (
-    !Number.isFinite(value) ||
-    !Number.isFinite(minValue) ||
-    minValue >= 100
-  ) {
-    return undefined;
-  }
-  const clamped = Math.max(minValue, Math.min(value, 100));
-  const scaled = (clamped - minValue) / (100 - minValue);
-  const alpha = 0.3 + scaled * 0.7;
-  return { backgroundColor: `rgba(${ACCENT_DARK_RGB}, ${alpha})` };
-}
 
 function probabilityBackground(value: number, maxValue: number) {
   if (!Number.isFinite(value) || !Number.isFinite(maxValue) || maxValue <= 0) {
@@ -262,15 +248,6 @@ async function loadWinProbabilities(): Promise<WinProbabilities> {
 
 export default async function HomePage() {
   const topRatings = (await loadRatings()).slice(0, 5);
-  const ratingValues = topRatings.flatMap((row) => [
-    row.rating,
-    row.rating_attack,
-    row.rating_defense,
-  ]);
-  const minRating = ratingValues.reduce(
-    (min, value) => (Number.isFinite(value) ? Math.min(min, value) : min),
-    Number.POSITIVE_INFINITY
-  );
   const worldCup = await loadWorldCupProbabilities();
   const matches = await loadWorldCupMatches();
   const completedMatches = await loadCompletedWorldCupMatches();
@@ -421,19 +398,18 @@ export default async function HomePage() {
             <div className="flex flex-col gap-4">
               <h2 className="text-lg font-semibold">International football team ratings</h2>
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-                <div className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.25rem)] lg:grid-cols-[3rem_2rem_1fr_repeat(3,4rem)] bg-slate-50 pl-1.5 lg:pl-3 pr-0 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="grid grid-cols-[1.5rem_2rem_1fr_repeat(2,4.5rem)] lg:grid-cols-[3rem_2rem_1fr_repeat(2,5.25rem)] bg-slate-50 pl-1.5 lg:pl-3 pr-0 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   <span>#</span>
                   <span />
                   <span>Team</span>
-                  <span className="block w-full text-right pr-2">OVR</span>
-                  <span className="block w-full text-right pr-2">ATT</span>
-                  <span className="block w-full text-right pr-2">DEF</span>
+                  <span className="block w-full text-center">Rating</span>
+                  <span className="block w-full text-center">Tilt</span>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {topRatings.map((row, index) => (
                     <div
                       key={`${row.team}-${row.year}`}
-                      className="grid grid-cols-[1.5rem_2rem_1fr_repeat(3,3.25rem)] lg:grid-cols-[3rem_2rem_1fr_repeat(3,4rem)] items-stretch pl-1.5 lg:pl-3 pr-0 text-xs text-slate-700"
+                      className="grid grid-cols-[1.5rem_2rem_1fr_repeat(2,4.5rem)] lg:grid-cols-[3rem_2rem_1fr_repeat(2,5.25rem)] items-stretch pl-1.5 lg:pl-3 pr-0 text-xs text-slate-700"
                     >
                       <div className="flex items-center py-1.5 font-mono tabular-nums text-slate-500">
                         {index + 1}
@@ -456,23 +432,21 @@ export default async function HomePage() {
                       <div className="flex items-center py-1.5 truncate text-xs font-medium text-slate-900">
                         {row.team}
                       </div>
-                      <div
-                        className="flex items-center justify-end py-1.5 pr-2 font-mono tabular-nums text-slate-700"
-                        style={ratingBackground(row.rating, minRating)}
-                      >
-                        {ratingFormatter.format(row.rating)}
+                      <div className="flex items-center justify-center py-1.5">
+                        <span
+                          className="inline-flex min-w-[3.95rem] items-center justify-center rounded-full border px-1.5 py-1 text-[10px] font-mono font-semibold leading-none tabular-nums text-slate-700"
+                          style={ratingPillStyle(row.rating)}
+                        >
+                          {formatRatingValue(row.rating)}
+                        </span>
                       </div>
-                      <div
-                        className="flex items-center justify-end py-1.5 pr-2 font-mono tabular-nums text-slate-700"
-                        style={ratingBackground(row.rating_attack, minRating)}
-                      >
-                        {ratingFormatter.format(row.rating_attack)}
-                      </div>
-                      <div
-                        className="flex items-center justify-end py-1.5 pr-2 font-mono tabular-nums text-slate-700"
-                        style={ratingBackground(row.rating_defense, minRating)}
-                      >
-                        {ratingFormatter.format(row.rating_defense)}
+                      <div className="flex items-center justify-center py-1.5">
+                        <span
+                          className="inline-flex min-w-[3.95rem] items-center justify-center rounded-full border px-1.5 py-1 text-[10px] font-mono font-semibold leading-none tabular-nums text-slate-700"
+                          style={tiltPillStyle(row.tilt)}
+                        >
+                          {formatTiltValue(row.tilt)}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -554,11 +528,11 @@ export default async function HomePage() {
                 </div>
               </div>
               <div className="flex justify-center">
-                <Link
-                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-6 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-                  href="/world-cup-2026/probabilities"
-                >
-                  Show all
+              <Link
+                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-6 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                href="/world-cup-2026/probabilities"
+              >
+                Show all
                 </Link>
               </div>
             </div>
@@ -569,9 +543,6 @@ export default async function HomePage() {
           >
             <div className="flex-1 sm:basis-1/2 sm:shrink-0 sm:pr-3">
               <h2 className="text-lg font-semibold">World Cup Bracket Predictor</h2>
-              <p className="mt-2 text-sm text-ink-300">
-                Simulate paths and pick outcomes.
-              </p>
             </div>
             <div className="relative aspect-[21/9] w-full max-h-48 overflow-hidden rounded-lg bg-slate-100 opacity-80 sm:basis-1/2 sm:min-w-[240px] sm:flex-1 sm:self-center">
               <Image

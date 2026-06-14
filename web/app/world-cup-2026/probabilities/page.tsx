@@ -66,9 +66,8 @@ export default async function WorldCupProbabilitiesRoute() {
       ratings.map((row) => [
         row.team,
         {
-          ratingOverall: row.rating,
-          ratingAttack: row.rating_attack,
-          ratingDefense: row.rating_defense,
+          rating: row.rating,
+          tilt: row.tilt,
         },
       ])
     );
@@ -79,9 +78,8 @@ export default async function WorldCupProbabilitiesRoute() {
     ratingsMap: Map<
       string,
       {
-        ratingOverall: number;
-        ratingAttack: number;
-        ratingDefense: number;
+        rating: number;
+        tilt: number;
       }
     >
   ) =>
@@ -89,9 +87,8 @@ export default async function WorldCupProbabilitiesRoute() {
       const rating = ratingsMap.get(row.team);
       return {
         ...row,
-        ratingOverall: rating?.ratingOverall,
-        ratingAttack: rating?.ratingAttack,
-        ratingDefense: rating?.ratingDefense,
+        ratingOverall: rating?.rating,
+        tilt: rating?.tilt,
       };
     });
 

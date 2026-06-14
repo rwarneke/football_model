@@ -5,6 +5,7 @@ import path from "node:path";
 const ratingRowSchema = z.object({
   team: z.string().min(1),
   rating: z.number().finite(),
+  tilt: z.number().finite(),
   rating_attack: z.number().finite(),
   rating_defense: z.number().finite(),
   year: z.number().finite(),
@@ -25,6 +26,30 @@ function toNumber(value: string | undefined) {
     return Number.NaN;
   }
   return Number(value);
+}
+
+function deriveTilt(record: Record<string, string | undefined>) {
+  const explicitDisplayTilt = toNumber(record.display_tilt);
+  if (Number.isFinite(explicitDisplayTilt)) {
+    return explicitDisplayTilt;
+  }
+  const explicitTilt = toNumber(record.tilt);
+  if (Number.isFinite(explicitTilt)) {
+    return explicitTilt;
+  }
+  const muAttack = toNumber(record.mu_attack);
+  const muDefense = toNumber(record.mu_defense);
+  if (Number.isFinite(muAttack) && Number.isFinite(muDefense)) {
+    return muAttack - muDefense;
+  }
+  return Number.NaN;
+}
+
+function toDisplayTilt(value: number) {
+  if (!Number.isFinite(value)) {
+    return Number.NaN;
+  }
+  return 10 * Math.tanh(value / 0.5);
 }
 
 function toNumberOrNull(value: string | undefined) {
@@ -170,6 +195,7 @@ export async function loadRatings(modelOutputDir = DATA_DIR): Promise<RatingRow[
     const parsed = ratingRowSchema.safeParse({
       team: record.team ?? "",
       rating: toNumber(record.rating),
+      tilt: record.display_tilt ? deriveTilt(record) : toDisplayTilt(deriveTilt(record)),
       rating_attack: toNumber(record.rating_attack),
       rating_defense: toNumber(record.rating_defense),
       year: toNumber(record.year),
