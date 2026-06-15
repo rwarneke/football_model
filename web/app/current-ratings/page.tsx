@@ -25,9 +25,9 @@ export default async function CurrentRatingsPage() {
             International Football Team Ratings
           </h1>
           <p className="text-base text-ink-200">
-            Rating is the model's overall 0-100 strength scale. Tilt shows
-            whether a team leans more defensive or aggressive in the underlying
-            attack-versus-defense balance.
+            Team ratings range from 0-100. Tilt measures whether a team is more
+            offensive than the average team (positive tilt) or defensive
+            (negative tilt).
           </p>
           <div className="flex items-center gap-4 text-sm text-ink-400">
             <span>Updated {lastUpdated}</span>

@@ -119,7 +119,7 @@ function formatProbability(
     return "<0.1%";
   }
   if (value >= 0.999) {
-    return ">99.9";
+    return ">99.9%";
   }
   return `${percentFormatter.format(value * 100)}%`;
 }

@@ -217,7 +217,7 @@ export function RatingsTable({ data }: RatingsTableProps) {
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-max min-w-full table-fixed text-sm [--rating-col-width:clamp(4.75ch,6vw,7.25ch)] sm:[--rating-col-width:clamp(5ch,5vw,7.75ch)] [--rank-col-width:2.5rem] sm:[--rank-col-width:3rem] [--team-col-width:10.5rem] sm:[--team-col-width:14rem] md:[--team-col-width:16rem] lg:[--team-col-width:18rem]">
+        <table className="w-max min-w-full table-fixed text-sm [--rating-col-width:clamp(5.2ch,7vw,7.5ch)] sm:[--rating-col-width:clamp(5.3ch,5.5vw,7.9ch)] [--rank-col-width:2.5rem] sm:[--rank-col-width:3rem] [--team-col-width:10.5rem] sm:[--team-col-width:14rem] md:[--team-col-width:16rem] lg:[--team-col-width:18rem]">
           <colgroup>
             <col style={{ width: "var(--rank-col-width)" }} />
             <col style={{ width: "var(--team-col-width)" }} />

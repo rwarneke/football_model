@@ -433,7 +433,7 @@ function TeamRatingsPanel({
   ];
   return (
     <div className={`${align === "right" ? "text-right" : "text-left"}`}>
-      <div className={`flex flex-wrap gap-1.5 ${align === "right" ? "justify-end" : "justify-start"}`}>
+      <div className={`flex gap-1.5 ${align === "right" ? "justify-end" : "justify-start"}`}>
         {reverse ? [...badges].reverse() : badges}
       </div>
     </div>
@@ -725,7 +725,7 @@ export function WorldCupMatchesPageClient({
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
               {formatDateHeading(date)}
             </h2>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid items-start gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {grouped[date].map((match) => {
                 const isQualifier = match.id.startsWith("Q-");
                 const locationWidth = isQualifier ? "w-[45%]" : "w-[60%]";
@@ -931,7 +931,7 @@ export function WorldCupMatchesPageClient({
                     id={`match-${match.id}`}
                     className="mb-3 min-w-0 scroll-mt-24"
                   >
-                    <div className="relative h-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
+                    <div className="relative rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
                       <div className="space-y-1">
                         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">
                           <span className="flex items-center gap-2 min-w-0">
@@ -1174,7 +1174,7 @@ export function WorldCupMatchesPageClient({
         {filteredCompletedMatches.length === 0 ? (
           <div className="text-sm text-slate-500">No past matches yet.</div>
         ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid items-start gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredCompletedMatches.map((match) => {
               const margin = match.homeScore - match.awayScore;
               const homeWon = margin > 0 || match.winner === match.homeTeam;
@@ -1199,7 +1199,7 @@ export function WorldCupMatchesPageClient({
               const awayRatings = ratingsByTeam.get(match.awayTeam) ?? null;
               return (
                 <div key={`past-${match.matchId}`} className="mb-3 min-w-0">
-                  <div className="relative h-full rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
+                  <div className="relative rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">
                       <span className={`flex items-center gap-2 min-w-0 ${awayWon ? "opacity-40" : "opacity-100"}`}>
                         <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
