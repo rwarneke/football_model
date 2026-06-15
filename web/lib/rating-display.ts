@@ -17,7 +17,8 @@ export function formatTiltValue(value: number | null | undefined) {
     return "--";
   }
   const rounded = Math.abs(value) < 0.05 ? 0 : value;
-  return rounded.toFixed(1);
+  const formatted = Math.abs(rounded).toFixed(1);
+  return rounded >= 0 ? `+${formatted}` : `-${formatted}`;
 }
 
 export function ratingBackground(value: number | null | undefined): CSSProperties | undefined {

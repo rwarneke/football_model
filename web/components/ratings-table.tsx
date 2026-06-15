@@ -52,7 +52,7 @@ function MetricPill({
 }) {
   return (
     <span
-      className="inline-flex min-w-[3.95rem] items-center justify-center rounded-full border px-1.5 py-1 text-[10px] font-mono font-semibold tabular-nums leading-none text-slate-700"
+      className="inline-flex items-center justify-center whitespace-nowrap rounded-full border px-1.5 py-1 text-[11px] font-mono font-semibold tabular-nums leading-none text-slate-700"
       style={style}
     >
       {formatter(value)}

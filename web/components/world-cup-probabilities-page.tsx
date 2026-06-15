@@ -84,6 +84,7 @@ export function WorldCupProbabilitiesPage({
       <WorldCupProbabilitiesTable
         columns={active.columns}
         rows={filtered}
+        allRows={active.rows}
         probabilityMode={probabilityMode}
       />
     </div>

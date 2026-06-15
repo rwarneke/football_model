@@ -56,7 +56,7 @@ export function RatingsPage({ data }: RatingsPageProps) {
         />
       </div>
       {confederations.length ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {confederations.map((confederation) => {
             const isSelected = selectedConfederation === confederation;
             return (
@@ -68,7 +68,7 @@ export function RatingsPage({ data }: RatingsPageProps) {
                     current === confederation ? null : confederation
                   )
                 }
-                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] transition ${
                   isSelected
                     ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                     : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800"

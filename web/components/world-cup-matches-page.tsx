@@ -404,10 +404,10 @@ function RatingsBadge({
 }) {
   return (
     <span
-      className="inline-flex min-w-[3.95rem] items-center justify-center gap-1 rounded-full border px-1.5 py-1 text-[10px] font-mono font-semibold leading-none tabular-nums text-slate-700"
+      className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border px-1.5 py-1 text-[11px] font-mono font-semibold leading-none tabular-nums text-slate-700"
       style={variant === "rating" ? ratingPillStyle(value) : tiltPillStyle(value)}
     >
-      <span className="font-sans text-[8px] font-semibold uppercase tracking-wide text-slate-500">
+      <span className="font-sans text-[9px] font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </span>
       <span>{variant === "rating" ? formatRatingValue(value) : formatTiltValue(value)}</span>
@@ -971,7 +971,7 @@ export function WorldCupMatchesPageClient({
                           </span>
                         </div>
                       </div>
-                      <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+                      <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 min-[370px]:grid-cols-2">
                         <TeamRatingsPanel team={match.home} ratings={homeRatings} />
                         <TeamRatingsPanel
                           team={match.away}
@@ -1197,6 +1197,72 @@ export function WorldCupMatchesPageClient({
               const expanded = Boolean(expandedMatches[matchKey]);
               const homeRatings = ratingsByTeam.get(match.homeTeam) ?? null;
               const awayRatings = ratingsByTeam.get(match.awayTeam) ?? null;
+              const allowDraw = match.stage === "Group";
+              const shownValues = resolveMatchProbabilities({
+                probabilities: winProbabilities,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                allowDraw,
+                country: match.country,
+                neutralOverride: match.neutral ?? null,
+              });
+              const shownLabelValues =
+                probabilityMode === "percent"
+                  ? normalizeProbabilitySegments({
+                      home:
+                        shownValues?.home !== null && shownValues?.home !== undefined
+                          ? shownValues.home * 100
+                          : null,
+                      draw:
+                        shownValues?.draw !== null && shownValues?.draw !== undefined
+                          ? shownValues.draw * 100
+                          : null,
+                      away:
+                        shownValues?.away !== null && shownValues?.away !== undefined
+                          ? shownValues.away * 100
+                          : null,
+                    })
+                  : null;
+              const normalizedShown = probabilityMode === "percent" ? shownLabelValues : null;
+              const homeLabelRaw = formatProbabilityLabel(
+                shownValues?.home ?? null,
+                probabilityMode
+              );
+              const drawLabelRaw = allowDraw
+                ? formatProbabilityLabel(shownValues?.draw ?? null, probabilityMode)
+                : null;
+              const awayLabelRaw = formatProbabilityLabel(
+                shownValues?.away ?? null,
+                probabilityMode
+              );
+              const homeLabel =
+                probabilityMode === "percent" && normalizedShown
+                  ? formatNormalizedPercent(normalizedShown.home)
+                  : homeLabelRaw;
+              const drawLabel =
+                allowDraw && probabilityMode === "percent" && normalizedShown
+                  ? formatNormalizedPercent(normalizedShown.draw)
+                  : drawLabelRaw;
+              const awayLabel =
+                probabilityMode === "percent" && normalizedShown
+                  ? formatNormalizedPercent(normalizedShown.away)
+                  : awayLabelRaw;
+              const homePercent =
+                probabilityMode === "percent" && normalizedShown
+                  ? Math.max(0, Math.min(100, normalizedShown.home))
+                  : Math.max(0, Math.min(100, (shownValues?.home ?? 0) * 100));
+              const drawPercent =
+                allowDraw
+                  ? probabilityMode === "percent" && normalizedShown
+                    ? Math.max(0, Math.min(100, normalizedShown.draw))
+                    : Math.max(0, Math.min(100, (shownValues?.draw ?? 0) * 100))
+                  : 0;
+              const awayPercent =
+                probabilityMode === "percent" && normalizedShown
+                  ? Math.max(0, Math.min(100, normalizedShown.away))
+                  : Math.max(0, Math.min(100, (shownValues?.away ?? 0) * 100));
+              const actualOutcome =
+                homeWon ? "home" : awayWon ? "away" : "draw";
               return (
                 <div key={`past-${match.matchId}`} className="mb-3 min-w-0">
                   <div className="relative rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
@@ -1237,7 +1303,7 @@ export function WorldCupMatchesPageClient({
                         </span>
                       </span>
                     </div>
-                    <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+                    <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 min-[370px]:grid-cols-2">
                       <TeamRatingsPanel team={match.homeTeam} ratings={homeRatings} />
                       <TeamRatingsPanel
                         team={match.awayTeam}
@@ -1245,6 +1311,41 @@ export function WorldCupMatchesPageClient({
                         align="right"
                         reverse
                       />
+                    </div>
+                    <div className="mt-3 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] tabular-nums">
+                        <span className={actualOutcome === "home" ? "font-semibold text-slate-900" : "text-slate-400"}>
+                          {homeLabel}
+                        </span>
+                        {allowDraw ? (
+                          <span className={actualOutcome === "draw" ? "font-semibold text-slate-900" : "text-slate-400"}>
+                            {drawLabel ?? "--"}
+                          </span>
+                        ) : (
+                          <span />
+                        )}
+                        <span className={actualOutcome === "away" ? "font-semibold text-slate-900" : "text-slate-400"}>
+                          {awayLabel}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/70">
+                        <div className="flex h-full">
+                          <div
+                            className={actualOutcome === "home" ? "h-full bg-emerald-400/95" : "h-full bg-emerald-200/35"}
+                            style={{ width: `${homePercent}%` }}
+                          />
+                          {allowDraw ? (
+                            <div
+                              className={actualOutcome === "draw" ? "h-full bg-slate-500/80" : "h-full bg-slate-300/35"}
+                              style={{ width: `${drawPercent}%` }}
+                            />
+                          ) : null}
+                          <div
+                            className={actualOutcome === "away" ? "h-full bg-rose-400/95" : "h-full bg-rose-200/35"}
+                            style={{ width: `${awayPercent}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
                     {(marginRow || scoreGrid) && expanded ? (
                       <div className="mt-3 border-t border-slate-100 pt-3">

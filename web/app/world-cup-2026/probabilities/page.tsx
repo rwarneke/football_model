@@ -44,10 +44,29 @@ async function pretournamentUpdatedLabel() {
   }
 }
 
+function stripQualifyColumn<T extends { values: Record<string, number>; statuses: Record<string, "G" | "U" | "I"> }>(
+  data: {
+    columns: string[];
+    rows: T[];
+  }
+) {
+  const columns = data.columns.filter((column) => column !== "Qualify");
+  const rows = data.rows.map((row) => {
+    const { Qualify: _qualifyValue, ...values } = row.values;
+    const { Qualify: _qualifyStatus, ...statuses } = row.statuses;
+    return {
+      ...row,
+      values,
+      statuses,
+    };
+  });
+  return { columns, rows };
+}
+
 export default async function WorldCupProbabilitiesRoute() {
   const [
-    current,
-    pretournament,
+    currentRaw,
+    pretournamentRaw,
     currentRatings,
     pretournamentRatings,
     currentUpdatedLabel,
@@ -61,6 +80,8 @@ export default async function WorldCupProbabilitiesRoute() {
       modelOutputUpdatedLabel("/model_output"),
       pretournamentUpdatedLabel(),
     ]);
+  const current = stripQualifyColumn(currentRaw);
+  const pretournament = stripQualifyColumn(pretournamentRaw);
   const buildRatingsMap = (ratings: Awaited<ReturnType<typeof loadRatings>>) =>
     new Map(
       ratings.map((row) => [

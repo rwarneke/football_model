@@ -41,6 +41,7 @@ type TableRowData = {
 type WorldCupProbabilitiesTableProps = {
   columns: string[];
   rows: TableRowData[];
+  allRows?: TableRowData[];
   probabilityMode: "percent" | "decimal";
 };
 
@@ -54,6 +55,70 @@ const OPPONENT_THRESHOLD = 0.001;
 const OPPONENT_CELL_MIN = "min-w-[2.5rem]";
 
 const SKIP_INITIALS = new Set(["and", "of", "the"]);
+const FIFA_CODES: Record<string, string> = {
+  Algeria: "ALG",
+  Argentina: "ARG",
+  Australia: "AUS",
+  Austria: "AUT",
+  Belgium: "BEL",
+  Bolivia: "BOL",
+  "Bosnia and Herzegovina": "BIH",
+  Brazil: "BRA",
+  Canada: "CAN",
+  "Cape Verde": "CPV",
+  Colombia: "COL",
+  Croatia: "CRO",
+  Curacao: "CUW",
+  Czechia: "CZE",
+  Denmark: "DEN",
+  "DR Congo": "COD",
+  Ecuador: "ECU",
+  Egypt: "EGY",
+  England: "ENG",
+  France: "FRA",
+  Germany: "GER",
+  Ghana: "GHA",
+  Haiti: "HTI",
+  Iran: "IRN",
+  Iraq: "IRQ",
+  Italy: "ITA",
+  "Ivory Coast": "CIV",
+  Jamaica: "JAM",
+  Japan: "JPN",
+  Jordan: "JOR",
+  Kosovo: "KOS",
+  Mexico: "MEX",
+  Morocco: "MAR",
+  Netherlands: "NED",
+  "New Caledonia": "NCL",
+  "New Zealand": "NZL",
+  "North Macedonia": "MKD",
+  "Northern Ireland": "NIR",
+  Norway: "NOR",
+  Panama: "PAN",
+  Paraguay: "PAR",
+  Poland: "POL",
+  Portugal: "POR",
+  Qatar: "QAT",
+  "Republic of Ireland": "IRL",
+  Romania: "ROU",
+  "Saudi Arabia": "KSA",
+  Scotland: "SCO",
+  Senegal: "SEN",
+  Slovakia: "SVK",
+  "South Africa": "RSA",
+  "South Korea": "KOR",
+  Spain: "ESP",
+  Suriname: "SUR",
+  Sweden: "SWE",
+  Switzerland: "SUI",
+  Tunisia: "TUN",
+  Turkey: "TUR",
+  USA: "USA",
+  Uruguay: "URU",
+  Uzbekistan: "UZB",
+  Wales: "WAL",
+};
 
 function teamInitials(team: string) {
   const letters = team
@@ -64,6 +129,10 @@ function teamInitials(team: string) {
     .slice(0, 3)
     .toUpperCase();
   return letters || team.slice(0, 2).toUpperCase();
+}
+
+function teamMobileCode(team: string) {
+  return FIFA_CODES[team] ?? teamInitials(team);
 }
 
 function wrapHeaderLabel(label: string) {
@@ -224,7 +293,7 @@ function MetricPill({
 }) {
   return (
     <span
-      className="inline-flex min-w-[3.95rem] items-center justify-center rounded-full border px-1.5 py-1 text-[10px] font-mono font-semibold tabular-nums leading-none text-slate-700"
+      className="inline-flex items-center justify-center whitespace-nowrap rounded-full border px-1.5 py-1 text-[11px] font-mono font-semibold tabular-nums leading-none text-slate-700"
       style={style}
     >
       {formatter(value)}
@@ -235,6 +304,7 @@ function MetricPill({
 export function WorldCupProbabilitiesTable({
   columns,
   rows,
+  allRows,
   probabilityMode,
 }: WorldCupProbabilitiesTableProps) {
   const primarySortId = "Champion";
@@ -275,14 +345,15 @@ export function WorldCupProbabilitiesTable({
     () =>
       Object.fromEntries(
         columns.map((column) => {
-          const columnMax = rows.reduce(
+          const sourceRows = allRows ?? rows;
+          const columnMax = sourceRows.reduce(
             (max, row) => Math.max(max, Number(row.values[column] ?? 0)),
             0
           );
           return [column, Math.min(columnMax * 1.1, 1)];
         })
       ) as Record<string, number>,
-    [columns, rows]
+    [allRows, columns, rows]
   );
 
   const handleSortToggle = React.useCallback(
@@ -352,9 +423,14 @@ export function WorldCupProbabilitiesTable({
           return teamA.localeCompare(teamB);
         },
         cell: ({ row }) => (
-          <span className="min-w-0 truncate text-xs xl:text-sm font-medium text-slate-900">
-            {row.original.team}
-          </span>
+          <>
+            <span className="min-w-0 truncate text-xs font-medium text-slate-900 max-[480px]:hidden xl:text-sm">
+              {row.original.team}
+            </span>
+            <span className="hidden text-xs font-medium text-slate-900 max-[480px]:inline xl:text-sm">
+              {teamMobileCode(row.original.team)}
+            </span>
+          </>
         ),
       },
       {
@@ -520,7 +596,7 @@ export function WorldCupProbabilitiesTable({
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] [--rating-col-width:clamp(5.25rem,8vw,6.1rem)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)] xl:[--rating-col-width:clamp(5.45rem,6vw,6.5rem)]">
+        <table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] [--rating-col-width:clamp(3.7rem,4.5vw,4.15rem)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)] xl:[--rating-col-width:clamp(4.4rem,4.5vw,5rem)]">
           <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">
@@ -541,13 +617,13 @@ export function WorldCupProbabilitiesTable({
                       header.id === "flag"
                         ? "text-left w-[3rem] min-w-[3rem] pl-0.5 xl:pl-1 pr-1 xl:pr-2"
                         : header.id === "team"
-                        ? "text-left w-[10rem] min-w-[7rem] xl:min-w-[10rem] shrink-0"
+                        ? "text-left w-[3.2rem] min-w-[3.2rem] xl:w-[10rem] xl:min-w-[10rem] shrink-0"
                         : columnMeta?.isGroup
                         ? "text-center whitespace-nowrap min-w-[3ch] xl:min-w-[4ch]"
                         : columnMeta?.isRating
                         ? "text-center whitespace-nowrap"
                         : "text-right"
-                    } px-1 xl:px-2 py-1.5 xl:py-2.5 text-[10px] xl:text-[11px] font-semibold uppercase tracking-wide text-slate-600 whitespace-normal 2xl:whitespace-nowrap ${
+                    } ${columnMeta?.isRating ? "px-0 xl:px-2" : "px-1 xl:px-2"} py-1.5 xl:py-2.5 text-[10px] xl:text-[11px] font-semibold uppercase tracking-wide text-slate-600 whitespace-normal 2xl:whitespace-nowrap ${
                       header.id === "flag"
                         ? "sticky left-0 z-10 bg-slate-200 rounded-tl-xl"
                         : ""
@@ -558,10 +634,16 @@ export function WorldCupProbabilitiesTable({
                         ? {
                             minWidth: `${columnMeta.minWidthCh}ch`,
                           }
-                        : columnMeta?.isProbability || columnMeta?.isRating
+                        : columnMeta?.isProbability
                         ? {
                             minWidth: "var(--prob-col-width)",
                             maxWidth: "calc(var(--prob-col-width) * 2)",
+                          }
+                        : columnMeta?.isRating
+                        ? {
+                            minWidth: "var(--rating-col-width)",
+                            width: "var(--rating-col-width)",
+                            maxWidth: "var(--rating-col-width)",
                           }
                         : undefined
                     }
@@ -611,11 +693,11 @@ export function WorldCupProbabilitiesTable({
                       return (
                         <TableCell
                           key={cell.id}
-                          className={`px-1 xl:px-2 py-1.5 xl:py-2.5 ${
+                          className={`${columnMeta?.isRating ? "px-0 xl:px-2" : "px-1 xl:px-2"} py-1.5 xl:py-2.5 ${
                             cell.column.id === "flag"
                               ? "text-left w-[3rem] min-w-[3rem] pl-0.5 xl:pl-1 pr-1.5 xl:pr-2.5 py-1.5 xl:py-2.5 overflow-hidden"
                               : cell.column.id === "team"
-                              ? "text-left w-[10rem] min-w-[7rem] xl:min-w-[10rem] shrink-0 pl-0.5 xl:pl-1"
+                              ? "text-left w-[3.2rem] min-w-[3.2rem] xl:w-[10rem] xl:min-w-[10rem] shrink-0 pl-0.5 xl:pl-1"
                               : columnMeta?.isGroup
                               ? "text-center min-w-[3ch] xl:min-w-[4ch]"
                               : "text-right"
