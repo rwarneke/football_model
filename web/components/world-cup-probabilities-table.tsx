@@ -520,7 +520,7 @@ export function WorldCupProbabilitiesTable({
   return (
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
-        <table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)]">
+        <table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] [--rating-col-width:clamp(5.25rem,8vw,6.1rem)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)] xl:[--rating-col-width:clamp(5.45rem,6vw,6.5rem)]">
           <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">
@@ -639,10 +639,15 @@ export function WorldCupProbabilitiesTable({
                               ? {
                                   minWidth: `${columnMeta.minWidthCh}ch`,
                                 }
-                              : columnMeta?.isProbability || columnMeta?.isRating
+                              : columnMeta?.isProbability
                               ? {
                                   minWidth: "var(--prob-col-width)",
                                   maxWidth: "calc(var(--prob-col-width) * 2)",
+                                }
+                              : columnMeta?.isRating
+                              ? {
+                                  minWidth: "var(--rating-col-width)",
+                                  width: "var(--rating-col-width)",
                                 }
                               : {}),
                           }}
