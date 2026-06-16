@@ -1,76 +1,76 @@
 match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,neutral,home_score,away_score,home_score_90,away_score_90,home_score_120,away_score_120,went_extra_time,went_penalties,penalty_winner,first_shooter
-1,2026-06-11,Group,A,Mexico,South Africa,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,2,0,2,0,NA,NA,False,False,NA,NA
-2,2026-06-11,Group,A,South Korea,Czechia,Estadio Akron,Zapopan,Mexico,FIFA World Cup,True,2,1,2,1,NA,NA,False,False,NA,NA
-3,2026-06-12,Group,B,Canada,Bosnia and Herzegovina,BMO Field,Toronto,Canada,FIFA World Cup,False,1,1,1,1,NA,NA,False,False,NA,NA
-4,2026-06-12,Group,D,USA,Paraguay,SoFi Stadium,Inglewood,United States,FIFA World Cup,False,4,1,4,1,NA,NA,False,False,NA,NA
-8,2026-06-13,Group,B,Qatar,Switzerland,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,1,1,1,1,NA,NA,False,False,NA,NA
-7,2026-06-13,Group,C,Brazil,Morocco,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,1,1,1,1,NA,NA,False,False,NA,NA
-5,2026-06-13,Group,C,Haiti,Scotland,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,0,1,0,1,NA,NA,False,False,NA,NA
-6,2026-06-13,Group,D,Australia,Turkey,BC Place,Vancouver,Canada,FIFA World Cup,True,2,0,2,0,NA,NA,False,False,NA,NA
-10,2026-06-14,Group,E,Germany,Curacao,NRG Stadium,Houston,United States,FIFA World Cup,True,7,1,7,1,NA,NA,False,False,NA,NA
-11,2026-06-14,Group,F,Netherlands,Japan,AT&T Stadium,Arlington,United States,FIFA World Cup,True,2,2,2,2,NA,NA,False,False,NA,NA
-9,2026-06-14,Group,E,Ivory Coast,Ecuador,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,1,0,1,0,NA,NA,False,False,NA,NA
-12,2026-06-14,Group,F,Sweden,Tunisia,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,True,5,1,5,1,NA,NA,False,False,NA,NA
-14,2026-06-15,Group,H,Spain,Cape Verde,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,0,0,0,0,NA,NA,False,False,NA,NA
-16,2026-06-15,Group,G,Belgium,Egypt,Lumen Field,Seattle,United States,FIFA World Cup,True,1,1,1,1,NA,NA,False,False,NA,NA
-13,2026-06-15,Group,H,Saudi Arabia,Uruguay,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-15,2026-06-15,Group,G,Iran,New Zealand,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-17,2026-06-16,Group,I,France,Senegal,MetLife Stadium,East Rutherford,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-18,2026-06-16,Group,I,Iraq,Norway,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-19,2026-06-16,Group,J,Argentina,Algeria,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-20,2026-06-16,Group,J,Austria,Jordan,Levi's Stadium,Santa Clara,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-23,2026-06-17,Group,K,Portugal,DR Congo,NRG Stadium,Houston,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-22,2026-06-17,Group,L,England,Croatia,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-21,2026-06-17,Group,L,Ghana,Panama,BMO Field,Toronto,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-24,2026-06-17,Group,K,Uzbekistan,Colombia,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-25,2026-06-18,Group,A,Czechia,South Africa,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-26,2026-06-18,Group,B,Switzerland,Bosnia and Herzegovina,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-27,2026-06-18,Group,B,Canada,Qatar,BC Place,Vancouver,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-28,2026-06-18,Group,A,Mexico,South Korea,Estadio Akron,Zapopan,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-32,2026-06-19,Group,D,USA,Australia,Lumen Field,Seattle,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-30,2026-06-19,Group,C,Scotland,Morocco,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-29,2026-06-19,Group,C,Brazil,Haiti,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-31,2026-06-19,Group,D,Turkey,Paraguay,Levi's Stadium,Santa Clara,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-35,2026-06-20,Group,F,Netherlands,Sweden,NRG Stadium,Houston,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-33,2026-06-20,Group,E,Germany,Ivory Coast,BMO Field,Toronto,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-34,2026-06-20,Group,E,Ecuador,Curacao,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-36,2026-06-20,Group,F,Tunisia,Japan,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-38,2026-06-21,Group,H,Spain,Saudi Arabia,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-39,2026-06-21,Group,G,Belgium,Iran,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-37,2026-06-21,Group,H,Uruguay,Cape Verde,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-40,2026-06-21,Group,G,New Zealand,Egypt,BC Place,Vancouver,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-43,2026-06-22,Group,J,Argentina,Austria,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-42,2026-06-22,Group,I,France,Iraq,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-41,2026-06-22,Group,I,Norway,Senegal,MetLife Stadium,East Rutherford,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-44,2026-06-22,Group,J,Jordan,Algeria,Levi's Stadium,Santa Clara,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-47,2026-06-23,Group,K,Portugal,Uzbekistan,NRG Stadium,Houston,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-45,2026-06-23,Group,L,England,Ghana,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-46,2026-06-23,Group,L,Panama,Croatia,BMO Field,Toronto,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-48,2026-06-23,Group,K,Colombia,DR Congo,Estadio Akron,Zapopan,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-51,2026-06-24,Group,B,Switzerland,Canada,BC Place,Vancouver,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-52,2026-06-24,Group,B,Bosnia and Herzegovina,Qatar,Lumen Field,Seattle,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-49,2026-06-24,Group,C,Scotland,Brazil,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-50,2026-06-24,Group,C,Morocco,Haiti,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-53,2026-06-24,Group,A,Czechia,Mexico,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-54,2026-06-24,Group,A,South Africa,South Korea,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-55,2026-06-25,Group,E,Curacao,Ivory Coast,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-56,2026-06-25,Group,E,Ecuador,Germany,MetLife Stadium,East Rutherford,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-57,2026-06-25,Group,F,Japan,Sweden,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-58,2026-06-25,Group,F,Tunisia,Netherlands,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-59,2026-06-25,Group,D,Turkey,USA,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-60,2026-06-25,Group,D,Paraguay,Australia,Levi's Stadium,Santa Clara,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-61,2026-06-26,Group,I,Norway,France,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-62,2026-06-26,Group,I,Senegal,Iraq,BMO Field,Toronto,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-65,2026-06-26,Group,H,Cape Verde,Saudi Arabia,NRG Stadium,Houston,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-66,2026-06-26,Group,H,Uruguay,Spain,Estadio Akron,Zapopan,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-63,2026-06-26,Group,G,Egypt,Iran,Lumen Field,Seattle,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-64,2026-06-26,Group,G,New Zealand,Belgium,BC Place,Vancouver,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-67,2026-06-27,Group,L,Panama,England,MetLife Stadium,East Rutherford,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-68,2026-06-27,Group,L,Croatia,Ghana,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-71,2026-06-27,Group,K,Colombia,Portugal,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-72,2026-06-27,Group,K,DR Congo,Uzbekistan,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-69,2026-06-27,Group,J,Algeria,Austria,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-70,2026-06-27,Group,J,Jordan,Argentina,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+1,2026-06-11,Group,A,Mexico,South Africa,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,2.0,0.0,2.0,0.0,NA,NA,False,False,NA,NA
+2,2026-06-11,Group,A,South Korea,Czechia,Estadio Akron,Zapopan,Mexico,FIFA World Cup,True,2.0,1.0,2.0,1.0,NA,NA,False,False,NA,NA
+3,2026-06-12,Group,B,Canada,Bosnia and Herzegovina,BMO Field,Toronto,Canada,FIFA World Cup,False,1.0,1.0,1.0,1.0,NA,NA,False,False,NA,NA
+4,2026-06-12,Group,D,USA,Paraguay,SoFi Stadium,Inglewood,United States,FIFA World Cup,False,4.0,1.0,4.0,1.0,NA,NA,False,False,NA,NA
+8,2026-06-13,Group,B,Qatar,Switzerland,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,1.0,1.0,1.0,1.0,NA,NA,False,False,NA,NA
+7,2026-06-13,Group,C,Brazil,Morocco,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,1.0,1.0,1.0,1.0,NA,NA,False,False,NA,NA
+5,2026-06-13,Group,C,Haiti,Scotland,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,0.0,1.0,0.0,1.0,NA,NA,False,False,NA,NA
+6,2026-06-13,Group,D,Australia,Turkey,BC Place,Vancouver,Canada,FIFA World Cup,True,2.0,0.0,2.0,0.0,NA,NA,False,False,NA,NA
+10,2026-06-14,Group,E,Germany,Curacao,NRG Stadium,Houston,United States,FIFA World Cup,True,7.0,1.0,7.0,1.0,NA,NA,False,False,NA,NA
+11,2026-06-14,Group,F,Netherlands,Japan,AT&T Stadium,Arlington,United States,FIFA World Cup,True,2.0,2.0,2.0,2.0,NA,NA,False,False,NA,NA
+9,2026-06-14,Group,E,Ivory Coast,Ecuador,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,1.0,0.0,1.0,0.0,NA,NA,False,False,NA,NA
+12,2026-06-14,Group,F,Sweden,Tunisia,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,True,5.0,1.0,5.0,1.0,NA,NA,False,False,NA,NA
+14,2026-06-15,Group,H,Spain,Cape Verde,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,0.0,0.0,0.0,0.0,NA,NA,False,False,NA,NA
+16,2026-06-15,Group,G,Belgium,Egypt,Lumen Field,Seattle,United States,FIFA World Cup,True,1.0,1.0,1.0,1.0,NA,NA,False,False,NA,NA
+13,2026-06-15,Group,H,Saudi Arabia,Uruguay,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,1.0,1.0,1.0,1.0,NA,NA,False,False,NA,NA
+15,2026-06-15,Group,G,Iran,New Zealand,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,2.0,2.0,2.0,2.0,NA,NA,False,False,NA,NA
+17,2026-06-16,Group,I,France,Senegal,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+18,2026-06-16,Group,I,Iraq,Norway,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+19,2026-06-16,Group,J,Argentina,Algeria,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+20,2026-06-16,Group,J,Austria,Jordan,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+23,2026-06-17,Group,K,Portugal,DR Congo,NRG Stadium,Houston,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+22,2026-06-17,Group,L,England,Croatia,AT&T Stadium,Arlington,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+21,2026-06-17,Group,L,Ghana,Panama,BMO Field,Toronto,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+24,2026-06-17,Group,K,Uzbekistan,Colombia,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+25,2026-06-18,Group,A,Czechia,South Africa,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+26,2026-06-18,Group,B,Switzerland,Bosnia and Herzegovina,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+27,2026-06-18,Group,B,Canada,Qatar,BC Place,Vancouver,Canada,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+28,2026-06-18,Group,A,Mexico,South Korea,Estadio Akron,Zapopan,Mexico,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+32,2026-06-19,Group,D,USA,Australia,Lumen Field,Seattle,United States,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+30,2026-06-19,Group,C,Scotland,Morocco,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+29,2026-06-19,Group,C,Brazil,Haiti,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+31,2026-06-19,Group,D,Turkey,Paraguay,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+35,2026-06-20,Group,F,Netherlands,Sweden,NRG Stadium,Houston,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+33,2026-06-20,Group,E,Germany,Ivory Coast,BMO Field,Toronto,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+34,2026-06-20,Group,E,Ecuador,Curacao,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+36,2026-06-20,Group,F,Tunisia,Japan,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+38,2026-06-21,Group,H,Spain,Saudi Arabia,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+39,2026-06-21,Group,G,Belgium,Iran,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+37,2026-06-21,Group,H,Uruguay,Cape Verde,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+40,2026-06-21,Group,G,New Zealand,Egypt,BC Place,Vancouver,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+43,2026-06-22,Group,J,Argentina,Austria,AT&T Stadium,Arlington,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+42,2026-06-22,Group,I,France,Iraq,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+41,2026-06-22,Group,I,Norway,Senegal,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+44,2026-06-22,Group,J,Jordan,Algeria,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+47,2026-06-23,Group,K,Portugal,Uzbekistan,NRG Stadium,Houston,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+45,2026-06-23,Group,L,England,Ghana,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+46,2026-06-23,Group,L,Panama,Croatia,BMO Field,Toronto,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+48,2026-06-23,Group,K,Colombia,DR Congo,Estadio Akron,Zapopan,Mexico,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+51,2026-06-24,Group,B,Switzerland,Canada,BC Place,Vancouver,Canada,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+52,2026-06-24,Group,B,Bosnia and Herzegovina,Qatar,Lumen Field,Seattle,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+49,2026-06-24,Group,C,Scotland,Brazil,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+50,2026-06-24,Group,C,Morocco,Haiti,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+53,2026-06-24,Group,A,Czechia,Mexico,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+54,2026-06-24,Group,A,South Africa,South Korea,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+55,2026-06-25,Group,E,Curacao,Ivory Coast,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+56,2026-06-25,Group,E,Ecuador,Germany,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+57,2026-06-25,Group,F,Japan,Sweden,AT&T Stadium,Arlington,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+58,2026-06-25,Group,F,Tunisia,Netherlands,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+59,2026-06-25,Group,D,Turkey,USA,SoFi Stadium,Inglewood,United States,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+60,2026-06-25,Group,D,Paraguay,Australia,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+61,2026-06-26,Group,I,Norway,France,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+62,2026-06-26,Group,I,Senegal,Iraq,BMO Field,Toronto,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+65,2026-06-26,Group,H,Cape Verde,Saudi Arabia,NRG Stadium,Houston,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+66,2026-06-26,Group,H,Uruguay,Spain,Estadio Akron,Zapopan,Mexico,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+63,2026-06-26,Group,G,Egypt,Iran,Lumen Field,Seattle,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+64,2026-06-26,Group,G,New Zealand,Belgium,BC Place,Vancouver,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+67,2026-06-27,Group,L,Panama,England,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+68,2026-06-27,Group,L,Croatia,Ghana,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+71,2026-06-27,Group,K,Colombia,Portugal,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+72,2026-06-27,Group,K,DR Congo,Uzbekistan,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+69,2026-06-27,Group,J,Algeria,Austria,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+70,2026-06-27,Group,J,Jordan,Argentina,AT&T Stadium,Arlington,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 73,2026-06-28,Round of 32,NA,Runner-up Group A,Runner-up Group B,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 76,2026-06-29,Round of 32,NA,Winner Group C,Runner-up Group F,NRG Stadium,Houston,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 74,2026-06-29,Round of 32,NA,Winner Group E,3rd Group A/B/C/D/F,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA

@@ -130,9 +130,15 @@ def _is_knockout_placeholder(label: str) -> bool:
 
 
 def infer_world_cup_neutral(home_team: str, away_team: str, country: str) -> bool:
-    home_country = _normalize_string(HOST_TEAM_COUNTRIES.get(home_team, ""))
-    away_country = _normalize_string(HOST_TEAM_COUNTRIES.get(away_team, ""))
-    match_country = _normalize_string(country)
+    home_country = COUNTRY_ALIASES.get(
+        _normalize_string(HOST_TEAM_COUNTRIES.get(home_team, "")),
+        _normalize_string(HOST_TEAM_COUNTRIES.get(home_team, "")),
+    )
+    away_country = COUNTRY_ALIASES.get(
+        _normalize_string(HOST_TEAM_COUNTRIES.get(away_team, "")),
+        _normalize_string(HOST_TEAM_COUNTRIES.get(away_team, "")),
+    )
+    match_country = COUNTRY_ALIASES.get(_normalize_string(country), _normalize_string(country))
     home_advantage = bool(home_country and match_country and home_country.casefold() == match_country.casefold())
     away_advantage = bool(away_country and match_country and away_country.casefold() == match_country.casefold())
     return not (home_advantage ^ away_advantage)
