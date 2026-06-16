@@ -116,19 +116,6 @@ export default async function WorldCupProbabilitiesRoute() {
   return (
     <main className="px-2 pb-16 pt-8 lg:px-6">
       <div className="flex w-full flex-col gap-10">
-        <header className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
-            FIFA WORLD CUP 2026
-          </p>
-          <h1 className="text-3xl font-semibold text-ebony md:text-4xl">
-            Progression Chances
-          </h1>
-          <p className="text-base text-ink-200">
-            Each team's probability of reaching each stage of the 2026 FIFA
-            World Cup, based on 10,000 simulations.
-          </p>
-        </header>
-
         <WorldCupProbabilitiesPage
           current={{
             columns: current.columns,

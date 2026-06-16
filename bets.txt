@@ -1,0 +1,16 @@
+Ecuador C20 30 @ 7
+Ecuador C20 6 @ 5.5
+France P20 50 @ 1.5
+Canada F 4 @ 18
+Netherlands F -10 @ 30
+Argentina F 5 @ 43
+Colombia F 5 @ 26
+France F -5 @ 50
+Switzerland F 5 & 23
+Ghana P20 1 @ 12
+Colombia C20 5 @ 9
+Colombia F 5 @ 26
+Netherlands C20 -10 @ 13
+Canada F 6 @ 18
+Uruguay C20 5 @ 7
+Urucuay C80 2 @ 0.5

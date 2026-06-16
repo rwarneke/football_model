@@ -15,7 +15,7 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 16,2026-06-15,Group,G,Belgium,Egypt,Lumen Field,Seattle,United States,FIFA World Cup,True,1.0,1.0,1.0,1.0,NA,NA,False,False,NA,NA
 13,2026-06-15,Group,H,Saudi Arabia,Uruguay,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,1.0,1.0,1.0,1.0,NA,NA,False,False,NA,NA
 15,2026-06-15,Group,G,Iran,New Zealand,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,2.0,2.0,2.0,2.0,NA,NA,False,False,NA,NA
-17,2026-06-16,Group,I,France,Senegal,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+17,2026-06-16,Group,I,France,Senegal,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,3,1,3,1,NA,NA,False,False,NA,NA
 18,2026-06-16,Group,I,Iraq,Norway,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 19,2026-06-16,Group,J,Argentina,Algeria,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 20,2026-06-16,Group,J,Austria,Jordan,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA

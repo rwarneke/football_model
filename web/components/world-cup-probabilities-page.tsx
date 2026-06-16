@@ -38,47 +38,62 @@ export function WorldCupProbabilitiesPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex w-full items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setShowPretournament((prev) => !prev)}
-          role="switch"
-          aria-checked={showingCurrent}
-          aria-label={showingCurrent ? "Current" : "Pre-tournament"}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 ${
-            showingCurrent ? "bg-slate-900" : "bg-slate-300"
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-              showingCurrent ? "translate-x-5" : "translate-x-0"
+      <header className="space-y-4">
+        <p className="text-sm uppercase tracking-[0.3em] text-ink-400">
+          FIFA WORLD CUP 2026
+        </p>
+        <h1 className="text-3xl font-semibold text-ebony md:text-4xl">
+          Progression Chances
+        </h1>
+        <p className="text-base text-ink-200">
+          Each team&apos;s probability of reaching each stage of the 2026 FIFA
+          World Cup, based on 10,000 simulations.
+        </p>
+        <p className="text-sm text-ink-400">Updated {updatedLabel}</p>
+      </header>
+
+      <div className="sticky top-0 z-20 -mx-2 space-y-4 border-b border-slate-200/80 bg-white px-2 py-3 lg:-mx-6 lg:px-6">
+        <div className="flex w-full items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowPretournament((prev) => !prev)}
+            role="switch"
+            aria-checked={showingCurrent}
+            aria-label={showingCurrent ? "Current" : "Pre-tournament"}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 ${
+              showingCurrent ? "bg-slate-900" : "bg-slate-300"
             }`}
-          />
-        </button>
-        <span className="shrink-0 text-sm text-slate-700">
-          {showingCurrent ? "Current" : "Pre-tournament"}
-        </span>
-      </div>
-      <div className="flex w-full items-center gap-3">
-        <span className="shrink-0 text-sm text-ink-400">Updated {updatedLabel}</span>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search teams"
-          className="min-w-0 w-full max-w-[25rem] flex-1 rounded-md bg-white px-3 py-1.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 md:w-64"
-        />
-        <div className="ml-auto flex w-40 shrink-0 items-center gap-2">
-          <select
-            value={probabilityMode}
-            onChange={(event) =>
-              setProbabilityMode(event.target.value as "percent" | "decimal")
-            }
-            className="w-full rounded-md bg-white px-2.5 py-1.5 text-sm text-slate-700 ring-1 ring-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
           >
-            <option value="percent">% Chance</option>
-            <option value="decimal">Decimal Odds</option>
-          </select>
+            <span
+              aria-hidden="true"
+              className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                showingCurrent ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+          <span className="shrink-0 text-sm text-slate-700">
+            {showingCurrent ? "Current" : "Pre-tournament"}
+          </span>
+        </div>
+        <div className="flex w-full items-center gap-3">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search teams"
+            className="min-w-0 w-full max-w-[25rem] flex-1 rounded-md bg-white px-3 py-1.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 md:w-64"
+          />
+          <div className="ml-auto flex w-40 shrink-0 items-center gap-2">
+            <select
+              value={probabilityMode}
+              onChange={(event) =>
+                setProbabilityMode(event.target.value as "percent" | "decimal")
+              }
+              className="w-full rounded-md bg-white px-2.5 py-1.5 text-sm text-slate-700 ring-1 ring-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+            >
+              <option value="percent">% Chance</option>
+              <option value="decimal">Decimal Odds</option>
+            </select>
+          </div>
         </div>
       </div>
       <WorldCupProbabilitiesTable

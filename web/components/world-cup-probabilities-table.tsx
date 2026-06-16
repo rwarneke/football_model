@@ -597,7 +597,7 @@ export function WorldCupProbabilitiesTable({
     <div className="min-w-0 w-full overflow-clip rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
       <div className="table-scroll overflow-x-auto">
         <table className="w-full table-auto xl:table-fixed text-sm [--prob-col-width:clamp(4ch,6vw,8ch)] [--rating-col-width:clamp(3.7rem,4.5vw,4.15rem)] xl:[--prob-col-width:clamp(6ch,6vw,9ch)] xl:[--rating-col-width:clamp(4.4rem,4.5vw,5rem)]">
-          <thead className="sticky top-0 z-[50] border-b border-slate-200 bg-slate-200">
+          <thead className="border-b border-slate-200 bg-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-slate-200 border-b border-slate-200">
                 {headerGroup.headers.map((header, index) => {
