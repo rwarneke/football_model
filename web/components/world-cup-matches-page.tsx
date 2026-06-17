@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import type { WorldCupMatch } from "@/lib/world-cup-matches";
 import type { CompletedWorldCupMatch } from "@/lib/world-cup-results";
+import type { MatchConditionalAdvancement } from "@/lib/world-cup-match-conditional-advancement";
 import type { RatingRow } from "@/lib/ratings";
 import {
   formatRatingValue,
@@ -25,6 +26,8 @@ type MatchProbabilityValues = {
   draw: number | null;
   away: number | null;
 };
+
+type MatchConditionalAdvancementMap = Map<string, MatchConditionalAdvancement>;
 
 const HOST_TEAM_COUNTRIES: Record<string, string> = {
   USA: "USA",
@@ -618,16 +621,108 @@ function formatDateHeading(date: string) {
   });
 }
 
+function ConditionalAdvancementPanel({
+  conditional,
+  probabilityMode,
+  homeTeam,
+  awayTeam,
+}: {
+  conditional: MatchConditionalAdvancement;
+  probabilityMode: "percent" | "decimal";
+  homeTeam: string;
+  awayTeam: string;
+}) {
+  const forceDecimal = shouldUseDecimalPrecision([
+    conditional.outcomes.home_win.homeTeamProbability,
+    conditional.outcomes.home_win.awayTeamProbability,
+    conditional.outcomes.draw.homeTeamProbability,
+    conditional.outcomes.draw.awayTeamProbability,
+    conditional.outcomes.away_win.homeTeamProbability,
+    conditional.outcomes.away_win.awayTeamProbability,
+  ]);
+  const outcomeLabel =
+    conditional.basis === "after_90" ? "conditional on 90'" : "conditional on result";
+  const nextStageLabel =
+    conditional.nextStage === "Final"
+      ? "Advance to Final"
+      : `Advance to ${conditional.nextStage}`;
+  const columns = [
+    {
+      key: "home_win",
+      label: "Home win",
+      homeValue: conditional.outcomes.home_win.homeTeamProbability,
+      awayValue: conditional.outcomes.home_win.awayTeamProbability,
+    },
+    {
+      key: "draw",
+      label: "Draw",
+      homeValue: conditional.outcomes.draw.homeTeamProbability,
+      awayValue: conditional.outcomes.draw.awayTeamProbability,
+    },
+    {
+      key: "away_win",
+      label: "Away win",
+      homeValue: conditional.outcomes.away_win.homeTeamProbability,
+      awayValue: conditional.outcomes.away_win.awayTeamProbability,
+    },
+  ] as const;
+
+  return (
+    <div>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+        <div className="text-[10px] uppercase tracking-wide text-slate-500">
+          {nextStageLabel}
+        </div>
+        <div className="text-[10px] text-slate-400">{outcomeLabel}</div>
+      </div>
+      <div className="mt-2 overflow-hidden rounded-md border border-slate-200">
+        <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,1fr))] bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <div className="px-2 py-1.5">Team</div>
+          {columns.map((column) => (
+            <div key={column.key} className="px-2 py-1.5 text-center normal-case tracking-normal">
+              {column.label}
+            </div>
+          ))}
+        </div>
+        {[
+          {
+            team: homeTeam,
+            values: columns.map((column) => column.homeValue),
+          },
+          {
+            team: awayTeam,
+            values: columns.map((column) => column.awayValue),
+          },
+        ].map((row) => (
+          <div
+            key={row.team}
+            className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,1fr))] border-t border-slate-200 bg-white text-[11px] text-slate-700"
+          >
+            <div className="px-2 py-1.5 font-medium">{row.team}</div>
+            {row.values.map((value, index) => (
+              <div key={`${row.team}-${columns[index].key}`} className="px-2 py-1.5 text-center font-mono tabular-nums">
+                {formatProbabilityLabel(value, probabilityMode, forceDecimal)}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function WorldCupMatchesPageClient({
   matches,
   completedMatches,
   ratings,
   winProbabilities,
+  conditionalAdvancement,
 }: {
   matches: WorldCupMatch[];
   completedMatches: CompletedWorldCupMatch[];
   ratings: RatingRow[];
   winProbabilities: WinProbabilities;
+  conditionalAdvancement: MatchConditionalAdvancementMap;
 }) {
   const [probabilityMode, setProbabilityMode] = React.useState<"percent" | "decimal">("percent");
   const [query, setQuery] = React.useState("");
@@ -924,6 +1019,8 @@ export function WorldCupMatchesPageClient({
                 const expanded = Boolean(expandedMatches[matchKey]);
                 const homeRatings = ratingsByTeam.get(match.home) ?? null;
                 const awayRatings = ratingsByTeam.get(match.away) ?? null;
+                const conditional = conditionalAdvancement.get(String(match.id));
+                const hasExpandableDetails = Boolean(marginRow || scoreGrid || conditional);
 
                 return (
                   <div
@@ -1059,9 +1156,17 @@ export function WorldCupMatchesPageClient({
                           </div>
                         </div>
                       )}
-                      {(marginRow || scoreGrid) && expanded ? (
+                      {hasExpandableDetails && expanded ? (
                         <div className="mt-3 border-t border-slate-100 pt-3">
                           <div className="space-y-3">
+                              {conditional ? (
+                                <ConditionalAdvancementPanel
+                                  conditional={conditional}
+                                  probabilityMode={probabilityMode}
+                                  homeTeam={displayHome}
+                                  awayTeam={displayAway}
+                                />
+                              ) : null}
                               {marginRow ? (
                                 <div>
                                   <div className="text-[10px] uppercase tracking-wide text-slate-500">
@@ -1148,7 +1253,7 @@ export function WorldCupMatchesPageClient({
                           {match.stage}
                         </div>
                       </div>
-                      {(marginRow || scoreGrid) ? (
+                      {hasExpandableDetails ? (
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex translate-y-1/2 justify-center">
                           <div className="pointer-events-auto bg-white px-1">
                             <ExpandToggle
@@ -1197,7 +1302,9 @@ export function WorldCupMatchesPageClient({
               const expanded = Boolean(expandedMatches[matchKey]);
               const homeRatings = ratingsByTeam.get(match.homeTeam) ?? null;
               const awayRatings = ratingsByTeam.get(match.awayTeam) ?? null;
+              const conditional = conditionalAdvancement.get(String(match.matchId));
               const allowDraw = match.stage === "Group";
+              const hasExpandableDetails = Boolean(marginRow || scoreGrid || conditional);
               const shownValues = resolveMatchProbabilities({
                 probabilities: winProbabilities,
                 homeTeam: match.homeTeam,
@@ -1347,9 +1454,17 @@ export function WorldCupMatchesPageClient({
                         </div>
                       </div>
                     </div>
-                    {(marginRow || scoreGrid) && expanded ? (
+                    {hasExpandableDetails && expanded ? (
                       <div className="mt-3 border-t border-slate-100 pt-3">
                         <div className="space-y-3">
+                            {conditional ? (
+                              <ConditionalAdvancementPanel
+                                conditional={conditional}
+                                probabilityMode={probabilityMode}
+                                homeTeam={match.homeTeam}
+                                awayTeam={match.awayTeam}
+                              />
+                            ) : null}
                             {marginRow ? (
                               <div>
                                 <div className="text-[10px] uppercase tracking-wide text-slate-500">
@@ -1435,7 +1550,7 @@ export function WorldCupMatchesPageClient({
                           {match.stage}
                         </div>
                       </div>
-                      {(marginRow || scoreGrid) ? (
+                      {hasExpandableDetails ? (
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex translate-y-1/2 justify-center">
                           <div className="pointer-events-auto bg-white px-1">
                             <ExpandToggle

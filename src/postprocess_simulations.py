@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import shutil
+import re
 from collections import defaultdict
 
 import numpy as np
@@ -32,6 +33,97 @@ PROGRESSION_STAGE_VALUES = {
     "Champion": 80.0,
 }
 WIN_VALUE_PER_90 = 5.0
+GROUP_MATCHES_PATH = os.path.join(ROOT_DIR, "reference_data", "world_cup_2026_group_matches.csv")
+KNOCKOUT_MATCHES_PATH = os.path.join(
+    ROOT_DIR, "reference_data", "world_cup_2026_knockout_matches.csv"
+)
+NEXT_STAGE_BY_STAGE = {
+    "Group": "Round of 32",
+    "Round of 32": "Round of 16",
+    "Round of 16": "Quarterfinal",
+    "Quarterfinal": "Semifinal",
+    "Semifinal": "Final",
+}
+
+
+def _is_placeholder_team(team_name: str) -> bool:
+    trimmed = str(team_name or "").strip()
+    if not trimmed:
+        return True
+    return bool(
+        re.match(r"^(Winner|Runner-up|3rd|Loser)\b", trimmed, flags=re.IGNORECASE)
+        or trimmed.lower().endswith(" winner")
+    )
+
+
+def _load_conditional_advancement_specs():
+    specs = []
+
+    group_matches = pd.read_csv(GROUP_MATCHES_PATH)
+    for row in group_matches.itertuples(index=False):
+        specs.append(
+            {
+                "match_id": int(row.match_id),
+                "stage": "Group",
+                "home_team": str(row.home_team),
+                "away_team": str(row.away_team),
+                "next_stage": NEXT_STAGE_BY_STAGE["Group"],
+                "basis": "full_time",
+            }
+        )
+
+    knockout_matches = pd.read_csv(KNOCKOUT_MATCHES_PATH)
+    for row in knockout_matches.itertuples(index=False):
+        stage = str(row.stage)
+        if stage not in NEXT_STAGE_BY_STAGE:
+            continue
+        home_team = str(row.home)
+        away_team = str(row.away)
+        if _is_placeholder_team(home_team) or _is_placeholder_team(away_team):
+            continue
+        specs.append(
+            {
+                "match_id": int(row.match_id),
+                "stage": stage,
+                "home_team": home_team,
+                "away_team": away_team,
+                "next_stage": NEXT_STAGE_BY_STAGE[stage],
+                "basis": "after_90",
+            }
+        )
+
+    return specs
+
+
+def _match_outcome_from_record(match, flipped: bool, basis: str) -> str:
+    if basis == "after_90":
+        home_score = int(match[9])
+        away_score = int(match[10])
+    else:
+        home_score = int(match[4])
+        away_score = int(match[5])
+
+    if home_score > away_score:
+        outcome = "home_win"
+    elif away_score > home_score:
+        outcome = "away_win"
+    else:
+        outcome = "draw"
+
+    if not flipped or outcome == "draw":
+        return outcome
+    return "away_win" if outcome == "home_win" else "home_win"
+
+
+def _find_stage_match(stage_matches, home_id: int, away_id: int):
+    for match in stage_matches:
+        sim_home_id = int(match[2])
+        sim_away_id = int(match[3])
+        if sim_home_id == home_id and sim_away_id == away_id:
+            return match, False
+        if sim_home_id == away_id and sim_away_id == home_id:
+            return match, True
+    return None, False
 
 
 def _winner(home_id, away_id, home_score, away_score, went_penalties, penalty_winner_id):
@@ -53,6 +145,36 @@ def main():
     teams = meta["teams"]
     stages = meta["stages"]
     team_count = len(teams)
+    team_to_id = {team: idx for idx, team in enumerate(teams)}
+    conditional_specs = _load_conditional_advancement_specs()
+    conditional_advancement = {
+        spec["match_id"]: {
+            "match_id": int(spec["match_id"]),
+            "stage": spec["stage"],
+            "home_team": spec["home_team"],
+            "away_team": spec["away_team"],
+            "next_stage": spec["next_stage"],
+            "basis": spec["basis"],
+            "outcomes": {
+                "home_win": {
+                    "count": 0,
+                    "home_team_reaches_next_stage": 0,
+                    "away_team_reaches_next_stage": 0,
+                },
+                "draw": {
+                    "count": 0,
+                    "home_team_reaches_next_stage": 0,
+                    "away_team_reaches_next_stage": 0,
+                },
+                "away_win": {
+                    "count": 0,
+                    "home_team_reaches_next_stage": 0,
+                    "away_team_reaches_next_stage": 0,
+                },
+            },
+        }
+        for spec in conditional_specs
+    }
 
     qualify = np.zeros(team_count, dtype=int)
     win_group = np.zeros(team_count, dtype=int)
@@ -101,6 +223,32 @@ def main():
                 qualify[team_id] += 1
 
             matches = record.get("m", [])
+            matches_by_stage = defaultdict(list)
+            teams_by_stage = defaultdict(set)
+            for match in matches:
+                stage_name = stages[match[0]]
+                matches_by_stage[stage_name].append(match)
+                teams_by_stage[stage_name].add(int(match[2]))
+                teams_by_stage[stage_name].add(int(match[3]))
+
+            for spec in conditional_specs:
+                home_id = team_to_id.get(spec["home_team"])
+                away_id = team_to_id.get(spec["away_team"])
+                if home_id is None or away_id is None:
+                    continue
+                stage_matches = matches_by_stage.get(spec["stage"], [])
+                match, flipped = _find_stage_match(stage_matches, home_id, away_id)
+                if match is None:
+                    continue
+                outcome = _match_outcome_from_record(match, flipped, spec["basis"])
+                outcome_counts = conditional_advancement[spec["match_id"]]["outcomes"][outcome]
+                outcome_counts["count"] += 1
+                next_stage_teams = teams_by_stage.get(spec["next_stage"], set())
+                if home_id in next_stage_teams:
+                    outcome_counts["home_team_reaches_next_stage"] += 1
+                if away_id in next_stage_teams:
+                    outcome_counts["away_team_reaches_next_stage"] += 1
+
             run_progression_value = np.zeros(team_count, dtype=float)
             run_win_value = np.zeros(team_count, dtype=float)
             for match in matches:
@@ -286,6 +434,34 @@ def main():
     team_value_path = os.path.join(output_dir, "simulation_team_value_pricing.json")
     with open(team_value_path, "w") as f:
         json.dump(team_value_pricing, f)
+    conditional_advancement_payload = {"matches": {}}
+    for match_id, entry in conditional_advancement.items():
+        payload_entry = {
+            "match_id": entry["match_id"],
+            "stage": entry["stage"],
+            "home_team": entry["home_team"],
+            "away_team": entry["away_team"],
+            "next_stage": entry["next_stage"],
+            "basis": entry["basis"],
+            "outcomes": {},
+        }
+        for outcome_key, counts in entry["outcomes"].items():
+            count = counts["count"]
+            payload_entry["outcomes"][outcome_key] = {
+                "count": count,
+                "home_team_probability": (
+                    counts["home_team_reaches_next_stage"] / count if count else None
+                ),
+                "away_team_probability": (
+                    counts["away_team_reaches_next_stage"] / count if count else None
+                ),
+            }
+        conditional_advancement_payload["matches"][str(match_id)] = payload_entry
+    conditional_advancement_path = os.path.join(
+        output_dir, "simulation_match_conditional_advancement.json"
+    )
+    with open(conditional_advancement_path, "w") as f:
+        json.dump(conditional_advancement_payload, f)
 
     public_output_dir = os.environ.get(
         "PUBLIC_MODEL_OUTPUT_DIR", os.path.join("web", "public", "model_output")
@@ -294,6 +470,7 @@ def main():
     shutil.copy2(os.path.join(output_dir, "simulation_results.csv"), public_output_dir)
     shutil.copy2(team_prob_path, public_output_dir)
     shutil.copy2(team_value_path, public_output_dir)
+    shutil.copy2(conditional_advancement_path, public_output_dir)
     for filename in ("ratings_current.csv", "ratings_history_yearly.csv"):
         source = os.path.join(output_dir, filename)
         if os.path.exists(source):
