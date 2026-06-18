@@ -23,8 +23,8 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 22,2026-06-17,Group,L,England,Croatia,AT&T Stadium,Arlington,United States,FIFA World Cup,True,4,2,4,2,NA,NA,False,False,NA,NA
 21,2026-06-17,Group,L,Ghana,Panama,BMO Field,Toronto,Canada,FIFA World Cup,True,1,0,1,0,NA,NA,False,False,NA,NA
 24,2026-06-17,Group,K,Uzbekistan,Colombia,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,True,1,3,1,3,NA,NA,False,False,NA,NA
-25,2026-06-18,Group,A,Czechia,South Africa,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
-26,2026-06-18,Group,B,Switzerland,Bosnia and Herzegovina,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+25,2026-06-18,Group,A,Czechia,South Africa,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,1,1,1,1,NA,NA,False,False,NA,NA
+26,2026-06-18,Group,B,Switzerland,Bosnia and Herzegovina,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,4,1,4,1,NA,NA,False,False,NA,NA
 27,2026-06-18,Group,B,Canada,Qatar,BC Place,Vancouver,Canada,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 28,2026-06-18,Group,A,Mexico,South Korea,Estadio Akron,Zapopan,Mexico,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 32,2026-06-19,Group,D,USA,Australia,Lumen Field,Seattle,United States,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
