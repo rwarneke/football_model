@@ -25,7 +25,13 @@ import {
   ratingPillStyle,
   tiltPillStyle,
 } from "@/lib/rating-display";
-import type { GroupRankProbabilities, OpponentProbabilities } from "@/lib/world-cup";
+import type {
+  GroupRankProbabilities,
+  OpponentProbabilities,
+  OpponentProbabilityStatuses,
+  ProbabilityStatus,
+  ProbabilityStatusMap,
+} from "@/lib/world-cup";
 type TableRowData = {
   team: string;
   flagPath: string;
@@ -33,7 +39,9 @@ type TableRowData = {
   ratingOverall?: number;
   tilt?: number;
   opponentProbabilities: OpponentProbabilities;
+  opponentStatuses: OpponentProbabilityStatuses;
   groupRankProbabilities: GroupRankProbabilities;
+  groupRankStatuses: ProbabilityStatusMap;
   values: Record<string, number>;
   statuses: Record<string, "G" | "U" | "I">;
 };
@@ -169,13 +177,22 @@ function formatDecimalOdds(value: number) {
 
 function formatProbability(
   value: number,
-  status: "G" | "U" | "I",
-  mode: "percent" | "decimal"
+  status: ProbabilityStatus | undefined,
+  mode: "percent" | "decimal",
+  inferFromValue = false
 ) {
-  if (status === "G") {
+  const resolvedStatus =
+    status === "G" || status === "I"
+      ? status
+      : inferFromValue && value === 1
+        ? "G"
+        : inferFromValue && value === 0
+          ? "I"
+          : "U";
+  if (resolvedStatus === "G") {
     return "✓";
   }
-  if (status === "I") {
+  if (resolvedStatus === "I") {
     return "✕";
   }
   if (!Number.isFinite(value)) {
@@ -193,8 +210,13 @@ function formatProbability(
   return `${percentFormatter.format(value * 100)}%`;
 }
 
-function formatOpponentProbability(value: number, mode: "percent" | "decimal") {
-  return formatProbability(value, "U", mode);
+function formatOpponentProbability(
+  value: number,
+  mode: "percent" | "decimal",
+  status?: ProbabilityStatus,
+  inferFromValue = true
+) {
+  return formatProbability(value, status, mode, inferFromValue);
 }
 
 function probabilityBackground(value: number, maxValue: number) {
@@ -253,15 +275,21 @@ function formatGroupPositionLabel(position: string) {
 
 function OpponentCell({
   entry,
+  status,
   probabilityMode,
 }: {
   entry?: OpponentEntry;
+  status?: ProbabilityStatus;
   probabilityMode: "percent" | "decimal";
 }) {
   if (!entry) {
     return <span className="text-xs text-slate-400">—</span>;
   }
-  const formatted = formatOpponentProbability(entry.probability, probabilityMode);
+  const formatted = formatOpponentProbability(
+    entry.probability,
+    probabilityMode,
+    status
+  );
   return (
     <div className="flex items-center justify-center gap-2">
       <span className={`flex ${OPPONENT_CELL_MIN} shrink-0 justify-center`}>
@@ -771,7 +799,7 @@ export function WorldCupProbabilitiesTable({
                             CHAMPION:{" "}
                             {formatProbability(
                               row.original.values["Champion"] ?? Number.NaN,
-                              "U",
+                              row.original.statuses["Champion"],
                               probabilityMode
                             )}
                           </p>
@@ -800,7 +828,8 @@ export function WorldCupProbabilitiesTable({
                                           <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
                                             {formatOpponentProbability(
                                               row.original.groupRankProbabilities[position] ?? 0,
-                                              probabilityMode
+                                              probabilityMode,
+                                              row.original.groupRankStatuses[position]
                                             )}
                                           </span>
                                         </td>
@@ -889,6 +918,13 @@ export function WorldCupProbabilitiesTable({
                                                   columnsByStage[stage].top.length ? (
                                                     <OpponentCell
                                                       entry={rowData.entries[stage]}
+                                                      status={
+                                                        rowData.entries[stage]
+                                                          ? row.original.opponentStatuses[stage][
+                                                              rowData.entries[stage].team
+                                                            ]
+                                                          : undefined
+                                                      }
                                                       probabilityMode={probabilityMode}
                                                     />
                                                   ) : rowIndex ===

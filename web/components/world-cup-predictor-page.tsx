@@ -1811,10 +1811,15 @@ function resolveGroupPlaceholder(
   thirdPlaceByGroup: Record<string, string>,
   groupCompletion: Record<string, boolean>,
   allowThirdPlaceResolve: boolean,
-  qualifiedThirdGroups?: Set<string>
+  qualifiedThirdGroups?: Set<string>,
+  lockedGroupWinners?: Record<string, string>
 ) {
   if (label.startsWith("Winner Group ")) {
     const group = label.replace("Winner Group ", "").trim();
+    const lockedWinner = lockedGroupWinners?.[group];
+    if (lockedWinner) {
+      return lockedWinner;
+    }
     if (groupCompletion[group]) {
       return groupRankings[group]?.[0] ?? label;
     }
@@ -1883,6 +1888,7 @@ function resolveKnockoutLabel({
   groupCompletion,
   allowThirdPlaceResolve,
   qualifiedThirdGroups,
+  lockedGroupWinners,
   matchStageById,
 }: {
   label: string;
@@ -1895,6 +1901,7 @@ function resolveKnockoutLabel({
   groupCompletion: Record<string, boolean>;
   allowThirdPlaceResolve: boolean;
   qualifiedThirdGroups?: Set<string>;
+  lockedGroupWinners?: Record<string, string>;
   matchStageById: Record<number, string>;
 }) {
   if (/^UEFA Path\s+.+\s+Winner$/i.test(label)) {
@@ -1945,7 +1952,8 @@ function resolveKnockoutLabel({
     thirdPlaceByGroup,
     groupCompletion,
     allowThirdPlaceResolve,
-    qualifiedThirdGroups
+    qualifiedThirdGroups,
+    lockedGroupWinners
   );
 }
 
@@ -4602,6 +4610,24 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     showPretournament && pretournamentData
       ? pretournamentData.simulationTeamProbabilities
       : data.simulationTeamProbabilities;
+  const forcedCurrentGroupWinners = React.useMemo(() => {
+    if (!showingCurrent) {
+      return {} as Record<string, string>;
+    }
+    const winners: Record<string, string> = {};
+    for (const group of data.groups) {
+      for (const team of group.teams) {
+        const pFirst = Number(
+          data.simulationTeamProbabilities[team]?.group_stage_rank_probability?.["1"] ?? 0
+        );
+        if (pFirst === 1) {
+          winners[group.id] = team;
+          break;
+        }
+      }
+    }
+    return winners;
+  }, [data.groups, data.simulationTeamProbabilities, showingCurrent]);
 
   React.useEffect(() => {
     if (!showPretournament || pretournamentData) {
@@ -5425,6 +5451,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           groupCompletion: groupCompletionLocal,
           allowThirdPlaceResolve: allGroupMatchesComplete,
           qualifiedThirdGroups: qualifiedThirdGroupsLocal,
+          lockedGroupWinners: forcedCurrentGroupWinners,
           matchStageById,
         });
         const awayResolved = resolveKnockoutLabel({
@@ -5438,6 +5465,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           groupCompletion: groupCompletionLocal,
           allowThirdPlaceResolve: allGroupMatchesComplete,
           qualifiedThirdGroups: qualifiedThirdGroupsLocal,
+          lockedGroupWinners: forcedCurrentGroupWinners,
           matchStageById,
         });
         labels.set(String(match.id), {
@@ -5462,6 +5490,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     data.groups,
     data.knockoutMatches,
     data.roundOf32Combos,
+    forcedCurrentGroupWinners,
     matchStageById,
     slotWinners,
   ]
@@ -5793,6 +5822,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           groupCompletion: groupCompletionLocal,
           allowThirdPlaceResolve: allGroupMatchesCompleteLocal,
           qualifiedThirdGroups: qualifiedThirdGroupsLocal,
+          lockedGroupWinners: forcedCurrentGroupWinners,
           matchStageById,
         });
         const awayResolved = resolveKnockoutLabel({
@@ -5806,6 +5836,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           groupCompletion: groupCompletionLocal,
           allowThirdPlaceResolve: allGroupMatchesCompleteLocal,
           qualifiedThirdGroups: qualifiedThirdGroupsLocal,
+          lockedGroupWinners: forcedCurrentGroupWinners,
           matchStageById,
         });
         const winner = resolveWinner(
@@ -5857,7 +5888,16 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       });
       return penalty;
     },
-    [activeSimulationTeamProbabilities, data.groupMatches, data.groups, data.knockoutMatches, data.qualifiers, data.roundOf32Combos, matchStageById]
+    [
+      activeSimulationTeamProbabilities,
+      data.groupMatches,
+      data.groups,
+      data.knockoutMatches,
+      data.qualifiers,
+      data.roundOf32Combos,
+      forcedCurrentGroupWinners,
+      matchStageById,
+    ]
   );
 
   const chooseAutopredictSnapshot = React.useCallback(
@@ -6327,6 +6367,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           groupCompletion: context.groupCompletion,
           allowThirdPlaceResolve: context.allGroupMatchesComplete,
           qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
+          lockedGroupWinners: forcedCurrentGroupWinners,
           matchStageById,
         });
         const awayResolved = resolveKnockoutLabel({
@@ -6340,6 +6381,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           groupCompletion: context.groupCompletion,
           allowThirdPlaceResolve: context.allGroupMatchesComplete,
           qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
+          lockedGroupWinners: forcedCurrentGroupWinners,
           matchStageById,
         });
         const existingSelection = snapshot.knockoutWinners[key] ?? null;
@@ -6384,6 +6426,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       createAutopredictSnapshot,
       data.knockoutMatches,
       activeWinProbabilities,
+      forcedCurrentGroupWinners,
       groupScores,
       knockoutDependents,
       knockoutState.matches,
@@ -6618,6 +6661,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           groupCompletion: nextContext.groupCompletion,
           allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
           qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
+          lockedGroupWinners: forcedCurrentGroupWinners,
           matchStageById,
         });
         const awayResolved = resolveKnockoutLabel({
@@ -6631,6 +6675,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           groupCompletion: nextContext.groupCompletion,
           allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
           qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
+          lockedGroupWinners: forcedCurrentGroupWinners,
           matchStageById,
         });
         const existingSelection = snapshot.knockoutWinners[key] ?? null;
@@ -6683,6 +6728,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     data.knockoutMatches,
     data.qualifiers,
     activeWinProbabilities,
+    forcedCurrentGroupWinners,
     groupIdsBySlot,
     groupMatchIdsByTeam,
     knockoutDependents,
@@ -7032,6 +7078,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         groupCompletion,
         allowThirdPlaceResolve: allGroupMatchesComplete,
         qualifiedThirdGroups,
+        lockedGroupWinners: forcedCurrentGroupWinners,
         matchStageById,
       });
       const awayResolved = resolveKnockoutLabel({
@@ -7045,6 +7092,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         groupCompletion,
         allowThirdPlaceResolve: allGroupMatchesComplete,
         qualifiedThirdGroups,
+        lockedGroupWinners: forcedCurrentGroupWinners,
         matchStageById,
       });
       const isPickableMatch =
@@ -7079,6 +7127,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     thirdPlaceAssignments,
     knockoutWinners,
     allGroupMatchesComplete,
+    forcedCurrentGroupWinners,
     matchStageById,
   ]);
 

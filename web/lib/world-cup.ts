@@ -8,7 +8,9 @@ export type WorldCupProbabilities = {
     flagPath: string;
     group: string | null;
     opponentProbabilities: OpponentProbabilities;
+    opponentStatuses: OpponentProbabilityStatuses;
     groupRankProbabilities: GroupRankProbabilities;
+    groupRankStatuses: ProbabilityStatusMap;
     values: Record<string, number>;
     statuses: Record<string, ProbabilityStatus>;
   }>;
@@ -29,6 +31,7 @@ export type WorldCupOptionPricing = {
 };
 
 export type ProbabilityStatus = "G" | "U" | "I";
+export type ProbabilityStatusMap = Record<string, ProbabilityStatus>;
 
 export type OpponentProbabilities = {
   R32: Record<string, number>;
@@ -36,6 +39,14 @@ export type OpponentProbabilities = {
   QF: Record<string, number>;
   SF: Record<string, number>;
   Final: Record<string, number>;
+};
+
+export type OpponentProbabilityStatuses = {
+  R32: ProbabilityStatusMap;
+  R16: ProbabilityStatusMap;
+  QF: ProbabilityStatusMap;
+  SF: ProbabilityStatusMap;
+  Final: ProbabilityStatusMap;
 };
 
 export type GroupRankProbabilities = Record<string, number>;
@@ -57,6 +68,13 @@ function toStatus(value: string | undefined): ProbabilityStatus {
     return value;
   }
   return "U";
+}
+
+function parseStatus(value: unknown): ProbabilityStatus | undefined {
+  if (value === "G" || value === "U" || value === "I") {
+    return value;
+  }
+  return undefined;
 }
 
 function flagFileName(team: string) {
@@ -87,6 +105,10 @@ async function readOptionalPublicText(filePath: string) {
 }
 
 function emptyOpponentProbabilities(): OpponentProbabilities {
+  return { R32: {}, R16: {}, QF: {}, SF: {}, Final: {} };
+}
+
+function emptyOpponentStatuses(): OpponentProbabilityStatuses {
   return { R32: {}, R16: {}, QF: {}, SF: {}, Final: {} };
 }
 
@@ -198,7 +220,10 @@ export async function loadWorldCupProbabilities(
   }
 
   const opponentMap = new Map<string, OpponentProbabilities>();
+  const opponentStatusMap = new Map<string, OpponentProbabilityStatuses>();
   const groupRankMap = new Map<string, GroupRankProbabilities>();
+  const groupRankStatusMap = new Map<string, ProbabilityStatusMap>();
+  const stageStatusMap = new Map<string, ProbabilityStatusMap>();
   const teamProbContents = await readOptionalPublicText(
     `${modelOutputDir}/${TEAM_PROB_FILE_NAME}`
   );
@@ -219,6 +244,18 @@ export async function loadWorldCupProbabilities(
           )
         );
       };
+      const getStatusMap = (key: string) => {
+        const value = record?.[key];
+        if (!value || typeof value !== "object") {
+          return {};
+        }
+        return Object.fromEntries(
+          Object.entries(value).flatMap(([entryKey, status]) => {
+            const parsedStatus = parseStatus(status);
+            return parsedStatus ? [[entryKey, parsedStatus]] : [];
+          })
+        ) as ProbabilityStatusMap;
+      };
       opponentMap.set(team, {
         R32: getMap("R32_opponent_probability"),
         R16: getMap("R16_opponent_probability"),
@@ -226,7 +263,16 @@ export async function loadWorldCupProbabilities(
         SF: getMap("SF_opponent_probability"),
         Final: getMap("Final_opponent_probability"),
       });
+      opponentStatusMap.set(team, {
+        R32: getStatusMap("R32_opponent_status"),
+        R16: getStatusMap("R16_opponent_status"),
+        QF: getStatusMap("QF_opponent_status"),
+        SF: getStatusMap("SF_opponent_status"),
+        Final: getStatusMap("Final_opponent_status"),
+      });
       groupRankMap.set(team, getMap("group_stage_rank_probability"));
+      groupRankStatusMap.set(team, getStatusMap("group_stage_rank_status"));
+      stageStatusMap.set(team, getStatusMap("stage_status"));
     }
   }
 
@@ -273,11 +319,13 @@ export async function loadWorldCupProbabilities(
     const columnValues: Record<string, number> = {};
     const columnStatuses: Record<string, ProbabilityStatus> = {};
     const statusRecord = statusMap.get(team) ?? {};
+    const stageStatusRecord = stageStatusMap.get(team) ?? {};
     for (const column of columnDefs) {
       columnValues[column.label] = toNumber(record[column.source]);
-      columnStatuses[column.label] = statusHeaders.length
-        ? toStatus(statusRecord[column.source])
-        : "U";
+      columnStatuses[column.label] =
+        parseStatus(statusRecord[column.source]) ??
+        parseStatus(stageStatusRecord[column.label]) ??
+        (statusHeaders.length ? toStatus(statusRecord[column.source]) : "U");
     }
 
     const resolvedGroup = group ?? pathGroup;
@@ -292,7 +340,9 @@ export async function loadWorldCupProbabilities(
       flagPath: `/flags/${flagFileName(team)}`,
       group: groupLabel,
       opponentProbabilities: opponentMap.get(team) ?? emptyOpponentProbabilities(),
+      opponentStatuses: opponentStatusMap.get(team) ?? emptyOpponentStatuses(),
       groupRankProbabilities: groupRankMap.get(team) ?? {},
+      groupRankStatuses: groupRankStatusMap.get(team) ?? {},
       values: columnValues,
       statuses: columnStatuses,
     };

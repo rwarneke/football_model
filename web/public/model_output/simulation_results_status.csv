@@ -21,12 +21,12 @@ Senegal,G,U,U,U,U,U,U,U
 Morocco,G,U,U,U,U,U,U,U
 Austria,G,U,U,U,U,U,U,U
 Turkey,G,U,U,U,U,U,U,U
-Mexico,G,U,U,U,U,U,U,U
+Mexico,G,G,G,U,U,U,U,U
 Paraguay,G,U,U,U,U,U,U,U
 Canada,G,U,U,U,U,U,U,U
 Australia,G,U,U,U,U,U,U,U
 Ukraine,U,U,U,U,U,U,U,U
-South Korea,G,U,U,U,U,U,U,U
+South Korea,G,I,U,U,U,U,U,U
 USA,G,U,U,U,U,U,U,U
 Scotland,G,U,U,U,U,U,U,U
 Sweden,G,U,U,U,U,U,U,U
@@ -34,7 +34,7 @@ Iran,G,U,U,U,U,U,U,U
 Wales,U,U,U,U,U,U,U,U
 Poland,U,U,U,U,U,U,U,U
 Algeria,G,U,U,U,U,U,U,U
-Czechia,G,U,U,U,U,U,U,U
+Czechia,G,I,U,U,U,U,U,U
 Tunisia,G,U,U,U,U,U,U,U
 Ivory Coast,G,U,U,U,U,U,U,U
 Egypt,G,U,U,U,U,U,U,U
@@ -49,7 +49,7 @@ Albania,U,U,U,U,U,U,U,U
 Jordan,G,U,U,U,U,U,U,U
 Northern Ireland,U,U,U,U,U,U,U,U
 Ghana,G,U,U,U,U,U,U,U
-South Africa,G,U,U,U,U,U,U,U
+South Africa,G,I,U,U,U,U,U,U
 Bolivia,U,U,U,U,U,U,U,U
 New Zealand,G,U,U,U,U,U,U,U
 North Macedonia,U,U,U,U,U,U,U,U
