@@ -466,7 +466,7 @@ export function WorldCupProbabilitiesTable({
         },
         cell: ({ row }) => (
           <div className="flex min-w-0 items-center gap-1.5">
-            <div className="min-w-0 w-0 flex-1">
+            <div className="min-w-[3.2rem] flex-[1_1_3.2rem] xl:min-w-[7rem] xl:flex-[1_1_7rem]">
               <span className="block min-w-0 truncate text-xs font-medium text-slate-900 max-[480px]:hidden xl:text-sm">
                 {row.original.team}
               </span>
@@ -666,7 +666,7 @@ export function WorldCupProbabilitiesTable({
                       header.id === "flag"
                         ? "text-left w-[3rem] min-w-[3rem] pl-0.5 xl:pl-1 pr-1 xl:pr-2"
                         : header.id === "team"
-                        ? "text-left w-[3.2rem] min-w-[3.2rem] xl:w-[10rem] xl:min-w-[10rem] shrink-0"
+                        ? "text-left w-[4.5rem] min-w-[4.5rem] xl:w-[11rem] xl:min-w-[11rem] shrink-0"
                         : columnMeta?.isGroup
                         ? "text-center whitespace-nowrap min-w-[3ch] xl:min-w-[4ch]"
                         : columnMeta?.isRating

@@ -137,7 +137,33 @@ def _winner(home_id, away_id, home_score, away_score, went_penalties, penalty_wi
     return away_id
 
 
-def _validate_simulation_statuses(teams, sim_count, stage_counts):
+def _suggestion_eligible_stages(team_id, sim_count, stage_counts, group_stage_team_ids):
+    if team_id not in group_stage_team_ids:
+        return set()
+
+    guaranteed = {
+        stage for stage, counts in stage_counts.items() if int(counts[team_id]) == sim_count
+    }
+
+    if "Win Group" not in guaranteed and "Reach R32" not in guaranteed:
+        return {"Win Group", "Reach R32"}
+
+    progression_order = [
+        "Reach R32",
+        "Reach R16",
+        "Reach QF",
+        "Reach SF",
+        "Reach Final",
+        "Champion",
+    ]
+    for stage in progression_order:
+        if stage not in guaranteed:
+            return {stage}
+
+    return set()
+
+
+def _validate_simulation_statuses(teams, sim_count, stage_counts, group_stage_team_ids):
     """Validate manual G/U/I display statuses against the simulation outcomes."""
     if not os.path.exists(SIMULATION_STATUS_PATH):
         print(f"Status validation skipped; file not found: {SIMULATION_STATUS_PATH}")
@@ -157,6 +183,10 @@ def _validate_simulation_statuses(teams, sim_count, stage_counts):
             errors.append(f"{team}: not present in the simulation team list")
             continue
 
+        eligible_suggestion_stages = _suggestion_eligible_stages(
+            team_id, sim_count, stage_counts, group_stage_team_ids
+        )
+
         for stage, counts in stage_counts.items():
             status = str(row.get(stage, "")).strip()
             if status not in {"G", "U", "I"}:
@@ -174,7 +204,11 @@ def _validate_simulation_statuses(teams, sim_count, stage_counts):
                     f"{team} — {stage}: status I, but simulations are "
                     f"{count}/{sim_count} ({count / sim_count:.2%})"
                 )
-            elif status == "U" and count in {0, sim_count}:
+            elif (
+                status == "U"
+                and stage in eligible_suggestion_stages
+                and count in {0, sim_count}
+            ):
                 suggested_status = "I" if count == 0 else "G"
                 suggestions.append(
                     f"{team} — {stage}: status U, but simulations are "
@@ -396,6 +430,9 @@ def main():
     progression_fair_value = progression_value_sum / sim_count
     win_fair_value = win_value_sum / sim_count
     total_fair_value = progression_fair_value + win_fair_value
+    group_stage_team_ids = {
+        team_id for team_id in range(team_count) if int(group_pos_counts[team_id].sum()) > 0
+    }
 
     _validate_simulation_statuses(
         teams,
@@ -410,6 +447,7 @@ def main():
             "Reach Final": reach_final,
             "Champion": champion,
         },
+        group_stage_team_ids,
     )
 
     active_mask = qualify > 0
