@@ -20,14 +20,14 @@ Italy,U,U,U,U,U,U,U,U
 Senegal,G,U,U,U,U,U,U,U
 Morocco,G,U,U,U,U,U,U,U
 Austria,G,U,U,U,U,U,U,U
-Turkey,G,U,U,U,U,U,U,U
+Turkey,G,I,I,U,U,U,U,U
 Mexico,G,G,G,U,U,U,U,U
-Paraguay,G,U,U,U,U,U,U,U
+Paraguay,G,I,U,U,U,U,U,U
 Canada,G,U,U,U,U,U,U,U
-Australia,G,U,U,U,U,U,U,U
+Australia,G,I,U,U,U,U,U,U
 Ukraine,U,U,U,U,U,U,U,U
 South Korea,G,I,U,U,U,U,U,U
-USA,G,U,G,U,U,U,U,U
+USA,G,G,G,U,U,U,U,U
 Scotland,G,U,U,U,U,U,U,U
 Sweden,G,U,U,U,U,U,U,U
 Iran,G,U,U,U,U,U,U,U

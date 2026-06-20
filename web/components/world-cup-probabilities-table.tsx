@@ -36,6 +36,7 @@ type TableRowData = {
   team: string;
   flagPath: string;
   group?: string | null;
+  groupRecord?: string;
   ratingOverall?: number;
   tilt?: number;
   opponentProbabilities: OpponentProbabilities;
@@ -357,6 +358,19 @@ export function WorldCupProbabilitiesTable({
     ];
     return priority.filter((col) => columns.includes(col));
   }, [columns]);
+  const groupSortTiebreakOrder = React.useMemo(() => {
+    const priority = [
+      "Reach R32",
+      "Win Group",
+      "Champion",
+      "Reach Final",
+      "Reach SF",
+      "Reach QF",
+      "Reach R16",
+      "Qualify",
+    ];
+    return priority.filter((col) => columns.includes(col));
+  }, [columns]);
 
   const primarySorting = React.useMemo(() => {
     const tiebreaks = tiebreakOrder
@@ -451,14 +465,21 @@ export function WorldCupProbabilitiesTable({
           return teamA.localeCompare(teamB);
         },
         cell: ({ row }) => (
-          <>
-            <span className="min-w-0 truncate text-xs font-medium text-slate-900 max-[480px]:hidden xl:text-sm">
-              {row.original.team}
-            </span>
-            <span className="hidden text-xs font-medium text-slate-900 max-[480px]:inline xl:text-sm">
-              {teamMobileCode(row.original.team)}
-            </span>
-          </>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div className="min-w-0 w-0 flex-1">
+              <span className="block min-w-0 truncate text-xs font-medium text-slate-900 max-[480px]:hidden xl:text-sm">
+                {row.original.team}
+              </span>
+              <span className="hidden min-w-0 truncate text-xs font-medium text-slate-900 max-[480px]:block xl:text-sm">
+                {teamMobileCode(row.original.team)}
+              </span>
+            </div>
+            {row.original.groupRecord ? (
+              <span className="ml-auto shrink-0 whitespace-nowrap text-right font-mono text-[10px] xl:text-[11px] font-medium text-slate-400">
+                {row.original.groupRecord}
+              </span>
+            ) : null}
+          </div>
         ),
       },
       {
@@ -531,7 +552,7 @@ export function WorldCupProbabilitiesTable({
             return isDesc ? -desired : desired;
           }
           if (normA.starred === normB.starred) {
-            for (const key of tiebreakOrder) {
+            for (const key of groupSortTiebreakOrder) {
               const probA = Number(a.original.values[key] ?? 0);
               const probB = Number(b.original.values[key] ?? 0);
               if (probA !== probB) {
@@ -603,7 +624,7 @@ export function WorldCupProbabilitiesTable({
         },
       })),
     ],
-    [columns, probabilityMode, sorting, tiebreakOrder]
+    [columns, groupSortTiebreakOrder, probabilityMode, sorting, tiebreakOrder]
   );
 
   const table = useReactTable({

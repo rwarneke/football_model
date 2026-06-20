@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { WorldCupProbabilitiesPage } from "@/components/world-cup-probabilities-page";
 import { loadRatings } from "@/lib/ratings";
+import { loadCompletedWorldCupMatches } from "@/lib/world-cup-results";
 import { loadWorldCupProbabilities } from "@/lib/world-cup";
 
 export const metadata: Metadata = {
@@ -63,12 +64,54 @@ function stripQualifyColumn<T extends { values: Record<string, number>; statuses
   return { columns, rows };
 }
 
+function buildGroupRecordMap(
+  matches: Awaited<ReturnType<typeof loadCompletedWorldCupMatches>>
+) {
+  const records = new Map<string, { wins: number; draws: number; losses: number }>();
+  const ensureRecord = (team: string) => {
+    const existing = records.get(team);
+    if (existing) {
+      return existing;
+    }
+    const next = { wins: 0, draws: 0, losses: 0 };
+    records.set(team, next);
+    return next;
+  };
+
+  matches
+    .filter((match) => match.stage === "Group")
+    .forEach((match) => {
+      const home = ensureRecord(match.homeTeam);
+      const away = ensureRecord(match.awayTeam);
+      if (match.homeScore > match.awayScore) {
+        home.wins += 1;
+        away.losses += 1;
+        return;
+      }
+      if (match.awayScore > match.homeScore) {
+        away.wins += 1;
+        home.losses += 1;
+        return;
+      }
+      home.draws += 1;
+      away.draws += 1;
+    });
+
+  return new Map(
+    Array.from(records.entries()).map(([team, record]) => [
+      team,
+      `${record.wins}-${record.draws}-${record.losses}`,
+    ])
+  );
+}
+
 export default async function WorldCupProbabilitiesRoute() {
   const [
     currentRaw,
     pretournamentRaw,
     currentRatings,
     pretournamentRatings,
+    currentCompletedMatches,
     currentUpdatedLabel,
     pretournamentUpdated,
   ] =
@@ -77,11 +120,13 @@ export default async function WorldCupProbabilitiesRoute() {
       loadPretournamentProbabilities(),
       loadRatings("/model_output"),
       loadPretournamentRatings(),
+      loadCompletedWorldCupMatches("/model_output"),
       modelOutputUpdatedLabel("/model_output"),
       pretournamentUpdatedLabel(),
     ]);
   const current = stripQualifyColumn(currentRaw);
   const pretournament = stripQualifyColumn(pretournamentRaw);
+  const currentGroupRecordMap = buildGroupRecordMap(currentCompletedMatches);
   const buildRatingsMap = (ratings: Awaited<ReturnType<typeof loadRatings>>) =>
     new Map(
       ratings.map((row) => [
@@ -102,7 +147,8 @@ export default async function WorldCupProbabilitiesRoute() {
         rating: number;
         tilt: number;
       }
-    >
+    >,
+    groupRecordMap?: Map<string, string>
   ) =>
     rows.map((row) => {
       const rating = ratingsMap.get(row.team);
@@ -110,6 +156,7 @@ export default async function WorldCupProbabilitiesRoute() {
         ...row,
         ratingOverall: rating?.rating,
         tilt: rating?.tilt,
+        groupRecord: groupRecordMap?.get(row.team),
       };
     });
 
@@ -119,7 +166,7 @@ export default async function WorldCupProbabilitiesRoute() {
         <WorldCupProbabilitiesPage
           current={{
             columns: current.columns,
-            rows: attachRatings(current.rows, currentRatingsMap),
+            rows: attachRatings(current.rows, currentRatingsMap, currentGroupRecordMap),
           }}
           pretournament={{
             columns: pretournament.columns,
