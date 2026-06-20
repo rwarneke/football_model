@@ -28,7 +28,7 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 27,2026-06-18,Group,B,Canada,Qatar,BC Place,Vancouver,Canada,FIFA World Cup,False,6,0,6,0,NA,NA,False,False,NA,NA
 28,2026-06-18,Group,A,Mexico,South Korea,Estadio Akron,Zapopan,Mexico,FIFA World Cup,False,1,0,1,0,NA,NA,False,False,NA,NA
 32,2026-06-19,Group,D,USA,Australia,Lumen Field,Seattle,United States,FIFA World Cup,False,2,0,2,0,NA,NA,False,False,NA,NA
-30,2026-06-19,Group,C,Scotland,Morocco,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+30,2026-06-19,Group,C,Scotland,Morocco,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,0,1,0,1,NA,NA,False,False,NA,NA
 29,2026-06-19,Group,C,Brazil,Haiti,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 31,2026-06-19,Group,D,Turkey,Paraguay,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 35,2026-06-20,Group,F,Netherlands,Sweden,NRG Stadium,Houston,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
