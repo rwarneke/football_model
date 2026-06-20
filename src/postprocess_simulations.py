@@ -37,6 +37,9 @@ GROUP_MATCHES_PATH = os.path.join(ROOT_DIR, "reference_data", "world_cup_2026_gr
 KNOCKOUT_MATCHES_PATH = os.path.join(
     ROOT_DIR, "reference_data", "world_cup_2026_knockout_matches.csv"
 )
+SIMULATION_STATUS_PATH = os.path.join(
+    ROOT_DIR, "model_output", "simulation_results_status.csv"
+)
 NEXT_STAGE_BY_STAGE = {
     "Group": "Round of 32",
     "Round of 32": "Round of 16",
@@ -132,6 +135,57 @@ def _winner(home_id, away_id, home_score, away_score, went_penalties, penalty_wi
     if home_score > away_score:
         return home_id
     return away_id
+
+
+def _validate_simulation_statuses(teams, sim_count, stage_counts):
+    """Validate manual G/U/I display statuses against the simulation outcomes."""
+    if not os.path.exists(SIMULATION_STATUS_PATH):
+        print(f"Status validation skipped; file not found: {SIMULATION_STATUS_PATH}")
+        return
+
+    statuses = pd.read_csv(SIMULATION_STATUS_PATH, dtype=str).fillna("")
+    if "team" not in statuses.columns:
+        raise ValueError(f"Status file is missing a 'team' column: {SIMULATION_STATUS_PATH}")
+
+    team_to_id = {team: idx for idx, team in enumerate(teams)}
+    errors = []
+    suggestions = []
+    for row in statuses.to_dict(orient="records"):
+        team = str(row["team"]).strip()
+        team_id = team_to_id.get(team)
+        if team_id is None:
+            errors.append(f"{team}: not present in the simulation team list")
+            continue
+
+        for stage, counts in stage_counts.items():
+            status = str(row.get(stage, "")).strip()
+            if status not in {"G", "U", "I"}:
+                errors.append(f"{team} — {stage}: invalid status {status!r} (expected G, U, or I)")
+                continue
+
+            count = int(counts[team_id])
+            if status == "G" and count != sim_count:
+                errors.append(
+                    f"{team} — {stage}: status G, but simulations are "
+                    f"{count}/{sim_count} ({count / sim_count:.2%})"
+                )
+            elif status == "I" and count != 0:
+                errors.append(
+                    f"{team} — {stage}: status I, but simulations are "
+                    f"{count}/{sim_count} ({count / sim_count:.2%})"
+                )
+            elif status == "U" and count in {0, sim_count}:
+                suggested_status = "I" if count == 0 else "G"
+                suggestions.append(
+                    f"{team} — {stage}: status U, but simulations are "
+                    f"{count}/{sim_count}; consider status {suggested_status}"
+                )
+
+    for suggestion in suggestions:
+        print(f"STATUS SUGGESTION: {suggestion}")
+    if errors:
+        formatted_errors = "\n".join(f"  - {error}" for error in errors)
+        raise ValueError(f"Simulation status validation failed:\n{formatted_errors}")
 
 
 def main():
@@ -342,6 +396,21 @@ def main():
     progression_fair_value = progression_value_sum / sim_count
     win_fair_value = win_value_sum / sim_count
     total_fair_value = progression_fair_value + win_fair_value
+
+    _validate_simulation_statuses(
+        teams,
+        sim_count,
+        {
+            "Qualify": qualify,
+            "Win Group": win_group,
+            "Reach R32": reach_r32,
+            "Reach R16": reach_r16,
+            "Reach QF": reach_qf,
+            "Reach SF": reach_sf,
+            "Reach Final": reach_final,
+            "Champion": champion,
+        },
+    )
 
     active_mask = qualify > 0
     active_teams = [teams[i] for i in range(team_count) if active_mask[i]]
