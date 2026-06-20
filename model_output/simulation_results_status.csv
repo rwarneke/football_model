@@ -20,7 +20,7 @@ Italy,U,U,U,U,U,U,U,U
 Senegal,G,U,U,U,U,U,U,U
 Morocco,G,U,U,U,U,U,U,U
 Austria,G,U,U,U,U,U,U,U
-Turkey,G,I,I,U,U,U,U,U
+Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,U,U,U,U,U
 Paraguay,G,I,U,U,U,U,U,U
 Canada,G,U,U,U,U,U,U,U
@@ -57,7 +57,7 @@ Bosnia and Herzegovina,G,I,U,U,U,U,U,U
 Saudi Arabia,G,U,U,U,U,U,U,U
 Cape Verde,G,U,U,U,U,U,U,U
 Iraq,G,U,U,U,U,U,U,U
-Haiti,G,U,U,U,U,U,U,U
+Haiti,G,I,I,I,I,I,I,I
 Jamaica,U,U,U,U,U,U,U,U
 Qatar,G,I,U,U,U,U,U,U
 Suriname,U,U,U,U,U,U,U,U
