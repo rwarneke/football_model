@@ -141,26 +141,8 @@ def _suggestion_eligible_stages(team_id, sim_count, stage_counts, group_stage_te
     if team_id not in group_stage_team_ids:
         return set()
 
-    guaranteed = {
-        stage for stage, counts in stage_counts.items() if int(counts[team_id]) == sim_count
-    }
-
-    if "Win Group" not in guaranteed and "Reach R32" not in guaranteed:
-        return {"Win Group", "Reach R32"}
-
-    progression_order = [
-        "Reach R32",
-        "Reach R16",
-        "Reach QF",
-        "Reach SF",
-        "Reach Final",
-        "Champion",
-    ]
-    for stage in progression_order:
-        if stage not in guaranteed:
-            return {stage}
-
-    return set()
+    # In the group stage, "next" always means both winning the group and reaching the R32.
+    return {"Win Group", "Reach R32"}
 
 
 def _validate_simulation_statuses(teams, sim_count, stage_counts, group_stage_team_ids):

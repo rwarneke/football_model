@@ -35,8 +35,8 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 33,2026-06-20,Group,E,Germany,Ivory Coast,BMO Field,Toronto,Canada,FIFA World Cup,True,2,1,2,1,NA,NA,False,False,NA,NA
 34,2026-06-20,Group,E,Ecuador,Curacao,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,0,0,0,0,NA,NA,False,False,NA,NA
 36,2026-06-20,Group,F,Tunisia,Japan,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,True,0,4,0,4,NA,NA,False,False,NA,NA
-38,2026-06-21,Group,H,Spain,Saudi Arabia,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
-39,2026-06-21,Group,G,Belgium,Iran,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+38,2026-06-21,Group,H,Spain,Saudi Arabia,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,4,0,4,0,NA,NA,False,False,NA,NA
+39,2026-06-21,Group,G,Belgium,Iran,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,0,0,0,0,NA,NA,False,False,NA,NA
 37,2026-06-21,Group,H,Uruguay,Cape Verde,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 40,2026-06-21,Group,G,New Zealand,Egypt,BC Place,Vancouver,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 43,2026-06-22,Group,J,Argentina,Austria,AT&T Stadium,Arlington,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
