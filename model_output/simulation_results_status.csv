@@ -7,11 +7,11 @@ Portugal,G,U,U,U,U,U,U,U
 France,G,U,U,U,U,U,U,U
 Colombia,G,U,U,U,U,U,U,U
 Netherlands,G,U,U,U,U,U,U,U
-Germany,G,U,U,U,U,U,U,U
+Germany,G,G,G,U,U,U,U,U
 Belgium,G,U,U,U,U,U,U,U
 Uruguay,G,U,U,U,U,U,U,U
 Norway,G,U,U,U,U,U,U,U
-Ecuador,G,U,U,U,U,U,U,U
+Ecuador,G,I,U,U,U,U,U,U
 Switzerland,G,U,U,U,U,U,U,U
 Croatia,G,U,U,U,U,U,U,U
 Denmark,U,U,U,U,U,U,U,U
@@ -35,8 +35,8 @@ Wales,U,U,U,U,U,U,U,U
 Poland,U,U,U,U,U,U,U,U
 Algeria,G,U,U,U,U,U,U,U
 Czechia,G,I,U,U,U,U,U,U
-Tunisia,G,U,U,U,U,U,U,U
-Ivory Coast,G,U,U,U,U,U,U,U
+Tunisia,G,I,U,U,U,U,U,U
+Ivory Coast,G,I,U,U,U,U,U,U
 Egypt,G,U,U,U,U,U,U,U
 Romania,U,U,U,U,U,U,U,U
 Slovakia,U,U,U,U,U,U,U,U
@@ -61,5 +61,5 @@ Haiti,G,I,I,I,I,I,I,I
 Jamaica,U,U,U,U,U,U,U,U
 Qatar,G,I,U,U,U,U,U,U
 Suriname,U,U,U,U,U,U,U,U
-Curacao,G,U,U,U,U,U,U,U
+Curacao,G,I,U,U,U,U,U,U
 New Caledonia,U,U,U,U,U,U,U,U
