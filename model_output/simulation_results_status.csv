@@ -1,25 +1,25 @@
 team,Qualify,Win Group,Reach R32,Reach R16,Reach QF,Reach SF,Reach Final,Champion
 Spain,G,U,U,U,U,U,U,U
-Argentina,G,U,U,U,U,U,U,U
+Argentina,G,G,G,U,U,U,U,U
 England,G,U,U,U,U,U,U,U
 Brazil,G,U,U,U,U,U,U,U
 Portugal,G,U,U,U,U,U,U,U
-France,G,U,U,U,U,U,U,U
+France,G,U,G,U,U,U,U,U
 Colombia,G,U,U,U,U,U,U,U
 Netherlands,G,U,U,U,U,U,U,U
 Germany,G,G,G,U,U,U,U,U
 Belgium,G,U,U,U,U,U,U,U
 Uruguay,G,U,U,U,U,U,U,U
-Norway,G,U,U,U,U,U,U,U
+Norway,G,U,G,U,U,U,U,U
 Ecuador,G,I,U,U,U,U,U,U
 Switzerland,G,U,U,U,U,U,U,U
 Croatia,G,U,U,U,U,U,U,U
 Denmark,U,U,U,U,U,U,U,U
 Japan,G,U,U,U,U,U,U,U
 Italy,U,U,U,U,U,U,U,U
-Senegal,G,U,U,U,U,U,U,U
+Senegal,G,I,U,U,U,U,U,U
 Morocco,G,U,U,U,U,U,U,U
-Austria,G,U,U,U,U,U,U,U
+Austria,G,I,U,U,U,U,U,U
 Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,U,U,U,U,U
 Paraguay,G,I,U,U,U,U,U,U
@@ -33,7 +33,7 @@ Sweden,G,U,U,U,U,U,U,U
 Iran,G,U,U,U,U,U,U,U
 Wales,U,U,U,U,U,U,U,U
 Poland,U,U,U,U,U,U,U,U
-Algeria,G,U,U,U,U,U,U,U
+Algeria,G,I,U,U,U,U,U,U
 Czechia,G,I,U,U,U,U,U,U
 Tunisia,G,I,I,I,I,I,I,I
 Ivory Coast,G,I,U,U,U,U,U,U
@@ -46,7 +46,7 @@ Uzbekistan,G,U,U,U,U,U,U,U
 Panama,G,U,U,U,U,U,U,U
 Kosovo,U,U,U,U,U,U,U,U
 Albania,U,U,U,U,U,U,U,U
-Jordan,G,U,U,U,U,U,U,U
+Jordan,G,I,I,I,I,I,I,I
 Northern Ireland,U,U,U,U,U,U,U,U
 Ghana,G,U,U,U,U,U,U,U
 South Africa,G,I,U,U,U,U,U,U
@@ -56,7 +56,7 @@ North Macedonia,U,U,U,U,U,U,U,U
 Bosnia and Herzegovina,G,I,U,U,U,U,U,U
 Saudi Arabia,G,I,U,U,U,U,U,U
 Cape Verde,G,U,U,U,U,U,U,U
-Iraq,G,U,U,U,U,U,U,U
+Iraq,G,I,U,U,U,U,U,U
 Haiti,G,I,I,I,I,I,I,I
 Jamaica,U,U,U,U,U,U,U,U
 Qatar,G,I,U,U,U,U,U,U

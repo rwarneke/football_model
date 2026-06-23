@@ -39,10 +39,10 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 39,2026-06-21,Group,G,Belgium,Iran,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,0,0,0,0,NA,NA,False,False,NA,NA
 37,2026-06-21,Group,H,Uruguay,Cape Verde,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,2,2,2,2,NA,NA,False,False,NA,NA
 40,2026-06-21,Group,G,New Zealand,Egypt,BC Place,Vancouver,Canada,FIFA World Cup,True,1,3,1,3,NA,NA,False,False,NA,NA
-43,2026-06-22,Group,J,Argentina,Austria,AT&T Stadium,Arlington,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
-42,2026-06-22,Group,I,France,Iraq,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
-41,2026-06-22,Group,I,Norway,Senegal,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
-44,2026-06-22,Group,J,Jordan,Algeria,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+43,2026-06-22,Group,J,Argentina,Austria,AT&T Stadium,Arlington,United States,FIFA World Cup,True,2,0,2,0,NA,NA,False,False,NA,NA
+42,2026-06-22,Group,I,France,Iraq,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,3,0,3,0,NA,NA,False,False,NA,NA
+41,2026-06-22,Group,I,Norway,Senegal,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,3,2,3,2,NA,NA,False,False,NA,NA
+44,2026-06-22,Group,J,Jordan,Algeria,Levi's Stadium,Santa Clara,United States,FIFA World Cup,True,1,2,1,2,NA,NA,False,False,NA,NA
 47,2026-06-23,Group,K,Portugal,Uzbekistan,NRG Stadium,Houston,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 45,2026-06-23,Group,L,England,Ghana,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 46,2026-06-23,Group,L,Panama,Croatia,BMO Field,Toronto,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
