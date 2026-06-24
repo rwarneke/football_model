@@ -12,7 +12,7 @@ Belgium,G,U,U,U,U,U,U,U
 Uruguay,G,U,U,U,U,U,U,U
 Norway,G,U,G,U,U,U,U,U
 Ecuador,G,I,U,U,U,U,U,U
-Switzerland,G,U,U,U,U,U,U,U
+Switzerland,G,G,G,U,U,U,U,U
 Croatia,G,U,U,U,U,U,U,U
 Denmark,U,U,U,U,U,U,U,U
 Japan,G,U,U,U,U,U,U,U
@@ -23,7 +23,7 @@ Austria,G,I,U,U,U,U,U,U
 Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,U,U,U,U,U
 Paraguay,G,I,U,U,U,U,U,U
-Canada,G,U,U,U,U,U,U,U
+Canada,G,I,G,U,U,U,U,U
 Australia,G,I,U,U,U,U,U,U
 Ukraine,U,U,U,U,U,U,U,U
 South Korea,G,I,U,U,U,U,U,U
@@ -59,7 +59,7 @@ Cape Verde,G,U,U,U,U,U,U,U
 Iraq,G,I,U,U,U,U,U,U
 Haiti,G,I,I,I,I,I,I,I
 Jamaica,U,U,U,U,U,U,U,U
-Qatar,G,I,U,U,U,U,U,U
+Qatar,G,I,I,I,I,I,I,I
 Suriname,U,U,U,U,U,U,U,U
 Curacao,G,I,U,U,U,U,U,U
 New Caledonia,U,U,U,U,U,U,U,U
