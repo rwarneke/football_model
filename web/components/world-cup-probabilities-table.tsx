@@ -144,6 +144,17 @@ function teamMobileCode(team: string) {
   return FIFA_CODES[team] ?? teamInitials(team);
 }
 
+function parseGroupRecord(record?: string) {
+  const parts = String(record ?? "")
+    .split("-")
+    .map((value) => Number.parseInt(value, 10));
+  if (parts.length !== 3 || parts.some((value) => !Number.isFinite(value))) {
+    return null;
+  }
+  const [wins, draws, losses] = parts;
+  return { wins, draws, losses };
+}
+
 function wrapHeaderLabel(label: string) {
   const words = label.split(" ").filter(Boolean);
   const content = words.join("\n");
@@ -552,6 +563,19 @@ export function WorldCupProbabilitiesTable({
             return isDesc ? -desired : desired;
           }
           if (normA.starred === normB.starred) {
+            const recordA = parseGroupRecord(a.original.groupRecord);
+            const recordB = parseGroupRecord(b.original.groupRecord);
+            if (recordA && recordB) {
+              if (recordA.wins !== recordB.wins) {
+                return recordB.wins - recordA.wins;
+              }
+              if (recordA.draws !== recordB.draws) {
+                return recordB.draws - recordA.draws;
+              }
+              if (recordA.losses !== recordB.losses) {
+                return recordA.losses - recordB.losses;
+              }
+            }
             for (const key of groupSortTiebreakOrder) {
               const probA = Number(a.original.values[key] ?? 0);
               const probB = Number(b.original.values[key] ?? 0);

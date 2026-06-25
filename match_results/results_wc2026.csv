@@ -53,8 +53,8 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 50,2026-06-24,Group,C,Morocco,Haiti,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,4,2,4,2,NA,NA,False,False,NA,NA
 53,2026-06-24,Group,A,Czechia,Mexico,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,0,3,0,3,NA,NA,False,False,NA,NA
 54,2026-06-24,Group,A,South Africa,South Korea,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,True,1,0,1,0,NA,NA,False,False,NA,NA
-55,2026-06-25,Group,E,Curacao,Ivory Coast,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
-56,2026-06-25,Group,E,Ecuador,Germany,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+55,2026-06-25,Group,E,Curacao,Ivory Coast,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,0,2,0,2,NA,NA,False,False,NA,NA
+56,2026-06-25,Group,E,Ecuador,Germany,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,2,1,2,1,NA,NA,False,False,NA,NA
 57,2026-06-25,Group,F,Japan,Sweden,AT&T Stadium,Arlington,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 58,2026-06-25,Group,F,Tunisia,Netherlands,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 59,2026-06-25,Group,D,Turkey,USA,SoFi Stadium,Inglewood,United States,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,False,False,NA,NA
