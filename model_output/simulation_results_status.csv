@@ -2,7 +2,7 @@ team,Qualify,Win Group,Reach R32,Reach R16,Reach QF,Reach SF,Reach Final,Champio
 Spain,G,U,U,U,U,U,U,U
 Argentina,G,G,G,U,U,U,U,U
 England,G,U,U,U,U,U,U,U
-Brazil,G,U,U,U,U,U,U,U
+Brazil,G,G,G,U,U,U,U,U
 Portugal,G,U,U,U,U,U,U,U
 France,G,U,G,U,U,U,U,U
 Colombia,G,U,G,U,U,U,U,U
@@ -18,7 +18,7 @@ Denmark,U,U,U,U,U,U,U,U
 Japan,G,U,U,U,U,U,U,U
 Italy,U,U,U,U,U,U,U,U
 Senegal,G,I,U,U,U,U,U,U
-Morocco,G,U,U,U,U,U,U,U
+Morocco,G,I,G,U,U,U,U,U
 Austria,G,I,U,U,U,U,U,U
 Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,U,U,U,U,U
@@ -28,13 +28,13 @@ Australia,G,I,U,U,U,U,U,U
 Ukraine,U,U,U,U,U,U,U,U
 South Korea,G,I,U,U,U,U,U,U
 USA,G,G,G,U,U,U,U,U
-Scotland,G,U,U,U,U,U,U,U
+Scotland,G,I,U,U,U,U,U,U
 Sweden,G,U,U,U,U,U,U,U
 Iran,G,U,U,U,U,U,U,U
 Wales,U,U,U,U,U,U,U,U
 Poland,U,U,U,U,U,U,U,U
 Algeria,G,I,U,U,U,U,U,U
-Czechia,G,I,U,U,U,U,U,U
+Czechia,G,I,I,I,I,I,I,I
 Tunisia,G,I,I,I,I,I,I,I
 Ivory Coast,G,I,U,U,U,U,U,U
 Egypt,G,U,U,U,U,U,U,U
@@ -49,7 +49,7 @@ Albania,U,U,U,U,U,U,U,U
 Jordan,G,I,I,I,I,I,I,I
 Northern Ireland,U,U,U,U,U,U,U,U
 Ghana,G,U,U,U,U,U,U,U
-South Africa,G,I,U,U,U,U,U,U
+South Africa,G,I,G,U,U,U,U,U
 Bolivia,U,U,U,U,U,U,U,U
 New Zealand,G,I,U,U,U,U,U,U
 North Macedonia,U,U,U,U,U,U,U,U

@@ -47699,4 +47699,10 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-06-23,Panama,Croatia,0,1,FIFA World Cup,Toronto,Canada,True,0,1,,,False,False,,,CONCACAF,UEFA,,,,False,False,False
 2026-06-23,Portugal,Uzbekistan,5,0,FIFA World Cup,Houston,United States,True,5,0,,,False,False,,,UEFA,AFC,,,,False,False,False
 2026-06-24,Bosnia and Herzegovina,Qatar,3,1,FIFA World Cup,Seattle,United States,True,3,1,,,False,False,,,UEFA,AFC,,,,False,False,False
+2026-06-24,Canada,Switzerland,1,2,FIFA World Cup,Vancouver,Canada,False,,,,,,,,,CONCACAF,UEFA,,,,False,False,False
+2026-06-24,Czechia,Mexico,0,3,FIFA World Cup,Mexico City,Mexico,False,0,3,,,False,False,,,UEFA,CONCACAF,,,,False,False,False
+2026-06-24,Mexico,Czechia,3,0,FIFA World Cup,Mexico City,Mexico,False,,,,,,,,,CONCACAF,UEFA,,,,False,False,False
+2026-06-24,Morocco,Haiti,4,2,FIFA World Cup,Atlanta,United States,True,4,2,,,False,False,,,CAF,CONCACAF,,,,False,False,False
+2026-06-24,Scotland,Brazil,0,3,FIFA World Cup,Miami Gardens,United States,True,0,3,,,False,False,,,UEFA,CONMEBOL,,,,False,False,False
+2026-06-24,South Africa,South Korea,1,0,FIFA World Cup,Guadalupe,Mexico,True,1,0,,,False,False,,,CAF,AFC,,,,False,False,False
 2026-06-24,Switzerland,Canada,2,1,FIFA World Cup,Vancouver,Canada,False,2,1,,,False,False,,,UEFA,CONCACAF,,,,False,False,False
