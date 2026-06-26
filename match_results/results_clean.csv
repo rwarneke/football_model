@@ -47712,3 +47712,6 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-06-25,Paraguay,Australia,0,0,FIFA World Cup,Santa Clara,United States,True,0,0,,,False,False,,,CONMEBOL,AFC,,,,False,False,False
 2026-06-25,Tunisia,Netherlands,1,3,FIFA World Cup,Kansas City,United States,True,1,3,,,False,False,,,CAF,UEFA,,,,False,False,False
 2026-06-25,Turkey,USA,3,2,FIFA World Cup,Inglewood,United States,False,3,2,,,False,False,,,UEFA,CONCACAF,,,,False,False,False
+2026-06-25,USA,Turkey,2,3,FIFA World Cup,Inglewood,United States,False,,,,,,,,,CONCACAF,UEFA,,,,False,False,False
+2026-06-26,Norway,France,1,4,FIFA World Cup,Foxborough,United States,True,1,4,,,False,False,,,UEFA,UEFA,,,,False,False,False
+2026-06-26,Senegal,Iraq,5,0,FIFA World Cup,Toronto,Canada,True,5,0,,,False,False,,,CAF,AFC,,,,False,False,False

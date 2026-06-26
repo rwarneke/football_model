@@ -102,4 +102,5 @@ export type WorldCupPredictorData = {
   winProbabilities: WinProbabilities;
   simulationTeamProbabilities: Record<string, TeamStageProbabilities>;
   completedMatches: CompletedWorldCupMatch[];
+  r32SlotLocks: Record<string, string>;
 };

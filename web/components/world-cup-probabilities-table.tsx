@@ -231,6 +231,42 @@ function formatOpponentProbability(
   return formatProbability(value, status, mode, inferFromValue);
 }
 
+function exactProbabilityStatusRank(
+  value: number,
+  status: ProbabilityStatus | undefined
+) {
+  const resolvedStatus = status ?? "U";
+  if (value === 1) {
+    if (resolvedStatus === "G") return 2;
+    if (resolvedStatus === "U") return 1;
+    return 0;
+  }
+  if (value === 0) {
+    if (resolvedStatus === "U") return 1;
+    if (resolvedStatus === "I") return 0;
+    return 0;
+  }
+  return 0;
+}
+
+function compareProbabilityWithStatus(
+  valueA: number,
+  statusA: ProbabilityStatus | undefined,
+  valueB: number,
+  statusB: ProbabilityStatus | undefined
+) {
+  if (valueA !== valueB) {
+    return valueA - valueB;
+  }
+  if (valueA !== 0 && valueA !== 1) {
+    return 0;
+  }
+  return (
+    exactProbabilityStatusRank(valueA, statusA) -
+    exactProbabilityStatusRank(valueB, statusB)
+  );
+}
+
 function probabilityBackground(value: number, maxValue: number) {
   if (!Number.isFinite(value)) {
     return undefined;
@@ -579,8 +615,16 @@ export function WorldCupProbabilitiesTable({
             for (const key of groupSortTiebreakOrder) {
               const probA = Number(a.original.values[key] ?? 0);
               const probB = Number(b.original.values[key] ?? 0);
-              if (probA !== probB) {
-                return isDesc ? probA - probB : probB - probA;
+              const statusA = a.original.statuses[key] ?? "U";
+              const statusB = b.original.statuses[key] ?? "U";
+              const comparison = compareProbabilityWithStatus(
+                probA,
+                statusA,
+                probB,
+                statusB
+              );
+              if (comparison !== 0) {
+                return isDesc ? comparison : -comparison;
               }
             }
             return 0;
@@ -630,7 +674,12 @@ export function WorldCupProbabilitiesTable({
           isProbability: true,
         },
         sortingFn: (a: Row<TableRowData>, b: Row<TableRowData>, id: string) =>
-          Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
+          compareProbabilityWithStatus(
+            Number(a.getValue(id) ?? 0),
+            a.original.statuses[id] ?? "U",
+            Number(b.getValue(id) ?? 0),
+            b.original.statuses[id] ?? "U"
+          ),
         cell: ({ row }: { row: Row<TableRowData> }) => {
           const value = row.original.values[column];
           const status = row.original.statuses[column] ?? "U";

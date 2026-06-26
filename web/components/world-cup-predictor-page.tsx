@@ -1880,6 +1880,9 @@ function formatStageShort(stage: string | undefined) {
 function resolveKnockoutLabel({
   label,
   opponentLabel,
+  matchId,
+  slotSide,
+  stage,
   groupRankings,
   thirdPlaceByGroup,
   thirdPlaceAssignments,
@@ -1889,10 +1892,15 @@ function resolveKnockoutLabel({
   allowThirdPlaceResolve,
   qualifiedThirdGroups,
   lockedGroupWinners,
+  lockedR32Slots,
+  teamGroups,
   matchStageById,
 }: {
   label: string;
   opponentLabel: string;
+  matchId: number;
+  slotSide: "home" | "away";
+  stage: string;
   groupRankings: Record<string, string[]>;
   thirdPlaceByGroup: Record<string, string>;
   thirdPlaceAssignments: Record<string, string> | null;
@@ -1902,8 +1910,17 @@ function resolveKnockoutLabel({
   allowThirdPlaceResolve: boolean;
   qualifiedThirdGroups?: Set<string>;
   lockedGroupWinners?: Record<string, string>;
+  lockedR32Slots?: Record<string, string>;
+  teamGroups?: Record<string, string>;
   matchStageById: Record<number, string>;
 }) {
+  if (stage === "Round of 32") {
+    const lockedTeam = lockedR32Slots?.[`${matchId}:${slotSide}`];
+    const lockedGroup = lockedTeam ? teamGroups?.[lockedTeam] : undefined;
+    if (lockedTeam && lockedGroup && groupCompletion[lockedGroup]) {
+      return lockedTeam;
+    }
+  }
   if (/^UEFA Path\s+.+\s+Winner$/i.test(label)) {
     return label.replace(/\s+Winner$/i, "");
   }
@@ -4610,6 +4627,15 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     showPretournament && pretournamentData
       ? pretournamentData.simulationTeamProbabilities
       : data.simulationTeamProbabilities;
+  const teamGroups = React.useMemo(() => {
+    const next: Record<string, string> = {};
+    data.groups.forEach((group) => {
+      group.teams.forEach((team) => {
+        next[team] = group.id;
+      });
+    });
+    return next;
+  }, [data.groups]);
   const forcedCurrentGroupWinners = React.useMemo(() => {
     if (!showingCurrent) {
       return {} as Record<string, string>;
@@ -4628,6 +4654,12 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     }
     return winners;
   }, [data.groups, data.simulationTeamProbabilities, showingCurrent]);
+  const forcedCurrentR32Slots = React.useMemo(() => {
+    if (!showingCurrent) {
+      return {} as Record<string, string>;
+    }
+    return data.r32SlotLocks ?? {};
+  }, [data.r32SlotLocks, showingCurrent]);
 
   React.useEffect(() => {
     if (!showPretournament || pretournamentData) {
@@ -5443,6 +5475,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         const homeResolved = resolveKnockoutLabel({
           label: match.homeLabel,
           opponentLabel: match.awayLabel,
+          matchId: match.id,
+          slotSide: "home",
+          stage: match.stage,
           groupRankings: groupRankingsLocal,
           thirdPlaceByGroup: thirdPlaceByGroupLocal,
           thirdPlaceAssignments,
@@ -5452,11 +5487,16 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           allowThirdPlaceResolve: allGroupMatchesComplete,
           qualifiedThirdGroups: qualifiedThirdGroupsLocal,
           lockedGroupWinners: forcedCurrentGroupWinners,
+          lockedR32Slots: forcedCurrentR32Slots,
+          teamGroups,
           matchStageById,
         });
         const awayResolved = resolveKnockoutLabel({
           label: match.awayLabel,
           opponentLabel: match.homeLabel,
+          matchId: match.id,
+          slotSide: "away",
+          stage: match.stage,
           groupRankings: groupRankingsLocal,
           thirdPlaceByGroup: thirdPlaceByGroupLocal,
           thirdPlaceAssignments,
@@ -5466,6 +5506,8 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           allowThirdPlaceResolve: allGroupMatchesComplete,
           qualifiedThirdGroups: qualifiedThirdGroupsLocal,
           lockedGroupWinners: forcedCurrentGroupWinners,
+          lockedR32Slots: forcedCurrentR32Slots,
+          teamGroups,
           matchStageById,
         });
         labels.set(String(match.id), {
@@ -5491,8 +5533,10 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     data.knockoutMatches,
     data.roundOf32Combos,
     forcedCurrentGroupWinners,
+    forcedCurrentR32Slots,
     matchStageById,
     slotWinners,
+    teamGroups,
   ]
 );
 
@@ -5814,6 +5858,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         const homeResolved = resolveKnockoutLabel({
           label: match.homeLabel,
           opponentLabel: match.awayLabel,
+          matchId: match.id,
+          slotSide: "home",
+          stage: match.stage,
           groupRankings: groupRankingsLocal,
           thirdPlaceByGroup: thirdPlaceByGroupLocal,
           thirdPlaceAssignments: thirdPlaceAssignmentsLocal,
@@ -5823,11 +5870,16 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           allowThirdPlaceResolve: allGroupMatchesCompleteLocal,
           qualifiedThirdGroups: qualifiedThirdGroupsLocal,
           lockedGroupWinners: forcedCurrentGroupWinners,
+          lockedR32Slots: forcedCurrentR32Slots,
+          teamGroups,
           matchStageById,
         });
         const awayResolved = resolveKnockoutLabel({
           label: match.awayLabel,
           opponentLabel: match.homeLabel,
+          matchId: match.id,
+          slotSide: "away",
+          stage: match.stage,
           groupRankings: groupRankingsLocal,
           thirdPlaceByGroup: thirdPlaceByGroupLocal,
           thirdPlaceAssignments: thirdPlaceAssignmentsLocal,
@@ -5837,6 +5889,8 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           allowThirdPlaceResolve: allGroupMatchesCompleteLocal,
           qualifiedThirdGroups: qualifiedThirdGroupsLocal,
           lockedGroupWinners: forcedCurrentGroupWinners,
+          lockedR32Slots: forcedCurrentR32Slots,
+          teamGroups,
           matchStageById,
         });
         const winner = resolveWinner(
@@ -5896,7 +5950,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       data.qualifiers,
       data.roundOf32Combos,
       forcedCurrentGroupWinners,
+      forcedCurrentR32Slots,
       matchStageById,
+      teamGroups,
     ]
   );
 
@@ -6359,6 +6415,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         const homeResolved = resolveKnockoutLabel({
           label: match.homeLabel,
           opponentLabel: match.awayLabel,
+          matchId: match.id,
+          slotSide: "home",
+          stage: match.stage,
           groupRankings: context.groupRankings,
           thirdPlaceByGroup: context.thirdPlaceByGroup,
           thirdPlaceAssignments: context.thirdPlaceAssignments,
@@ -6368,11 +6427,16 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           allowThirdPlaceResolve: context.allGroupMatchesComplete,
           qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
           lockedGroupWinners: forcedCurrentGroupWinners,
+          lockedR32Slots: forcedCurrentR32Slots,
+          teamGroups,
           matchStageById,
         });
         const awayResolved = resolveKnockoutLabel({
           label: match.awayLabel,
           opponentLabel: match.homeLabel,
+          matchId: match.id,
+          slotSide: "away",
+          stage: match.stage,
           groupRankings: context.groupRankings,
           thirdPlaceByGroup: context.thirdPlaceByGroup,
           thirdPlaceAssignments: context.thirdPlaceAssignments,
@@ -6382,6 +6446,8 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           allowThirdPlaceResolve: context.allGroupMatchesComplete,
           qualifiedThirdGroups: new Set(context.qualifiedThirdGroups),
           lockedGroupWinners: forcedCurrentGroupWinners,
+          lockedR32Slots: forcedCurrentR32Slots,
+          teamGroups,
           matchStageById,
         });
         const existingSelection = snapshot.knockoutWinners[key] ?? null;
@@ -6427,11 +6493,13 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       data.knockoutMatches,
       activeWinProbabilities,
       forcedCurrentGroupWinners,
+      forcedCurrentR32Slots,
       groupScores,
       knockoutDependents,
       knockoutState.matches,
       matchStageById,
       slotWinners,
+      teamGroups,
     ]
   );
 
@@ -6653,6 +6721,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         const homeResolved = resolveKnockoutLabel({
           label: match.homeLabel,
           opponentLabel: match.awayLabel,
+          matchId: match.id,
+          slotSide: "home",
+          stage: match.stage,
           groupRankings: nextContext.groupRankings,
           thirdPlaceByGroup: nextContext.thirdPlaceByGroup,
           thirdPlaceAssignments: nextContext.thirdPlaceAssignments,
@@ -6662,11 +6733,16 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
           qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
           lockedGroupWinners: forcedCurrentGroupWinners,
+          lockedR32Slots: forcedCurrentR32Slots,
+          teamGroups,
           matchStageById,
         });
         const awayResolved = resolveKnockoutLabel({
           label: match.awayLabel,
           opponentLabel: match.homeLabel,
+          matchId: match.id,
+          slotSide: "away",
+          stage: match.stage,
           groupRankings: nextContext.groupRankings,
           thirdPlaceByGroup: nextContext.thirdPlaceByGroup,
           thirdPlaceAssignments: nextContext.thirdPlaceAssignments,
@@ -6676,6 +6752,8 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
           allowThirdPlaceResolve: nextContext.allGroupMatchesComplete,
           qualifiedThirdGroups: new Set(nextContext.qualifiedThirdGroups),
           lockedGroupWinners: forcedCurrentGroupWinners,
+          lockedR32Slots: forcedCurrentR32Slots,
+          teamGroups,
           matchStageById,
         });
         const existingSelection = snapshot.knockoutWinners[key] ?? null;
@@ -6729,6 +6807,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     data.qualifiers,
     activeWinProbabilities,
     forcedCurrentGroupWinners,
+    forcedCurrentR32Slots,
     groupIdsBySlot,
     groupMatchIdsByTeam,
     knockoutDependents,
@@ -6739,6 +6818,7 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     qualifierSlotsByMatch,
     qualifierState.matches,
     resolvedGroupMatches,
+    teamGroups,
   ]);
 
   const updateGroupScore = React.useCallback(
@@ -7070,6 +7150,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
       const homeResolved = resolveKnockoutLabel({
         label: match.homeLabel,
         opponentLabel: match.awayLabel,
+        matchId: match.id,
+        slotSide: "home",
+        stage: match.stage,
         groupRankings,
         thirdPlaceByGroup,
         thirdPlaceAssignments,
@@ -7079,11 +7162,16 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         allowThirdPlaceResolve: allGroupMatchesComplete,
         qualifiedThirdGroups,
         lockedGroupWinners: forcedCurrentGroupWinners,
+        lockedR32Slots: forcedCurrentR32Slots,
+        teamGroups,
         matchStageById,
       });
       const awayResolved = resolveKnockoutLabel({
         label: match.awayLabel,
         opponentLabel: match.homeLabel,
+        matchId: match.id,
+        slotSide: "away",
+        stage: match.stage,
         groupRankings,
         thirdPlaceByGroup,
         thirdPlaceAssignments,
@@ -7093,6 +7181,8 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
         allowThirdPlaceResolve: allGroupMatchesComplete,
         qualifiedThirdGroups,
         lockedGroupWinners: forcedCurrentGroupWinners,
+        lockedR32Slots: forcedCurrentR32Slots,
+        teamGroups,
         matchStageById,
       });
       const isPickableMatch =
@@ -7128,7 +7218,9 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     knockoutWinners,
     allGroupMatchesComplete,
     forcedCurrentGroupWinners,
+    forcedCurrentR32Slots,
     matchStageById,
+    teamGroups,
   ]);
 
   const unpickableKnockoutIds = React.useMemo(() => {

@@ -7,6 +7,9 @@ import { loadWorldCupMatchConditionalAdvancement } from "@/lib/world-cup-match-c
 import type { WinProbabilities } from "@/lib/world-cup-predictor-types";
 import { WorldCupMatchesPageClient } from "@/components/world-cup-matches-page";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function loadWinProbabilities(): Promise<WinProbabilities> {
   const filePath = path.join(process.cwd(), "public", "model_output", "win_probabilities.json");
   const contents = await readFile(filePath, "utf8");
