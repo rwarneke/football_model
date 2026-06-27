@@ -1,14 +1,14 @@
 team,Qualify,Win Group,Reach R32,Reach R16,Reach QF,Reach SF,Reach Final,Champion
 Spain,G,G,G,U,U,U,U,U
 Argentina,G,G,G,U,U,U,U,U
-England,G,U,U,U,U,U,U,U
+England,G,U,G,U,U,U,U,U
 Brazil,G,G,G,U,U,U,U,U
-Portugal,G,U,U,U,U,U,U,U
+Portugal,G,U,G,U,U,U,U,U
 France,G,G,G,U,U,U,U,U
 Colombia,G,U,G,U,U,U,U,U
 Netherlands,G,G,G,U,U,U,U,U
 Germany,G,G,G,U,U,U,U,U
-Belgium,G,U,U,U,U,U,U,U
+Belgium,G,G,G,U,U,U,U,U
 Uruguay,G,I,I,I,I,I,I,I
 Norway,G,I,G,U,U,U,U,U
 Ecuador,G,I,G,U,U,U,U,U
@@ -17,12 +17,12 @@ Croatia,G,U,U,U,U,U,U,U
 Denmark,U,U,U,U,U,U,U,U
 Japan,G,I,G,U,U,U,U,U
 Italy,U,U,U,U,U,U,U,U
-Senegal,G,I,U,U,U,U,U,U
+Senegal,G,I,G,U,U,U,U,U
 Morocco,G,I,G,U,U,U,U,U
 Austria,G,I,U,U,U,U,U,U
 Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,U,U,U,U,U
-Paraguay,G,I,U,U,U,U,U,U
+Paraguay,G,I,G,U,U,U,U,U
 Canada,G,I,G,U,U,U,U,U
 Australia,G,I,G,U,U,U,U,U
 Ukraine,U,U,U,U,U,U,U,U
@@ -30,14 +30,14 @@ South Korea,G,I,U,U,U,U,U,U
 USA,G,G,G,U,U,U,U,U
 Scotland,G,I,U,U,U,U,U,U
 Sweden,G,I,G,U,U,U,U,U
-Iran,G,U,U,U,U,U,U,U
+Iran,G,I,U,U,U,U,U,U
 Wales,U,U,U,U,U,U,U,U
 Poland,U,U,U,U,U,U,U,U
 Algeria,G,I,U,U,U,U,U,U
 Czechia,G,I,I,I,I,I,I,I
 Tunisia,G,I,I,I,I,I,I,I
 Ivory Coast,G,I,G,U,U,U,U,U
-Egypt,G,U,U,U,U,U,U,U
+Egypt,G,I,G,U,U,U,U,U
 Romania,U,U,U,U,U,U,U,U
 Slovakia,U,U,U,U,U,U,U,U
 Ireland,U,U,U,U,U,U,U,U
@@ -48,10 +48,10 @@ Kosovo,U,U,U,U,U,U,U,U
 Albania,U,U,U,U,U,U,U,U
 Jordan,G,I,I,I,I,I,I,I
 Northern Ireland,U,U,U,U,U,U,U,U
-Ghana,G,U,U,U,U,U,U,U
+Ghana,G,U,G,U,U,U,U,U
 South Africa,G,I,G,U,U,U,U,U
 Bolivia,U,U,U,U,U,U,U,U
-New Zealand,G,I,U,U,U,U,U,U
+New Zealand,G,I,I,I,I,I,I,I
 North Macedonia,U,U,U,U,U,U,U,U
 Bosnia and Herzegovina,G,I,G,U,U,U,U,U
 Saudi Arabia,G,I,I,I,I,I,I,I
