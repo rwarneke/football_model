@@ -65,8 +65,8 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 66,2026-06-26,Group,H,Uruguay,Spain,Estadio Akron,Zapopan,Mexico,FIFA World Cup,True,0,1,0,1,NA,NA,False,False,NA,NA
 63,2026-06-26,Group,G,Egypt,Iran,Lumen Field,Seattle,United States,FIFA World Cup,True,1,1,1,1,NA,NA,False,False,NA,NA
 64,2026-06-26,Group,G,New Zealand,Belgium,BC Place,Vancouver,Canada,FIFA World Cup,True,1,5,1,5,NA,NA,False,False,NA,NA
-67,2026-06-27,Group,L,Panama,England,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
-68,2026-06-27,Group,L,Croatia,Ghana,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
+67,2026-06-27,Group,L,Panama,England,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,0,2,0,2,NA,NA,False,False,NA,NA
+68,2026-06-27,Group,L,Croatia,Ghana,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,2,1,2,1,NA,NA,False,False,NA,NA
 71,2026-06-27,Group,K,Colombia,Portugal,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 72,2026-06-27,Group,K,DR Congo,Uzbekistan,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
 69,2026-06-27,Group,J,Algeria,Austria,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,False,False,NA,NA
