@@ -17,7 +17,6 @@ const KNOCKOUT_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_knockout_matches.
 const ROUND_OF_32_FILE = `${REFERENCE_DIR}/world_cup_2026_round_of_32_combinations.csv`;
 const QUALIFIERS_FILE = `${REFERENCE_DIR}/world_cup_2026_remaining_qualifiers.csv`;
 const RESULTS_FILE_NAME = "results_wc2026.csv";
-const R32_SLOT_LOCKS_FILE_NAME = "r32_slot_locks.json";
 
 async function readCsv(
   filePath: string,
@@ -80,7 +79,6 @@ export async function loadWorldCupPredictorDataWithFetchers(
   const winProbabilitiesFile = `${modelOutputDir}/win_probabilities.json`;
   const teamProbabilitiesFile = `${modelOutputDir}/simulation_team_probabilities.json`;
   const resultsFile = `${modelOutputDir}/${RESULTS_FILE_NAME}`;
-  const r32SlotLocksFile = `${modelOutputDir}/${R32_SLOT_LOCKS_FILE_NAME}`;
   const groupRows = (await readCsv(GROUPS_FILE, fetchTextFn)).rows;
   const groupsMap = new Map<string, string[]>();
   for (const row of groupRows) {
@@ -239,10 +237,6 @@ export async function loadWorldCupPredictorDataWithFetchers(
     (await fetchJsonFn(winProbabilitiesFile)) ?? {};
   const simulationTeamProbabilities =
     (await fetchJsonFn(teamProbabilitiesFile)) ?? {};
-  const r32SlotLocks = ((await fetchJsonFn(r32SlotLocksFile)) ?? {}) as Record<
-    string,
-    string
-  >;
 
   return {
     groups,
@@ -255,6 +249,5 @@ export async function loadWorldCupPredictorDataWithFetchers(
     simulationTeamProbabilities:
       simulationTeamProbabilities as Record<string, TeamStageProbabilities>,
     completedMatches,
-    r32SlotLocks,
   };
 }

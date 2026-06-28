@@ -40,9 +40,124 @@ const HOST_TEAMS = new Set(["USA", "Canada", "Mexico"]);
 const SCORE_LABELS = ["0", "1", "2", "3", "4", "5+"];
 const PROBABILITY_HIGHLIGHT_RGB = "147, 197, 253";
 const PROBABILITY_HIGHLIGHT_MAX_ALPHA = 0.98;
+const DEFAULT_TIME_ZONE = "Australia/Sydney";
+const DEFAULT_TIME_ZONE_OFFSET_VALUE = "offset:+10:00";
 
 function normalizeCountry(value: string | null | undefined) {
   return value ? value.trim().toLowerCase() : "";
+}
+
+function isValidTimeZone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getTimeZoneOffsetMinutes(timeZone: string, date = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      timeZoneName: "shortOffset",
+    }).formatToParts(date);
+    const offsetPart = parts.find((part) => part.type === "timeZoneName")?.value ?? "GMT";
+    if (offsetPart === "GMT" || offsetPart === "UTC") {
+      return 0;
+    }
+    const match = offsetPart.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/);
+    if (!match) {
+      return null;
+    }
+    const sign = match[1] === "-" ? -1 : 1;
+    const hours = Number(match[2]);
+    const minutes = Number(match[3] ?? "0");
+    return sign * (hours * 60 + minutes);
+  } catch {
+    return null;
+  }
+}
+
+function formatOffsetLabel(offsetMinutes: number) {
+  const sign = offsetMinutes < 0 ? "-" : "+";
+  const absoluteMinutes = Math.abs(offsetMinutes);
+  const hours = Math.floor(absoluteMinutes / 60);
+  const minutes = absoluteMinutes % 60;
+  if (minutes === 0) {
+    return `UTC${sign}${hours}`;
+  }
+  return `UTC${sign}${hours}:${String(minutes).padStart(2, "0")}`;
+}
+
+function offsetValueFromMinutes(offsetMinutes: number) {
+  const sign = offsetMinutes < 0 ? "-" : "+";
+  const absoluteMinutes = Math.abs(offsetMinutes);
+  const hours = String(Math.floor(absoluteMinutes / 60)).padStart(2, "0");
+  const minutes = String(absoluteMinutes % 60).padStart(2, "0");
+  return `offset:${sign}${hours}:${minutes}`;
+}
+
+function parseOffsetValue(value: string) {
+  const match = value.match(/^offset:([+-])(\d{2}):(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  const sign = match[1] === "-" ? -1 : 1;
+  const hours = Number(match[2]);
+  const minutes = Number(match[3]);
+  return sign * (hours * 60 + minutes);
+}
+
+function shiftDateByOffset(date: Date, offsetMinutes: number) {
+  return new Date(date.getTime() + offsetMinutes * 60_000);
+}
+
+function formatDatePartsAtOffset(date: Date, offsetMinutes: number) {
+  const shifted = shiftDateByOffset(date, offsetMinutes);
+  return {
+    year: String(shifted.getUTCFullYear()),
+    month: String(shifted.getUTCMonth() + 1).padStart(2, "0"),
+    day: String(shifted.getUTCDate()).padStart(2, "0"),
+  };
+}
+
+function buildOffsetOptions() {
+  const supportedValuesOf = (Intl as typeof Intl & {
+    supportedValuesOf?: (key: string) => string[];
+  }).supportedValuesOf;
+  const timeZones =
+    typeof supportedValuesOf === "function"
+      ? supportedValuesOf("timeZone")
+      : [DEFAULT_TIME_ZONE, "UTC"];
+  const uniqueOffsets = new Set<number>();
+  for (const timeZone of timeZones) {
+    const offsetMinutes = getTimeZoneOffsetMinutes(timeZone);
+    if (offsetMinutes !== null) {
+      uniqueOffsets.add(offsetMinutes);
+    }
+  }
+  return [...uniqueOffsets]
+    .sort((a, b) => a - b)
+    .map((offsetMinutes) => ({
+      value: offsetValueFromMinutes(offsetMinutes),
+      label: formatOffsetLabel(offsetMinutes),
+    }));
+}
+
+const OFFSET_OPTIONS: Array<{ value: string; label: string }> = buildOffsetOptions();
+
+function formatLocalDateKey(dateInput: string, timeZone: string) {
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const offsetMinutes = parseOffsetValue(timeZone);
+  if (offsetMinutes === null) {
+    return null;
+  }
+  const parts = formatDatePartsAtOffset(date, offsetMinutes);
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function isPlaceholderLabel(name: string) {
@@ -618,7 +733,52 @@ function formatDateHeading(date: string) {
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone: "UTC",
   });
+}
+
+function formatMatchDateTime(dateInput: string | null | undefined, timeZone: string) {
+  if (!dateInput) {
+    return null;
+  }
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const offsetMinutes = parseOffsetValue(timeZone);
+  if (offsetMinutes === null) {
+    return null;
+  }
+  const shifted = shiftDateByOffset(date, offsetMinutes);
+  const dateLabel = new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(shifted);
+  return `${dateLabel} ${formatOffsetLabel(offsetMinutes)}`;
+}
+
+function resolveInitialOffsetValue() {
+  const offsetMinutes = getTimeZoneOffsetMinutes(DEFAULT_TIME_ZONE);
+  if (offsetMinutes === null) {
+    return DEFAULT_TIME_ZONE_OFFSET_VALUE;
+  }
+  return offsetValueFromMinutes(offsetMinutes);
+}
+
+function resolveBrowserOffsetValue() {
+  const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!browserTimeZone || !isValidTimeZone(browserTimeZone)) {
+    return null;
+  }
+  const offsetMinutes = getTimeZoneOffsetMinutes(browserTimeZone);
+  if (offsetMinutes === null) {
+    return null;
+  }
+  return offsetValueFromMinutes(offsetMinutes);
 }
 
 function ConditionalAdvancementPanel({
@@ -725,11 +885,22 @@ export function WorldCupMatchesPageClient({
   conditionalAdvancement: MatchConditionalAdvancementMap;
 }) {
   const [probabilityMode, setProbabilityMode] = React.useState<"percent" | "decimal">("percent");
+  const [selectedTimeZone, setSelectedTimeZone] = React.useState(resolveInitialOffsetValue);
   const [query, setQuery] = React.useState("");
   const [expandedMatches, setExpandedMatches] = React.useState<Record<string, boolean>>({});
+  React.useEffect(() => {
+    const browserOffsetValue = resolveBrowserOffsetValue();
+    if (browserOffsetValue) {
+      setSelectedTimeZone(browserOffsetValue);
+    }
+  }, []);
   const completedById = React.useMemo(
     () => new Map(completedMatches.map((match) => [String(match.matchId), match])),
     [completedMatches]
+  );
+  const matchesById = React.useMemo(
+    () => new Map(matches.map((match) => [String(match.id), match])),
+    [matches]
   );
   const ratingsByTeam = React.useMemo(
     () =>
@@ -773,39 +944,66 @@ export function WorldCupMatchesPageClient({
     });
   }, [completedMatches, query]);
 
-  const grouped = React.useMemo(() => {
-    return filteredUpcomingMatches.reduce<Record<string, WorldCupMatch[]>>((acc, match) => {
-      acc[match.date] = acc[match.date] ?? [];
-      acc[match.date].push(match);
-      return acc;
-    }, {});
-  }, [filteredUpcomingMatches]);
+  const timeZoneOptions = React.useMemo(() => {
+    return OFFSET_OPTIONS;
+  }, [selectedTimeZone]);
 
-  const dates = React.useMemo(
-    () => Object.keys(grouped).sort((a, b) => a.localeCompare(b)),
-    [grouped]
+  const upcomingSections = React.useMemo(
+    () => {
+      const grouped = new Map<string, { label: string; matches: WorldCupMatch[] }>();
+      for (const match of filteredUpcomingMatches) {
+        const dateKey = match.kickoffUtc
+          ? formatLocalDateKey(match.kickoffUtc, selectedTimeZone) ?? match.date
+          : match.date;
+        if (!grouped.has(dateKey)) {
+          grouped.set(dateKey, { label: formatDateHeading(dateKey), matches: [] });
+        }
+        grouped.get(dateKey)?.matches.push(match);
+      }
+      return Array.from(grouped.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([key, value]) => ({ key, ...value }));
+    },
+    [filteredUpcomingMatches, selectedTimeZone]
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex w-full items-center gap-3">
+      <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search teams"
           className="min-w-0 w-full max-w-[25rem] flex-1 rounded-md bg-white px-3 py-1.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 md:w-64"
         />
-        <div className="ml-auto flex w-40 shrink-0 items-center gap-2">
-          <select
-            value={probabilityMode}
-            onChange={(event) =>
-              setProbabilityMode(event.target.value as "percent" | "decimal")
-            }
-            className="w-full rounded-md bg-white px-2.5 py-1.5 text-sm text-slate-700 ring-1 ring-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
-          >
-            <option value="percent">% Chance</option>
-            <option value="decimal">Decimal Odds</option>
-          </select>
+        <div className="flex w-full flex-col gap-3 sm:flex-row lg:ml-auto lg:w-auto">
+          <div className="w-full sm:w-52 lg:w-56">
+            <select
+              value={selectedTimeZone}
+              onChange={(event) => setSelectedTimeZone(event.target.value)}
+              aria-label="Timezone"
+              className="w-full rounded-md bg-white px-2.5 py-1.5 text-sm text-slate-700 ring-1 ring-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+            >
+              {timeZoneOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="w-full sm:w-40">
+            <select
+              value={probabilityMode}
+              onChange={(event) =>
+                setProbabilityMode(event.target.value as "percent" | "decimal")
+              }
+              aria-label="Probability display mode"
+              className="w-full rounded-md bg-white px-2.5 py-1.5 text-sm text-slate-700 ring-1 ring-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+            >
+              <option value="percent">% Chance</option>
+              <option value="decimal">Decimal Odds</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -813,15 +1011,15 @@ export function WorldCupMatchesPageClient({
         <div className="text-2xl font-semibold text-ebony md:text-3xl">
           Upcoming matches
         </div>
-        {dates.length === 0 ? (
+        {upcomingSections.length === 0 ? (
           <div className="text-sm text-slate-500">No upcoming matches.</div>
-        ) : dates.map((date) => (
-          <section key={date} className="space-y-3">
+        ) : upcomingSections.map((section) => (
+          <section key={section.key} className="space-y-3">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {formatDateHeading(date)}
+              {section.label}
             </h2>
             <div className="grid items-start gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {grouped[date].map((match) => {
+              {section.matches.map((match) => {
                 const isQualifier = match.id.startsWith("Q-");
                 const locationWidth = isQualifier ? "w-[45%]" : "w-[60%]";
                 const stageWidth = isQualifier ? "w-[45%]" : "w-[40%]";
@@ -831,6 +1029,9 @@ export function WorldCupMatchesPageClient({
                 const awayPlaceholder = isPlaceholderLabel(match.away);
                 const displayHome = homePlaceholder ? "TBD" : match.home;
                 const displayAway = awayPlaceholder ? "TBD" : match.away;
+                const kickoffLabel =
+                  formatMatchDateTime(match.kickoffUtc, selectedTimeZone) ??
+                  formatDateHeading(match.date);
                 const ninetyValues = resolveMatchProbabilities({
                   probabilities: winProbabilities,
                   homeTeam: match.home,
@@ -1067,6 +1268,7 @@ export function WorldCupMatchesPageClient({
                             )}
                           </span>
                         </div>
+                        <div className="text-[11px] text-slate-500">{kickoffLabel}</div>
                       </div>
                       <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 min-[370px]:grid-cols-2">
                         <TeamRatingsPanel team={match.home} ratings={homeRatings} />
@@ -1281,6 +1483,10 @@ export function WorldCupMatchesPageClient({
         ) : (
           <div className="grid items-start gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredCompletedMatches.map((match) => {
+              const scheduledMatch = matchesById.get(String(match.matchId));
+              const kickoffLabel =
+                formatMatchDateTime(scheduledMatch?.kickoffUtc, selectedTimeZone) ??
+                formatDateHeading(match.date);
               const margin = match.homeScore - match.awayScore;
               const homeWon = margin > 0 || match.winner === match.homeTeam;
               const awayWon = margin < 0 || match.winner === match.awayTeam;
@@ -1373,42 +1579,45 @@ export function WorldCupMatchesPageClient({
               return (
                 <div key={`past-${match.matchId}`} className="mb-3 min-w-0">
                   <div className="relative rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">
-                      <span className={`flex items-center gap-2 min-w-0 ${awayWon ? "opacity-40" : "opacity-100"}`}>
-                        <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
-                          <Image
-                            src={`/flags/${match.homeTeam.replace(/ /g, "_")}.png`}
-                            alt={`${match.homeTeam} flag`}
-                            fill
-                            className="object-cover"
-                            sizes="24px"
-                          />
+                    <div className="space-y-1">
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">
+                        <span className={`flex items-center gap-2 min-w-0 ${awayWon ? "opacity-40" : "opacity-100"}`}>
+                          <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+                            <Image
+                              src={`/flags/${match.homeTeam.replace(/ /g, "_")}.png`}
+                              alt={`${match.homeTeam} flag`}
+                              fill
+                              className="object-cover"
+                              sizes="24px"
+                            />
+                          </span>
+                          <span
+                            className={`whitespace-normal break-words ${homeWon ? "font-bold text-slate-900" : isDraw ? "text-slate-900" : ""}`}
+                          >
+                            {match.homeTeam}
+                          </span>
                         </span>
-                        <span
-                          className={`whitespace-normal break-words ${homeWon ? "font-bold text-slate-900" : isDraw ? "text-slate-900" : ""}`}
-                        >
-                          {match.homeTeam}
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {match.homeScore}-{match.awayScore}
                         </span>
-                      </span>
-                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {match.homeScore}-{match.awayScore}
-                      </span>
-                      <span className={`flex items-center gap-2 min-w-0 justify-end text-right ${homeWon ? "opacity-40" : "opacity-100"}`}>
-                        <span
-                          className={`whitespace-normal break-words ${awayWon ? "font-bold text-slate-900" : isDraw ? "text-slate-900" : ""}`}
-                        >
-                          {match.awayTeam}
+                        <span className={`flex items-center gap-2 min-w-0 justify-end text-right ${homeWon ? "opacity-40" : "opacity-100"}`}>
+                          <span
+                            className={`whitespace-normal break-words ${awayWon ? "font-bold text-slate-900" : isDraw ? "text-slate-900" : ""}`}
+                          >
+                            {match.awayTeam}
+                          </span>
+                          <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+                            <Image
+                              src={`/flags/${match.awayTeam.replace(/ /g, "_")}.png`}
+                              alt={`${match.awayTeam} flag`}
+                              fill
+                              className="object-cover"
+                              sizes="24px"
+                            />
+                          </span>
                         </span>
-                        <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
-                          <Image
-                            src={`/flags/${match.awayTeam.replace(/ /g, "_")}.png`}
-                            alt={`${match.awayTeam} flag`}
-                            fill
-                            className="object-cover"
-                            sizes="24px"
-                          />
-                        </span>
-                      </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500">{kickoffLabel}</div>
                     </div>
                     <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 min-[370px]:grid-cols-2">
                       <TeamRatingsPanel team={match.homeTeam} ratings={homeRatings} />

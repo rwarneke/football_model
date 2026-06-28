@@ -42,6 +42,76 @@ def calc_loss(res, friendly_loss_weight=FRIENDLY_LOSS_WEIGHT):
     )
 
 
+def round_sig_series(series: pd.Series, sig: int = 7) -> pd.Series:
+    def _round_value(value):
+        if pd.isna(value):
+            return value
+        value = float(value)
+        if value == 0.0 or not np.isfinite(value):
+            return value
+        return float(f"{value:.{sig}g}")
+
+    return series.map(_round_value)
+
+
+def enrich_match_predictions(df: pd.DataFrame) -> pd.DataFrame:
+    enriched = df.copy()
+
+    a = 6.0
+    b = 2.1
+    c = 1.0
+    cdf_func = lambda x: 1.0 - gamma.cdf(c - x, a=a, scale=b / a)
+    rating_func = lambda x: 100 * cdf_func(x)
+
+    for side in ("home", "away"):
+        for phase in ("pre", "post"):
+            mu_attack = enriched[f"{side}_mu_attack_{phase}"]
+            mu_defense = enriched[f"{side}_mu_defense_{phase}"]
+            sigma_attack = enriched[f"{side}_sigma_attack_{phase}"]
+            sigma_defense = enriched[f"{side}_sigma_defense_{phase}"]
+            sigma_ad = enriched[f"{side}_sigma_ad_{phase}"]
+
+            quality = mu_attack + mu_defense
+            quality_var = sigma_attack + sigma_defense + 2 * sigma_ad
+            tilt = mu_attack - mu_defense
+
+            enriched[f"{side}_quality_{phase}"] = quality
+            enriched[f"{side}_quality_std_{phase}"] = np.sqrt(np.maximum(quality_var, 0.0))
+            enriched[f"{side}_rating_attack_{phase}"] = rating_func(mu_attack)
+            enriched[f"{side}_rating_defense_{phase}"] = rating_func(mu_defense)
+            enriched[f"{side}_rating_{phase}"] = rating_func(quality / 2.0)
+            enriched[f"{side}_tilt_{phase}"] = tilt
+            enriched[f"{side}_display_tilt_{phase}"] = 10 * np.tanh(tilt / 0.5)
+
+    enriched["predicted_result"] = np.select(
+        [
+            (enriched["p_home"] >= enriched["p_draw"])
+            & (enriched["p_home"] >= enriched["p_away"]),
+            (enriched["p_draw"] >= enriched["p_home"])
+            & (enriched["p_draw"] >= enriched["p_away"]),
+        ],
+        ["home_win", "draw"],
+        default="away_win",
+    )
+    enriched["actual_result"] = np.select(
+        [
+            enriched["home_score"] > enriched["away_score"],
+            enriched["home_score"] < enriched["away_score"],
+        ],
+        ["home_win", "away_win"],
+        default="draw",
+    )
+    enriched["prediction_correct_result"] = (
+        enriched["predicted_result"] == enriched["actual_result"]
+    )
+
+    float_cols = enriched.select_dtypes(include=[np.floating]).columns
+    for col in float_cols:
+        enriched[col] = round_sig_series(enriched[col])
+
+    return enriched
+
+
 def main():
     results = pd.read_csv(
         "match_results/results_clean.csv",
@@ -98,7 +168,10 @@ def main():
         else:
             print(message, end="\r", flush=True)
 
-    model.fit(results.iloc[::], progress_cb=_fit_progress, progress_every=progress_every)
+    fit_results = model.fit(
+        results.iloc[::], progress_cb=_fit_progress, progress_every=progress_every
+    )
+    fit_results = enrich_match_predictions(fit_results)
 
     df_state = model.export_state_df()
     df_mu = model.export_mu_df()
@@ -167,6 +240,7 @@ def main():
         ]
 
     os.makedirs("model_output", exist_ok=True)
+    fit_results.to_csv("model_output/historical_match_predictions.csv", index=False)
     all_ratings.to_csv("model_output/ratings_current.csv")
     df_history.to_csv("model_output/ratings_history.csv")
 

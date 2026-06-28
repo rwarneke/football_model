@@ -4658,8 +4658,8 @@ function WorldCupPredictorContent({ data }: { data: WorldCupPredictorData }) {
     if (!showingCurrent) {
       return {} as Record<string, string>;
     }
-    return data.r32SlotLocks ?? {};
-  }, [data.r32SlotLocks, showingCurrent]);
+    return {} as Record<string, string>;
+  }, [showingCurrent]);
 
   React.useEffect(() => {
     if (!showPretournament || pretournamentData) {

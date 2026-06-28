@@ -5,6 +5,7 @@ import { loadCompletedWorldCupMatches } from "@/lib/world-cup-results";
 export type WorldCupMatch = {
   id: string;
   date: string;
+  kickoffUtc?: string | null;
   stage: string;
   home: string;
   away: string;
@@ -21,8 +22,8 @@ const GROUPS_FILE = `${REFERENCE_DIR}/world_cup_2026_groups.csv`;
 const GROUP_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_group_matches.csv`;
 const KNOCKOUT_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_knockout_matches.csv`;
 const QUALIFIERS_FILE = `${REFERENCE_DIR}/world_cup_2026_remaining_qualifiers.csv`;
+const KICKOFF_UTC_FILE = `${REFERENCE_DIR}/world_cup_2026_match_kickoff_utc.json`;
 const RESULTS_ORDER_FILE = "/model_output/results_wc2026.csv";
-const R32_SLOT_LOCKS_FILE = "/model_output/r32_slot_locks.json";
 
 type GroupDefinition = {
   id: string;
@@ -489,8 +490,6 @@ function resolveGroupPlaceholder(
 function resolveKnockoutLabel(
   label: string,
   opponentLabel: string,
-  matchId: string,
-  slotSide: "home" | "away",
   stage: string,
   groupRankings: Record<string, string[]>,
   thirdPlaceByGroup: Record<string, string>,
@@ -500,16 +499,8 @@ function resolveKnockoutLabel(
   groupCompletion: Record<string, boolean>,
   allowThirdPlaceResolve: boolean,
   qualifiedThirdGroups: Set<string>,
-  teamGroups: Record<string, string>,
-  r32SlotLocks: Record<string, string>
+  teamGroups: Record<string, string>
 ) {
-  if (stage === "Round of 32") {
-    const lockedTeam = r32SlotLocks[`${matchId}:${slotSide}`];
-    const lockedGroup = lockedTeam ? teamGroups[lockedTeam] : undefined;
-    if (lockedTeam && lockedGroup && groupCompletion[lockedGroup]) {
-      return lockedTeam;
-    }
-  }
   if (label.startsWith("Winner Match ")) {
     const priorId = label.replace("Winner Match ", "").trim();
     return knockoutWinners.get(priorId) ?? label;
@@ -574,14 +565,14 @@ function formatQualifierStage(stage: string, path: string) {
 }
 
 export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
-  const [groupDefinitionsContents, groupContents, knockoutContents, qualifierContents, worldCupOrderMap, completedMatches, r32SlotLocks] = await Promise.all([
+  const [groupDefinitionsContents, groupContents, knockoutContents, qualifierContents, worldCupOrderMap, completedMatches, kickoffUtcById] = await Promise.all([
     readPublicText(GROUPS_FILE),
     readPublicText(GROUP_MATCHES_FILE),
     readPublicText(KNOCKOUT_MATCHES_FILE),
     readPublicText(QUALIFIERS_FILE),
     loadWorldCupOrderMap(),
     loadCompletedWorldCupMatches(),
-    readPublicJson<Record<string, string>>(R32_SLOT_LOCKS_FILE, {}),
+    readPublicJson<Record<string, string>>(KICKOFF_UTC_FILE, {}),
   ]);
 
   const groupDefinitionsRows = parseCsv(groupDefinitionsContents).rows;
@@ -612,6 +603,7 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
   const groupMatches: WorldCupMatch[] = groupRows.map((row) => ({
     id: row.match_id ?? "",
     date: normalizeDate(row.date ?? ""),
+    kickoffUtc: kickoffUtcById[row.match_id ?? ""] ?? null,
     stage: `Group ${row.group ?? ""}`.trim(),
     home: row.home_team ?? "",
     away: row.away_team ?? "",
@@ -625,6 +617,7 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
   const qualifierMatches: WorldCupMatch[] = qualifierRows.map((row, index) => ({
     id: `Q-${index + 1}`,
     date: normalizeDate(row.date ?? ""),
+    kickoffUtc: null,
     stage: formatQualifierStage(row.stage ?? "", row.path ?? ""),
     home: qualifierTeamLabel(row.home_team ?? "", row.home_source ?? "", row.path ?? ""),
     away: qualifierTeamLabel(row.away_team ?? "", row.away_source ?? "", row.path ?? ""),
@@ -685,6 +678,7 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
     .map((row) => ({
       id: row.match_id ?? "",
       date: normalizeDate(row.date ?? ""),
+      kickoffUtc: kickoffUtcById[row.match_id ?? ""] ?? null,
       stage: row.stage ?? "",
       home: row.home ?? "",
       away: row.away ?? "",
@@ -699,8 +693,6 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
       const home = resolveKnockoutLabel(
         match.home,
         match.away,
-        match.id,
-        "home",
         match.stage,
         groupRankings,
         thirdPlaceByGroup,
@@ -710,14 +702,11 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
         groupCompletion,
         allGroupMatchesComplete,
         qualifiedThirdGroups,
-        teamGroups,
-        r32SlotLocks
+        teamGroups
       );
       const away = resolveKnockoutLabel(
         match.away,
         match.home,
-        match.id,
-        "away",
         match.stage,
         groupRankings,
         thirdPlaceByGroup,
@@ -727,8 +716,7 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
         groupCompletion,
         allGroupMatchesComplete,
         qualifiedThirdGroups,
-        teamGroups,
-        r32SlotLocks
+        teamGroups
       );
       const completed = completedById.get(match.id);
       const winner = completed?.winner ?? null;
@@ -756,6 +744,10 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
       const dateCompare = a.date.localeCompare(b.date);
       if (dateCompare !== 0) {
         return dateCompare;
+      }
+      const kickoffCompare = (a.kickoffUtc ?? "").localeCompare(b.kickoffUtc ?? "");
+      if (kickoffCompare !== 0) {
+        return kickoffCompare;
       }
       return a.id.localeCompare(b.id);
     });
