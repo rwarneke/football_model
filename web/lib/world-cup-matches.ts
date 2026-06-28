@@ -9,6 +9,8 @@ export type WorldCupMatch = {
   stage: string;
   home: string;
   away: string;
+  homeOptions?: string[] | null;
+  awayOptions?: string[] | null;
   stadium: string;
   city: string;
   country: string;
@@ -24,6 +26,9 @@ const KNOCKOUT_MATCHES_FILE = `${REFERENCE_DIR}/world_cup_2026_knockout_matches.
 const QUALIFIERS_FILE = `${REFERENCE_DIR}/world_cup_2026_remaining_qualifiers.csv`;
 const KICKOFF_UTC_FILE = `${REFERENCE_DIR}/world_cup_2026_match_kickoff_utc.json`;
 const RESULTS_ORDER_FILE = "/model_output/results_wc2026.csv";
+const ROOT_MODEL_OUTPUT_DIR = path.join(process.cwd(), "..", "model_output");
+const SIMULATION_RUNS_FILE = path.join(ROOT_MODEL_OUTPUT_DIR, "simulation_runs.jsonl");
+const SIMULATION_RUNS_META_FILE = path.join(ROOT_MODEL_OUTPUT_DIR, "simulation_runs_meta.json");
 
 type GroupDefinition = {
   id: string;
@@ -48,6 +53,10 @@ async function readPublicText(filePath: string) {
   const normalized = filePath.replace(/^\/+/, "");
   const fullPath = path.join(PUBLIC_DIR, normalized);
   return readFile(fullPath, "utf8");
+}
+
+async function readRootText(filePath: string) {
+  return readFile(filePath, "utf8");
 }
 
 async function readPublicJson<T>(filePath: string, fallback: T): Promise<T> {
@@ -564,6 +573,129 @@ function formatQualifierStage(stage: string, path: string) {
   return `${trimmedStage} ${trimmedPath}`;
 }
 
+async function loadKnockoutSlotOptions(
+  unresolvedMatchIds: Set<string>,
+  knockoutRows: Record<string, string>[]
+) {
+  if (unresolvedMatchIds.size === 0) {
+    return new Map<string, { home: string[]; away: string[] }>();
+  }
+  try {
+    const [metaContents, runsContents] = await Promise.all([
+      readRootText(SIMULATION_RUNS_META_FILE),
+      readRootText(SIMULATION_RUNS_FILE),
+    ]);
+    const meta = JSON.parse(metaContents) as { teams?: string[]; stages?: string[] };
+    const teams = meta.teams ?? [];
+    const stages = meta.stages ?? [];
+    const knockoutStages = new Set([
+      "Round of 32",
+      "Round of 16",
+      "Quarterfinal",
+      "Semifinal",
+      "Third place",
+      "Final",
+    ]);
+    const stageMatchIds = new Map<string, string[]>();
+    for (const row of knockoutRows) {
+      const stage = String(row.stage ?? "").trim();
+      const matchId = String(row.match_id ?? "").trim();
+      if (!stage || !matchId) continue;
+      if (!stageMatchIds.has(stage)) {
+        stageMatchIds.set(stage, []);
+      }
+      stageMatchIds.get(stage)?.push(matchId);
+    }
+    for (const ids of stageMatchIds.values()) {
+      ids.sort((a, b) => Number(a) - Number(b));
+    }
+    const slotSets = new Map<string, { home: Set<string>; away: Set<string> }>();
+    for (const matchId of unresolvedMatchIds) {
+      slotSets.set(matchId, { home: new Set<string>(), away: new Set<string>() });
+    }
+    for (const line of runsContents.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const record = JSON.parse(trimmed) as { m?: Array<Array<number>> };
+      const stageSeenCounts = new Map<string, number>();
+      for (const match of record.m ?? []) {
+        const stageName = stages[match[0] ?? -1] ?? "";
+        if (!knockoutStages.has(stageName)) continue;
+        const stageIndex = stageSeenCounts.get(stageName) ?? 0;
+        stageSeenCounts.set(stageName, stageIndex + 1);
+        const matchId = stageMatchIds.get(stageName)?.[stageIndex];
+        if (!matchId) continue;
+        const target = slotSets.get(matchId);
+        if (!target) continue;
+        const homeTeam = teams[match[2] ?? -1];
+        const awayTeam = teams[match[3] ?? -1];
+        if (homeTeam) target.home.add(homeTeam);
+        if (awayTeam) target.away.add(awayTeam);
+      }
+    }
+    const slotOptions = new Map<string, { home: string[]; away: string[] }>();
+    for (const [matchId, slotSet] of slotSets.entries()) {
+      slotOptions.set(matchId, {
+        home: [...slotSet.home].sort(),
+        away: [...slotSet.away].sort(),
+      });
+    }
+    return slotOptions;
+  } catch {
+    return new Map<string, { home: string[]; away: string[] }>();
+  }
+}
+
+function isConcreteTeamLabel(label: string) {
+  return !isPlaceholderLabel(label);
+}
+
+function uniqueSorted(values: Iterable<string>) {
+  return [...new Set(values)].sort();
+}
+
+function deriveOptionsFromReferenceLabel(
+  label: string,
+  matchesById: Map<string, WorldCupMatch>,
+  seen = new Set<string>()
+): string[] | null {
+  const trimmed = label.trim();
+  const winnerMatch = trimmed.match(/^Winner Match (.+)$/i);
+  const loserMatch = trimmed.match(/^Loser Match (.+)$/i);
+  const referenceId = winnerMatch?.[1]?.trim() ?? loserMatch?.[1]?.trim() ?? null;
+  if (!referenceId || seen.has(referenceId)) {
+    return null;
+  }
+  const referencedMatch = matchesById.get(referenceId);
+  if (!referencedMatch) {
+    return null;
+  }
+  const nextSeen = new Set(seen);
+  nextSeen.add(referenceId);
+  const candidates = new Set<string>();
+  const referencedLabels = [
+    referencedMatch.homeOptions?.length
+      ? referencedMatch.homeOptions
+      : isConcreteTeamLabel(referencedMatch.home)
+        ? [referencedMatch.home]
+        : deriveOptionsFromReferenceLabel(referencedMatch.home, matchesById, nextSeen) ?? [],
+    referencedMatch.awayOptions?.length
+      ? referencedMatch.awayOptions
+      : isConcreteTeamLabel(referencedMatch.away)
+        ? [referencedMatch.away]
+        : deriveOptionsFromReferenceLabel(referencedMatch.away, matchesById, nextSeen) ?? [],
+  ];
+  for (const optionSet of referencedLabels) {
+    for (const team of optionSet) {
+      if (team) {
+        candidates.add(team);
+      }
+    }
+  }
+  const options = uniqueSorted(candidates);
+  return options.length >= 2 ? options : null;
+}
+
 export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
   const [groupDefinitionsContents, groupContents, knockoutContents, qualifierContents, worldCupOrderMap, completedMatches, kickoffUtcById] = await Promise.all([
     readPublicText(GROUPS_FILE),
@@ -674,7 +806,7 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
   const allGroupMatchesComplete = groupMatches.every((match) => completedById.has(String(match.id)));
   const knockoutWinners = new Map<string, string>();
   const knockoutLosers = new Map<string, string>();
-  const resolvedKnockoutMatches: WorldCupMatch[] = knockoutRows
+  const prelimResolvedKnockoutMatches: WorldCupMatch[] = knockoutRows
     .map((row) => ({
       id: row.match_id ?? "",
       date: normalizeDate(row.date ?? ""),
@@ -726,6 +858,45 @@ export async function loadWorldCupMatches(): Promise<WorldCupMatch[]> {
       }
       return { ...match, home, away };
     });
+  const unresolvedKnockoutIds = new Set(
+    prelimResolvedKnockoutMatches
+      .filter((match) => isPlaceholderLabel(match.home) || isPlaceholderLabel(match.away))
+      .map((match) => match.id)
+  );
+  const knockoutSlotOptions = await loadKnockoutSlotOptions(unresolvedKnockoutIds, knockoutRows);
+  const prelimMatchesById = new Map(
+    prelimResolvedKnockoutMatches.map((match) => [match.id, match] as const)
+  );
+  const resolvedKnockoutMatches: WorldCupMatch[] = prelimResolvedKnockoutMatches.map((match) => {
+    const simulatedOptions = knockoutSlotOptions.get(match.id);
+    const referencedHomeOptions = isPlaceholderLabel(match.home)
+      ? deriveOptionsFromReferenceLabel(match.home, prelimMatchesById)
+      : null;
+    const referencedAwayOptions = isPlaceholderLabel(match.away)
+      ? deriveOptionsFromReferenceLabel(match.away, prelimMatchesById)
+      : null;
+    const homeCandidates = referencedHomeOptions ?? simulatedOptions?.home ?? null;
+    const awayCandidates = referencedAwayOptions ?? simulatedOptions?.away ?? null;
+    const homeOptions =
+      isPlaceholderLabel(match.home) &&
+      homeCandidates &&
+      homeCandidates.length >= 2 &&
+      homeCandidates.length <= 4
+        ? homeCandidates
+        : null;
+    const awayOptions =
+      isPlaceholderLabel(match.away) &&
+      awayCandidates &&
+      awayCandidates.length >= 2 &&
+      awayCandidates.length <= 4
+        ? awayCandidates
+        : null;
+    return {
+      ...match,
+      homeOptions,
+      awayOptions,
+    };
+  });
 
   return [...qualifierMatches, ...groupMatches, ...resolvedKnockoutMatches]
     .filter((match) => match.date)

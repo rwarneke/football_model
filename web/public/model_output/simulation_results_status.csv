@@ -1,11 +1,11 @@
 team,Qualify,Win Group,Reach R32,Reach R16,Reach QF,Reach SF,Reach Final,Champion
 Spain,G,G,G,U,U,U,U,U
 Argentina,G,G,G,U,U,U,U,U
-England,G,U,G,U,U,U,U,U
+England,G,G,G,U,U,U,U,U
 Brazil,G,G,G,U,U,U,U,U
-Portugal,G,U,G,U,U,U,U,U
+Portugal,G,I,G,U,U,U,U,U
 France,G,G,G,U,U,U,U,U
-Colombia,G,U,G,U,U,U,U,U
+Colombia,G,G,G,U,U,U,U,U
 Netherlands,G,G,G,U,U,U,U,U
 Germany,G,G,G,U,U,U,U,U
 Belgium,G,G,G,U,U,U,U,U
@@ -19,21 +19,21 @@ Japan,G,I,G,U,U,U,U,U
 Italy,U,U,U,U,U,U,U,U
 Senegal,G,I,G,U,U,U,U,U
 Morocco,G,I,G,U,U,U,U,U
-Austria,G,I,U,U,U,U,U,U
+Austria,G,I,G,U,U,U,U,U
 Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,U,U,U,U,U
 Paraguay,G,I,G,U,U,U,U,U
 Canada,G,I,G,U,U,U,U,U
 Australia,G,I,G,U,U,U,U,U
 Ukraine,U,U,U,U,U,U,U,U
-South Korea,G,I,U,U,U,U,U,U
+South Korea,G,I,I,I,I,I,I,I
 USA,G,G,G,U,U,U,U,U
-Scotland,G,I,U,U,U,U,U,U
+Scotland,G,I,I,I,I,I,I,I
 Sweden,G,I,G,U,U,U,U,U
-Iran,G,I,U,U,U,U,U,U
+Iran,G,I,I,I,I,I,I,I
 Wales,U,U,U,U,U,U,U,U
 Poland,U,U,U,U,U,U,U,U
-Algeria,G,I,U,U,U,U,U,U
+Algeria,G,I,G,U,U,U,U,U
 Czechia,G,I,I,I,I,I,I,I
 Tunisia,G,I,I,I,I,I,I,I
 Ivory Coast,G,I,G,U,U,U,U,U
@@ -41,8 +41,8 @@ Egypt,G,I,G,U,U,U,U,U
 Romania,U,U,U,U,U,U,U,U
 Slovakia,U,U,U,U,U,U,U,U
 Ireland,U,U,U,U,U,U,U,U
-DR Congo,G,I,U,U,U,U,U,U
-Uzbekistan,G,I,U,U,U,U,U,U
+DR Congo,G,I,G,U,U,U,U,U
+Uzbekistan,G,I,I,I,I,I,I,I
 Panama,G,I,I,I,I,I,I,I
 Kosovo,U,U,U,U,U,U,U,U
 Albania,U,U,U,U,U,U,U,U

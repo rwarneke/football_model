@@ -42,6 +42,42 @@ const PROBABILITY_HIGHLIGHT_RGB = "147, 197, 253";
 const PROBABILITY_HIGHLIGHT_MAX_ALPHA = 0.98;
 const DEFAULT_TIME_ZONE = "Australia/Sydney";
 const DEFAULT_TIME_ZONE_OFFSET_VALUE = "offset:+10:00";
+const PREFERRED_REPRESENTATIVE_TIME_ZONES = [
+  "Pacific/Pago_Pago",
+  "Pacific/Honolulu",
+  "America/Anchorage",
+  "America/Los_Angeles",
+  "America/Denver",
+  "America/Chicago",
+  "America/New_York",
+  "America/Halifax",
+  "America/St_Johns",
+  "America/Sao_Paulo",
+  "Atlantic/South_Georgia",
+  "Atlantic/Azores",
+  "UTC",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Athens",
+  "Europe/Moscow",
+  "Asia/Tehran",
+  "Asia/Dubai",
+  "Asia/Kabul",
+  "Asia/Karachi",
+  "Asia/Kolkata",
+  "Asia/Dhaka",
+  "Asia/Bangkok",
+  "Asia/Singapore",
+  "Asia/Shanghai",
+  "Asia/Tokyo",
+  "Australia/Darwin",
+  "Australia/Sydney",
+  "Pacific/Noumea",
+  "Pacific/Auckland",
+  "Pacific/Chatham",
+  "Pacific/Apia",
+  "Pacific/Kiritimati",
+] as const;
 
 function normalizeCountry(value: string | null | undefined) {
   return value ? value.trim().toLowerCase() : "";
@@ -90,6 +126,15 @@ function formatOffsetLabel(offsetMinutes: number) {
   return `UTC${sign}${hours}:${String(minutes).padStart(2, "0")}`;
 }
 
+function formatRepresentativeCity(timeZone: string) {
+  if (timeZone === "UTC") {
+    return "UTC";
+  }
+  const parts = timeZone.split("/");
+  const mostSpecific = parts[parts.length - 1] ?? timeZone;
+  return mostSpecific.replace(/_/g, " ");
+}
+
 function offsetValueFromMinutes(offsetMinutes: number) {
   const sign = offsetMinutes < 0 ? "-" : "+";
   const absoluteMinutes = Math.abs(offsetMinutes);
@@ -130,18 +175,30 @@ function buildOffsetOptions() {
     typeof supportedValuesOf === "function"
       ? supportedValuesOf("timeZone")
       : [DEFAULT_TIME_ZONE, "UTC"];
-  const uniqueOffsets = new Set<number>();
+  const offsetToRepresentativeCity = new Map<number, string>();
+  for (const timeZone of PREFERRED_REPRESENTATIVE_TIME_ZONES) {
+    const offsetMinutes = getTimeZoneOffsetMinutes(timeZone);
+    if (offsetMinutes === null) {
+      continue;
+    }
+    if (!offsetToRepresentativeCity.has(offsetMinutes)) {
+      offsetToRepresentativeCity.set(offsetMinutes, formatRepresentativeCity(timeZone));
+    }
+  }
   for (const timeZone of timeZones) {
     const offsetMinutes = getTimeZoneOffsetMinutes(timeZone);
     if (offsetMinutes !== null) {
-      uniqueOffsets.add(offsetMinutes);
+      const representativeCity = formatRepresentativeCity(timeZone);
+      if (!offsetToRepresentativeCity.has(offsetMinutes)) {
+        offsetToRepresentativeCity.set(offsetMinutes, representativeCity);
+      }
     }
   }
-  return [...uniqueOffsets]
-    .sort((a, b) => a - b)
-    .map((offsetMinutes) => ({
+  return [...offsetToRepresentativeCity.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([offsetMinutes, representativeCity]) => ({
       value: offsetValueFromMinutes(offsetMinutes),
-      label: formatOffsetLabel(offsetMinutes),
+      label: `${formatOffsetLabel(offsetMinutes)} (${representativeCity})`,
     }));
 }
 
@@ -486,6 +543,38 @@ function buildMarginRow(matrix: number[][]) {
   ];
 }
 
+function buildExpectedGoals(matrix: number[][]) {
+  const normalized = normalizeScoreMatrix(matrix);
+  let home = 0;
+  let away = 0;
+  for (let homeGoals = 0; homeGoals < normalized.length; homeGoals += 1) {
+    const row = normalized[homeGoals] ?? [];
+    for (let awayGoals = 0; awayGoals < row.length; awayGoals += 1) {
+      const value = Number(row[awayGoals] ?? 0);
+      home += homeGoals * value;
+      away += awayGoals * value;
+    }
+  }
+  return { home, away };
+}
+
+function buildTotalGoalsRow(matrix: number[][]) {
+  const normalized = normalizeScoreMatrix(matrix);
+  const buckets = Array(7).fill(0);
+  for (let homeGoals = 0; homeGoals < normalized.length; homeGoals += 1) {
+    const row = normalized[homeGoals] ?? [];
+    for (let awayGoals = 0; awayGoals < row.length; awayGoals += 1) {
+      const value = Number(row[awayGoals] ?? 0);
+      const totalGoals = homeGoals + awayGoals;
+      buckets[Math.min(totalGoals, 6)] += value;
+    }
+  }
+  return buckets.map((value, index) => ({
+    label: index === 6 ? "6+" : String(index),
+    value,
+  }));
+}
+
 function scoreMatrixHighlight(value: number) {
   if (!Number.isFinite(value)) {
     return undefined;
@@ -504,6 +593,37 @@ function scoreMatrixHighlight(value: number) {
     alpha = PROBABILITY_HIGHLIGHT_MAX_ALPHA;
   }
   return { backgroundColor: `rgba(${PROBABILITY_HIGHLIGHT_RGB}, ${alpha})` };
+}
+
+function TeamOptionFlags({
+  teams,
+  align = "left",
+}: {
+  teams: string[];
+  align?: "left" | "right";
+}) {
+  return (
+    <span
+      className={`flex min-w-0 items-center gap-1 ${align === "right" ? "justify-end" : ""}`}
+    >
+      {teams.map((team, index) => (
+        <React.Fragment key={team}>
+          <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
+            <Image
+              src={`/flags/${team.replace(/ /g, "_")}.png`}
+              alt={`${team} flag`}
+              fill
+              className="object-cover"
+              sizes="24px"
+            />
+          </span>
+          {index < teams.length - 1 ? (
+            <span className="shrink-0 text-xs font-semibold text-slate-400">/</span>
+          ) : null}
+        </React.Fragment>
+      ))}
+    </span>
+  );
 }
 
 type TeamRatingsSummary = {
@@ -1027,6 +1147,14 @@ export function WorldCupMatchesPageClient({
                 const requiresResult = !allowDraw;
                 const homePlaceholder = isPlaceholderLabel(match.home);
                 const awayPlaceholder = isPlaceholderLabel(match.away);
+                const homeOptionFlags =
+                  homePlaceholder && match.homeOptions && match.homeOptions.length >= 2
+                    ? match.homeOptions
+                    : null;
+                const awayOptionFlags =
+                  awayPlaceholder && match.awayOptions && match.awayOptions.length >= 2
+                    ? match.awayOptions
+                    : null;
                 const displayHome = homePlaceholder ? "TBD" : match.home;
                 const displayAway = awayPlaceholder ? "TBD" : match.away;
                 const kickoffLabel =
@@ -1216,12 +1344,16 @@ export function WorldCupMatchesPageClient({
                 });
                 const scoreGrid = scoreMatrix ? buildScoreGrid(scoreMatrix) : null;
                 const marginRow = scoreMatrix ? buildMarginRow(scoreMatrix) : null;
+                const expectedGoals = scoreMatrix ? buildExpectedGoals(scoreMatrix) : null;
+                const totalGoalsRow = scoreMatrix ? buildTotalGoalsRow(scoreMatrix) : null;
                 const matchKey = `upcoming-${match.id}-${match.home}-${match.away}`;
                 const expanded = Boolean(expandedMatches[matchKey]);
                 const homeRatings = ratingsByTeam.get(match.home) ?? null;
                 const awayRatings = ratingsByTeam.get(match.away) ?? null;
                 const conditional = conditionalAdvancement.get(String(match.id));
-                const hasExpandableDetails = Boolean(marginRow || scoreGrid || conditional);
+                const hasExpandableDetails = Boolean(
+                  expectedGoals || totalGoalsRow || marginRow || scoreGrid || conditional
+                );
 
                 return (
                   <div
@@ -1233,7 +1365,9 @@ export function WorldCupMatchesPageClient({
                       <div className="space-y-1">
                         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-base font-semibold text-slate-900">
                           <span className="flex items-center gap-2 min-w-0">
-                            {homePlaceholder ? (
+                            {homeOptionFlags ? (
+                              <TeamOptionFlags teams={homeOptionFlags} />
+                            ) : homePlaceholder ? (
                               <span className="flex h-4 w-6 shrink-0 items-center justify-center rounded-[1px] border border-slate-300 bg-slate-200" />
                             ) : (
                               <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
@@ -1246,14 +1380,20 @@ export function WorldCupMatchesPageClient({
                                 />
                               </span>
                             )}
-                            <span className="whitespace-normal break-words">{displayHome}</span>
+                            <span className="whitespace-normal break-words">
+                              {homeOptionFlags ? "" : displayHome}
+                            </span>
                           </span>
                           <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                             vs.
                           </span>
                           <span className="flex items-center gap-2 min-w-0 justify-end text-right">
-                            <span className="whitespace-normal break-words">{displayAway}</span>
-                            {awayPlaceholder ? (
+                            <span className="whitespace-normal break-words">
+                              {awayOptionFlags ? "" : displayAway}
+                            </span>
+                            {awayOptionFlags ? (
+                              <TeamOptionFlags teams={awayOptionFlags} align="right" />
+                            ) : awayPlaceholder ? (
                               <span className="flex h-4 w-6 shrink-0 items-center justify-center rounded-[1px] border border-slate-300 bg-slate-200" />
                             ) : (
                               <span className="relative h-4 w-6 shrink-0 overflow-hidden rounded-sm shadow-[0_0_0_1px_rgba(15,23,42,0.08)]">
@@ -1369,10 +1509,54 @@ export function WorldCupMatchesPageClient({
                                   awayTeam={displayAway}
                                 />
                               ) : null}
+                              {expectedGoals ? (
+                                <div>
+                                  <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                                    {requiresResult ? "Expected Goals (90')" : "Expected Goals"}
+                                  </div>
+                                  <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto_minmax(0,1fr)] gap-px overflow-hidden rounded-md border border-slate-200 text-[11px] text-slate-700">
+                                    <div className="bg-slate-50 px-2 py-1 text-left font-semibold text-slate-500">
+                                      {displayHome}
+                                    </div>
+                                    <div className="bg-white px-2 py-1 text-center font-mono tabular-nums">
+                                      {expectedGoals.home.toFixed(2)}
+                                    </div>
+                                    <div className="bg-white px-2 py-1 text-center font-mono tabular-nums">
+                                      {expectedGoals.away.toFixed(2)}
+                                    </div>
+                                    <div className="bg-slate-50 px-2 py-1 text-right font-semibold text-slate-500">
+                                      {displayAway}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {totalGoalsRow ? (
+                                <div>
+                                  <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                                    {requiresResult ? "Total Goals (90')" : "Total Goals"}
+                                  </div>
+                                  <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                                    {totalGoalsRow.map((cell, index) => (
+                                      <div key={`total-goals-label-${match.id}-${index}`} className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                                        {cell.label}
+                                      </div>
+                                    ))}
+                                    {totalGoalsRow.map((cell, index) => (
+                                      <div
+                                        key={`total-goals-value-${match.id}-${index}`}
+                                        className="bg-white px-1 py-1 text-center tabular-nums"
+                                        style={scoreMatrixHighlight(cell.value)}
+                                      >
+                                        {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
                               {marginRow ? (
                                 <div>
                                   <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                                    Margin
+                                    {requiresResult ? "Margin (90')" : "Margin"}
                                   </div>
                                   <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
                                     {marginRow.map((cell, index) => (
@@ -1500,6 +1684,8 @@ export function WorldCupMatchesPageClient({
               });
               const scoreGrid = matrix ? buildScoreGrid(matrix) : null;
               const marginRow = matrix ? buildMarginRow(matrix) : null;
+              const expectedGoals = matrix ? buildExpectedGoals(matrix) : null;
+              const totalGoalsRow = matrix ? buildTotalGoalsRow(matrix) : null;
               const actualMarginIndex =
                 margin >= 3 ? 0 : margin === 2 ? 1 : margin === 1 ? 2 : margin === 0 ? 3 : margin === -1 ? 4 : margin === -2 ? 5 : 6;
               const actualHomeBucket = Math.min(match.homeScore, 5);
@@ -1510,7 +1696,9 @@ export function WorldCupMatchesPageClient({
               const awayRatings = ratingsByTeam.get(match.awayTeam) ?? null;
               const conditional = conditionalAdvancement.get(String(match.matchId));
               const allowDraw = match.stage === "Group";
-              const hasExpandableDetails = Boolean(marginRow || scoreGrid || conditional);
+              const hasExpandableDetails = Boolean(
+                expectedGoals || totalGoalsRow || marginRow || scoreGrid || conditional
+              );
               const shownValues = resolveMatchProbabilities({
                 probabilities: winProbabilities,
                 homeTeam: match.homeTeam,
@@ -1673,6 +1861,50 @@ export function WorldCupMatchesPageClient({
                                 homeTeam={match.homeTeam}
                                 awayTeam={match.awayTeam}
                               />
+                            ) : null}
+                            {expectedGoals ? (
+                              <div>
+                                <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                                  Expected Goals
+                                </div>
+                                <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto_minmax(0,1fr)] gap-px overflow-hidden rounded-md border border-slate-200 text-[11px] text-slate-700">
+                                  <div className="bg-slate-50 px-2 py-1 text-left font-semibold text-slate-500">
+                                    {match.homeTeam}
+                                  </div>
+                                  <div className="bg-white px-2 py-1 text-center font-mono tabular-nums">
+                                    {expectedGoals.home.toFixed(2)}
+                                  </div>
+                                  <div className="bg-white px-2 py-1 text-center font-mono tabular-nums">
+                                    {expectedGoals.away.toFixed(2)}
+                                  </div>
+                                  <div className="bg-slate-50 px-2 py-1 text-right font-semibold text-slate-500">
+                                    {match.awayTeam}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                            {totalGoalsRow ? (
+                              <div>
+                                <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                                  Total Goals
+                                </div>
+                                <div className="mt-2 grid w-full grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 text-[10px] text-slate-600">
+                                  {totalGoalsRow.map((cell, index) => (
+                                    <div key={`past-total-goals-label-${match.matchId}-${index}`} className="bg-slate-50 px-1 py-1 text-center font-semibold text-slate-500">
+                                      {cell.label}
+                                    </div>
+                                  ))}
+                                  {totalGoalsRow.map((cell, index) => (
+                                    <div
+                                      key={`past-total-goals-value-${match.matchId}-${index}`}
+                                      className="bg-white px-1 py-1 text-center tabular-nums"
+                                      style={scoreMatrixHighlight(cell.value)}
+                                    >
+                                      {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             ) : null}
                             {marginRow ? (
                               <div>
