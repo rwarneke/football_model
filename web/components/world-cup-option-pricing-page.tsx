@@ -213,6 +213,18 @@ export function WorldCupOptionPricingPage({
         ),
       },
       {
+        id: "minimumPossibleValue",
+        header: () => wrapHeaderLabel("Min Value"),
+        accessorFn: (row) => row.minimumPossibleValue,
+        meta: { isValue: true },
+        sortingFn: (a, b, id) => Number(a.getValue(id) ?? 0) - Number(b.getValue(id) ?? 0),
+        cell: ({ row }) => (
+          <span className="text-xs xl:text-sm font-mono tabular-nums text-slate-700 whitespace-nowrap">
+            {formatMoney(row.original.minimumPossibleValue)}
+          </span>
+        ),
+      },
+      {
         id: "progressionFairValue",
         header: () => wrapHeaderLabel("Progression"),
         accessorFn: (row) => row.progressionFairValue,

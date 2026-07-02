@@ -1688,6 +1688,7 @@ export function WorldCupMatchesPageClient({
               const totalGoalsRow = matrix ? buildTotalGoalsRow(matrix) : null;
               const actualMarginIndex =
                 margin >= 3 ? 0 : margin === 2 ? 1 : margin === 1 ? 2 : margin === 0 ? 3 : margin === -1 ? 4 : margin === -2 ? 5 : 6;
+              const actualTotalGoalsIndex = Math.min(match.homeScore + match.awayScore, 6);
               const actualHomeBucket = Math.min(match.homeScore, 5);
               const actualAwayBucket = Math.min(match.awayScore, 5);
               const matchKey = `past-${match.matchId}`;
@@ -1897,8 +1898,8 @@ export function WorldCupMatchesPageClient({
                                   {totalGoalsRow.map((cell, index) => (
                                     <div
                                       key={`past-total-goals-value-${match.matchId}-${index}`}
-                                      className="bg-white px-1 py-1 text-center tabular-nums"
-                                      style={scoreMatrixHighlight(cell.value)}
+                                      className={`bg-white px-1 py-1 text-center tabular-nums ${index === actualTotalGoalsIndex ? "text-blue-800" : "opacity-30"}`}
+                                      style={index === actualTotalGoalsIndex ? scoreMatrixHighlight(cell.value) : undefined}
                                     >
                                       {formatProbabilityLabel(cell.value, probabilityMode, true).replace("%", "")}
                                     </div>

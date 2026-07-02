@@ -14,6 +14,8 @@ export type CompletedWorldCupMatch = {
   neutral: boolean | null;
   homeScore: number;
   awayScore: number;
+  homeScore90: number | null;
+  awayScore90: number | null;
   wentExtraTime: boolean;
   wentPenalties: boolean;
   penaltyWinner: string | null;
@@ -97,6 +99,8 @@ export async function loadCompletedWorldCupMatches(
       const matchId = parseNullableInt(row.match_id);
       const homeScore = parseNullableInt(row.home_score);
       const awayScore = parseNullableInt(row.away_score);
+      const homeScore90 = parseNullableInt(row.home_score_90);
+      const awayScore90 = parseNullableInt(row.away_score_90);
       if (matchId === null || homeScore === null || awayScore === null) {
         return null;
       }
@@ -113,6 +117,8 @@ export async function loadCompletedWorldCupMatches(
         neutral: parseNullableBool(row.neutral),
         homeScore,
         awayScore,
+        homeScore90,
+        awayScore90,
         wentExtraTime: parseNullableBool(row.went_extra_time) ?? false,
         wentPenalties: parseNullableBool(row.went_penalties) ?? false,
         penaltyWinner: normalizeNullableString(row.penalty_winner),

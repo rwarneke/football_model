@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { loadCompletedWorldCupMatches } from "@/lib/world-cup-results";
 
 export type WorldCupProbabilities = {
   columns: string[];
@@ -22,6 +23,7 @@ export type WorldCupOptionPricing = {
     team: string;
     flagPath: string;
     group: string | null;
+    minimumPossibleValue: number;
     progressionFairValue: number;
     winFairValue: number;
     totalFairValue: number;
@@ -55,6 +57,14 @@ const DATA_FILE_NAME = "simulation_results.csv";
 const STATUS_FILE_NAME = "simulation_results_status.csv";
 const TEAM_PROB_FILE_NAME = "simulation_team_probabilities.json";
 const TEAM_VALUE_FILE_NAME = "simulation_team_value_pricing.json";
+const DEFAULT_PROGRESSION_STAGE_VALUES: Record<string, number> = {
+  "Round of 32": 5,
+  "Round of 16": 10,
+  Quarterfinal: 20,
+  Semifinal: 40,
+  Final: 60,
+  Champion: 80,
+};
 
 function toNumber(value: string | undefined) {
   if (!value) {
@@ -110,6 +120,53 @@ function emptyOpponentProbabilities(): OpponentProbabilities {
 
 function emptyOpponentStatuses(): OpponentProbabilityStatuses {
   return { R32: {}, R16: {}, QF: {}, SF: {}, Final: {} };
+}
+
+function computeLockedWinValueByTeam(
+  completedMatches: Awaited<ReturnType<typeof loadCompletedWorldCupMatches>>
+) {
+  const lockedWinValueByTeam = new Map<string, number>();
+  for (const match of completedMatches) {
+    const homeScore90 = match.homeScore90 ?? match.homeScore;
+    const awayScore90 = match.awayScore90 ?? match.awayScore;
+    if (homeScore90 > awayScore90) {
+      lockedWinValueByTeam.set(
+        match.homeTeam,
+        (lockedWinValueByTeam.get(match.homeTeam) ?? 0) + 5
+      );
+    } else if (awayScore90 > homeScore90) {
+      lockedWinValueByTeam.set(
+        match.awayTeam,
+        (lockedWinValueByTeam.get(match.awayTeam) ?? 0) + 5
+      );
+    }
+  }
+  return lockedWinValueByTeam;
+}
+
+function computeMinimumProgressionValue(
+  statuses: Record<string, ProbabilityStatus>,
+  progressionStageValues: Record<string, number>
+) {
+  if (statuses["Champion"] === "G") {
+    return progressionStageValues["Champion"] ?? 80;
+  }
+  if (statuses["Reach Final"] === "G") {
+    return progressionStageValues["Final"] ?? 60;
+  }
+  if (statuses["Reach SF"] === "G") {
+    return progressionStageValues["Semifinal"] ?? 40;
+  }
+  if (statuses["Reach QF"] === "G") {
+    return progressionStageValues["Quarterfinal"] ?? 20;
+  }
+  if (statuses["Reach R16"] === "G") {
+    return progressionStageValues["Round of 16"] ?? 10;
+  }
+  if (statuses["Reach R32"] === "G") {
+    return progressionStageValues["Round of 32"] ?? 5;
+  }
+  return 0;
 }
 
 export async function loadWorldCupProbabilities(
@@ -354,9 +411,10 @@ export async function loadWorldCupProbabilities(
 export async function loadWorldCupOptionPricing(
   modelOutputDir = "/model_output"
 ): Promise<WorldCupOptionPricing> {
-  const [probabilities, valueContents] = await Promise.all([
+  const [probabilities, valueContents, completedMatches] = await Promise.all([
     loadWorldCupProbabilities(modelOutputDir),
     readOptionalPublicText(`${modelOutputDir}/${TEAM_VALUE_FILE_NAME}`),
+    loadCompletedWorldCupMatches(modelOutputDir),
   ]);
 
   if (!valueContents) {
@@ -364,7 +422,10 @@ export async function loadWorldCupOptionPricing(
   }
 
   const parsed = JSON.parse(valueContents) as {
-    value_definition?: { call_put_strikes?: number[] };
+    value_definition?: {
+      call_put_strikes?: number[];
+      progression_stage_values?: Record<string, number>;
+    };
     teams?: Record<
       string,
       {
@@ -380,7 +441,12 @@ export async function loadWorldCupOptionPricing(
   const strikes = Array.isArray(parsed.value_definition?.call_put_strikes)
     ? parsed.value_definition?.call_put_strikes.filter((value) => Number.isFinite(value))
     : [];
+  const progressionStageValues = {
+    ...DEFAULT_PROGRESSION_STAGE_VALUES,
+    ...(parsed.value_definition?.progression_stage_values ?? {}),
+  };
   const teamValues = parsed.teams ?? {};
+  const lockedWinValueByTeam = computeLockedWinValueByTeam(completedMatches);
 
   const rows = probabilities.rows
     .flatMap((row) => {
@@ -393,6 +459,9 @@ export async function loadWorldCupOptionPricing(
           team: row.team,
           flagPath: row.flagPath,
           group: row.group,
+          minimumPossibleValue:
+            (lockedWinValueByTeam.get(row.team) ?? 0) +
+            computeMinimumProgressionValue(row.statuses, progressionStageValues),
           progressionFairValue: Number(entry.progression_fair_value ?? 0),
           winFairValue: Number(entry.win_fair_value ?? 0),
           totalFairValue: Number(entry.total_fair_value ?? 0),

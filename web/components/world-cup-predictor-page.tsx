@@ -2944,13 +2944,12 @@ function KnockoutMatchCard({
     (!placeholderHome && placeholderAway);
   const isLockedMatch = placeholderHome && placeholderAway;
   const hideProbabilities = isPendingMatch || isLockedMatch;
-  const winner = isPickableMatch
-    ? winnerSelection === "home"
+  const winner =
+    winnerSelection === "home"
       ? homeTeam
       : winnerSelection === "away"
         ? awayTeam
-        : null
-    : null;
+        : null;
   const hasSelection = isPickableMatch && winnerSelection !== null;
   const needsPick = isPickableMatch && winner === null;
   const isFinalResolved = Boolean(isFinal && winner);
