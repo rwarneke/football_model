@@ -71,28 +71,28 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 72,2026-06-27,Group,K,DR Congo,Uzbekistan,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,3,1,3,1,NA,NA,False,False,NA,NA
 69,2026-06-27,Group,J,Algeria,Austria,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,3,3,3,3,NA,NA,False,False,NA,NA
 70,2026-06-27,Group,J,Jordan,Argentina,AT&T Stadium,Arlington,United States,FIFA World Cup,True,1,3,1,3,NA,NA,False,False,NA,NA
-73,2026-06-28,Round of 32,NA,Runner-up Group A,Runner-up Group B,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-76,2026-06-29,Round of 32,NA,Winner Group C,Runner-up Group F,NRG Stadium,Houston,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-74,2026-06-29,Round of 32,NA,Winner Group E,3rd Group A/B/C/D/F,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-75,2026-06-29,Round of 32,NA,Winner Group F,Runner-up Group C,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-78,2026-06-30,Round of 32,NA,Runner-up Group E,Runner-up Group I,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-77,2026-06-30,Round of 32,NA,Winner Group I,3rd Group C/D/F/G/H,MetLife Stadium,East Rutherford,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-79,2026-06-30,Round of 32,NA,Winner Group A,3rd Group C/E/F/H/I,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-80,2026-07-01,Round of 32,NA,Winner Group L,3rd Group E/H/I/J/K,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-82,2026-07-01,Round of 32,NA,Winner Group G,3rd Group A/E/H/I/J,Lumen Field,Seattle,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-81,2026-07-01,Round of 32,NA,Winner Group D,3rd Group B/E/F/I/J,Levi's Stadium,Santa Clara,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-84,2026-07-02,Round of 32,NA,Winner Group H,Runner-up Group J,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-83,2026-07-02,Round of 32,NA,Runner-up Group K,Runner-up Group L,BMO Field,Toronto,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-85,2026-07-02,Round of 32,NA,Winner Group B,3rd Group E/F/G/I/J,BC Place,Vancouver,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-88,2026-07-03,Round of 32,NA,Runner-up Group D,Runner-up Group G,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-86,2026-07-03,Round of 32,NA,Winner Group J,Runner-up Group H,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-87,2026-07-03,Round of 32,NA,Winner Group K,3rd Group D/E/I/J/L,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-90,2026-07-04,Round of 16,NA,Winner Match 73,Winner Match 75,NRG Stadium,Houston,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-89,2026-07-04,Round of 16,NA,Winner Match 74,Winner Match 77,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-91,2026-07-05,Round of 16,NA,Winner Match 76,Winner Match 78,MetLife Stadium,East Rutherford,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-92,2026-07-05,Round of 16,NA,Winner Match 79,Winner Match 80,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+73,2026-06-28,Round of 32,NA,South Africa,Canada,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,0,1,0,1,NA,NA,False,False,NA,NA
+76,2026-06-29,Round of 32,NA,Brazil,Japan,NRG Stadium,Houston,United States,FIFA World Cup,True,2,1,2,1,NA,NA,False,False,NA,NA
+74,2026-06-29,Round of 32,NA,Germany,Paraguay,Gillette Stadium,Foxborough,United States,FIFA World Cup,True,1,1,1,1,1,1,True,True,Paraguay,Germany
+75,2026-06-29,Round of 32,NA,Netherlands,Morocco,Estadio BBVA,Guadalupe,Mexico,FIFA World Cup,True,1,1,1,1,1,1,True,True,Morocco,Netherlands
+78,2026-06-30,Round of 32,NA,Ivory Coast,Norway,AT&T Stadium,Arlington,United States,FIFA World Cup,True,1,2,1,2,NA,NA,False,False,NA,NA
+77,2026-06-30,Round of 32,NA,France,Sweden,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,3,0,3,0,NA,NA,False,False,NA,NA
+79,2026-06-30,Round of 32,NA,Mexico,Ecuador,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,2,0,2,0,NA,NA,False,False,NA,NA
+80,2026-07-01,Round of 32,NA,England,DR Congo,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,True,2,1,2,1,NA,NA,False,False,NA,NA
+82,2026-07-01,Round of 32,NA,Belgium,Senegal,Lumen Field,Seattle,United States,FIFA World Cup,True,3,2,3,2,NA,NA,False,False,NA,NA
+81,2026-07-01,Round of 32,NA,USA,Bosnia and Herzegovina,Levi's Stadium,Santa Clara,United States,FIFA World Cup,False,2,0,2,0,NA,NA,False,False,NA,NA
+84,2026-07-02,Round of 32,NA,Spain,Austria,SoFi Stadium,Inglewood,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+83,2026-07-02,Round of 32,NA,Portugal,Croatia,BMO Field,Toronto,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+85,2026-07-02,Round of 32,NA,Switzerland,Algeria,BC Place,Vancouver,Canada,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+88,2026-07-03,Round of 32,NA,Australia,Egypt,AT&T Stadium,Arlington,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+86,2026-07-03,Round of 32,NA,Argentina,Cape Verde,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+87,2026-07-03,Round of 32,NA,Colombia,Ghana,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+90,2026-07-04,Round of 16,NA,Canada,Morocco,NRG Stadium,Houston,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+89,2026-07-04,Round of 16,NA,Paraguay,France,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+91,2026-07-05,Round of 16,NA,Brazil,Norway,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+92,2026-07-05,Round of 16,NA,Mexico,England,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 93,2026-07-06,Round of 16,NA,Winner Match 83,Winner Match 84,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-94,2026-07-06,Round of 16,NA,Winner Match 81,Winner Match 82,Lumen Field,Seattle,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+94,2026-07-06,Round of 16,NA,USA,Belgium,Lumen Field,Seattle,United States,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 95,2026-07-07,Round of 16,NA,Winner Match 86,Winner Match 88,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 96,2026-07-07,Round of 16,NA,Winner Match 85,Winner Match 87,BC Place,Vancouver,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 97,2026-07-09,Quarterfinal,NA,Winner Match 89,Winner Match 90,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA

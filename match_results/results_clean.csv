@@ -47725,3 +47725,13 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-06-27,DR Congo,Uzbekistan,3,1,FIFA World Cup,Atlanta,United States,True,3,1,,,False,False,,,CAF,AFC,,,,False,False,False
 2026-06-27,Jordan,Argentina,1,3,FIFA World Cup,Arlington,United States,True,1,3,,,False,False,,,AFC,CONMEBOL,,,,False,False,False
 2026-06-27,Panama,England,0,2,FIFA World Cup,East Rutherford,United States,True,0,2,,,False,False,,,CONCACAF,UEFA,,,,False,False,False
+2026-06-28,South Africa,Canada,0,1,FIFA World Cup,Inglewood,United States,True,0,1,,,False,False,,,CAF,CONCACAF,,,,False,False,False
+2026-06-29,Brazil,Japan,2,1,FIFA World Cup,Houston,United States,True,2,1,,,False,False,,,CONMEBOL,AFC,,,,False,False,False
+2026-06-29,Germany,Paraguay,1,1,FIFA World Cup,Foxborough,United States,True,1,1,1,1,True,True,Paraguay,Germany,UEFA,CONMEBOL,,,,True,True,False
+2026-06-29,Netherlands,Morocco,1,1,FIFA World Cup,Guadalupe,Mexico,True,1,1,1,1,True,True,Morocco,Netherlands,UEFA,CAF,,,,True,True,False
+2026-06-30,France,Sweden,3,0,FIFA World Cup,East Rutherford,United States,True,3,0,,,False,False,,,UEFA,UEFA,,,,False,False,False
+2026-06-30,Ivory Coast,Norway,1,2,FIFA World Cup,Arlington,United States,True,1,2,,,False,False,,,CAF,UEFA,,,,False,False,False
+2026-06-30,Mexico,Ecuador,2,0,FIFA World Cup,Mexico City,Mexico,False,2,0,,,False,False,,,CONCACAF,CONMEBOL,,,,False,False,False
+2026-07-01,Belgium,Senegal,3,2,FIFA World Cup,Seattle,United States,True,3,2,,,False,False,,,UEFA,CAF,,,,False,False,False
+2026-07-01,England,DR Congo,2,1,FIFA World Cup,Atlanta,United States,True,2,1,,,False,False,,,UEFA,CAF,,,,False,False,False
+2026-07-01,USA,Bosnia and Herzegovina,2,0,FIFA World Cup,Santa Clara,United States,False,2,0,,,False,False,,,CONCACAF,UEFA,,,,False,False,False

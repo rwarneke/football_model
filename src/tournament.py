@@ -403,7 +403,10 @@ class WorldCup2026(Tournament):
             raise ValueError(
                 f"Completed match {match_id} has stage {actual_stage!r}, expected {stage!r}."
             )
-        actual_group = str(completed.get("group") or "").strip() or None
+        completed_group = completed.get("group")
+        actual_group = (
+            None if pd.isna(completed_group) else str(completed_group).strip() or None
+        )
         if actual_group != (group or None):
             raise ValueError(
                 f"Completed match {match_id} has group {actual_group!r}, expected {group!r}."
