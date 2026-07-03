@@ -48,6 +48,7 @@ type TableRowData = {
 };
 
 type WorldCupProbabilitiesTableProps = {
+  datasetKey: string;
   columns: string[];
   rows: TableRowData[];
   allRows?: TableRowData[];
@@ -378,6 +379,7 @@ function MetricPill({
 }
 
 export function WorldCupProbabilitiesTable({
+  datasetKey,
   columns,
   rows,
   allRows,
@@ -385,6 +387,9 @@ export function WorldCupProbabilitiesTable({
 }: WorldCupProbabilitiesTableProps) {
   const primarySortId = "Champion";
   const [expandedTeam, setExpandedTeam] = React.useState<string | null>(null);
+  const [preservedTeamOrder, setPreservedTeamOrder] = React.useState<string[] | null>(null);
+  const previousDatasetKeyRef = React.useRef(datasetKey);
+  const visibleTeamOrderRef = React.useRef<string[]>([]);
 
   const standardDescForColumn = React.useCallback((columnId: string) => {
     if (columnId === "team" || columnId === "group" || columnId === "flag") {
@@ -430,6 +435,39 @@ export function WorldCupProbabilitiesTable({
   }, [primarySortId, standardDescForColumn, tiebreakOrder]);
 
   const [sorting, setSorting] = React.useState<SortingState>(() => primarySorting);
+  const displayedRows = React.useMemo(() => {
+    if (!preservedTeamOrder?.length) {
+      return rows;
+    }
+    const teamOrder = new Map(
+      preservedTeamOrder.map((team, index) => [team, index])
+    );
+    return [...rows].sort((a, b) => {
+      const indexA = teamOrder.get(a.team);
+      const indexB = teamOrder.get(b.team);
+      if (indexA !== undefined && indexB !== undefined) {
+        return indexA - indexB;
+      }
+      if (indexA !== undefined) {
+        return -1;
+      }
+      if (indexB !== undefined) {
+        return 1;
+      }
+      return a.team.localeCompare(b.team);
+    });
+  }, [preservedTeamOrder, rows]);
+
+  React.useLayoutEffect(() => {
+    if (previousDatasetKeyRef.current === datasetKey) {
+      return;
+    }
+    previousDatasetKeyRef.current = datasetKey;
+    setPreservedTeamOrder(
+      visibleTeamOrderRef.current.length ? [...visibleTeamOrderRef.current] : null
+    );
+  }, [datasetKey]);
+
   const probabilityColumnMax = React.useMemo(
     () =>
       Object.fromEntries(
@@ -447,6 +485,9 @@ export function WorldCupProbabilitiesTable({
 
   const handleSortToggle = React.useCallback(
     (columnId: string) => {
+      if (preservedTeamOrder) {
+        setPreservedTeamOrder(null);
+      }
       const primary = sorting[0];
       if (!primary || primary.id !== columnId) {
         const nextDesc = standardDescForColumn(columnId);
@@ -472,7 +513,14 @@ export function WorldCupProbabilitiesTable({
 
       setSorting(primarySorting);
     },
-    [primarySortId, primarySorting, sorting, standardDescForColumn, tiebreakOrder]
+    [
+      preservedTeamOrder,
+      primarySortId,
+      primarySorting,
+      sorting,
+      standardDescForColumn,
+      tiebreakOrder,
+    ]
   );
 
   const tableColumns = React.useMemo<ColumnDef<TableRowData>[]>(
@@ -701,12 +749,19 @@ export function WorldCupProbabilitiesTable({
   );
 
   const table = useReactTable({
-    data: rows,
+    data: displayedRows,
     columns: tableColumns,
     state: { sorting },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    manualSorting: Boolean(preservedTeamOrder),
     enableMultiSort: true,
+  });
+
+  React.useLayoutEffect(() => {
+    visibleTeamOrderRef.current = table
+      .getRowModel()
+      .rows.map((row) => row.original.team);
   });
 
   const isGroupedByGroup = sorting[0]?.id === "group";

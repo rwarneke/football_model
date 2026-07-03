@@ -97,6 +97,7 @@ export function WorldCupProbabilitiesPage({
         </div>
       </div>
       <WorldCupProbabilitiesTable
+        datasetKey={showPretournament ? "pretournament" : "current"}
         columns={active.columns}
         rows={filtered}
         allRows={active.rows}

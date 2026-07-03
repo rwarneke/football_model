@@ -3,7 +3,7 @@ Spain,G,G,G,G,U,U,U,U
 Argentina,G,G,G,U,U,U,U,U
 England,G,G,G,G,U,U,U,U
 Brazil,G,G,G,G,U,U,U,U
-Portugal,G,I,G,U,U,U,U,U
+Portugal,G,I,G,G,U,U,U,U
 France,G,G,G,G,U,U,U,U
 Colombia,G,G,G,U,U,U,U,U
 Netherlands,G,G,G,I,I,I,I,I
@@ -12,8 +12,8 @@ Belgium,G,G,G,G,U,U,U,U
 Uruguay,G,I,I,I,I,I,I,I
 Norway,G,I,G,G,U,U,U,U
 Ecuador,G,I,G,I,I,I,I,I
-Switzerland,G,G,G,U,U,U,U,U
-Croatia,G,I,G,U,U,U,U,U
+Switzerland,G,G,G,G,U,U,U,U
+Croatia,G,I,G,I,I,I,I,I
 Denmark,U,U,U,U,U,U,U,U
 Japan,G,I,G,I,I,I,I,I
 Italy,U,U,U,U,U,U,U,U
@@ -24,7 +24,7 @@ Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,G,U,U,U,U
 Paraguay,G,I,G,G,U,U,U,U
 Canada,G,I,G,G,U,U,U,U
-Australia,G,I,G,U,U,U,U,U
+Australia,G,I,G,I,I,I,I,I
 Ukraine,U,U,U,U,U,U,U,U
 South Korea,G,I,I,I,I,I,I,I
 USA,G,G,G,G,U,U,U,U
@@ -33,11 +33,11 @@ Sweden,G,I,G,I,I,I,I,I
 Iran,G,I,I,I,I,I,I,I
 Wales,U,U,U,U,U,U,U,U
 Poland,U,U,U,U,U,U,U,U
-Algeria,G,I,G,U,U,U,U,U
+Algeria,G,I,G,I,I,I,I,I
 Czechia,G,I,I,I,I,I,I,I
 Tunisia,G,I,I,I,I,I,I,I
 Ivory Coast,G,I,G,I,I,I,I,I
-Egypt,G,I,G,U,U,U,U,U
+Egypt,G,I,G,G,U,U,U,U
 Romania,U,U,U,U,U,U,U,U
 Slovakia,U,U,U,U,U,U,U,U
 Ireland,U,U,U,U,U,U,U,U
