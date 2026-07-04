@@ -24,6 +24,7 @@ export type WorldCupOptionPricing = {
     flagPath: string;
     group: string | null;
     minimumPossibleValue: number;
+    maximumPossibleValue: number;
     progressionFairValue: number;
     winFairValue: number;
     totalFairValue: number;
@@ -167,6 +168,65 @@ function computeMinimumProgressionValue(
     return progressionStageValues["Round of 32"] ?? 5;
   }
   return 0;
+}
+
+function computeMaximumProgressionValue(
+  statuses: Record<string, ProbabilityStatus>,
+  progressionStageValues: Record<string, number>
+) {
+  if (statuses["Champion"] !== "I") {
+    return progressionStageValues["Champion"] ?? 80;
+  }
+  if (statuses["Reach Final"] !== "I") {
+    return progressionStageValues["Final"] ?? 60;
+  }
+  if (statuses["Reach SF"] !== "I") {
+    return progressionStageValues["Semifinal"] ?? 40;
+  }
+  if (statuses["Reach QF"] !== "I") {
+    return progressionStageValues["Quarterfinal"] ?? 20;
+  }
+  if (statuses["Reach R16"] !== "I") {
+    return progressionStageValues["Round of 16"] ?? 10;
+  }
+  if (statuses["Reach R32"] !== "I") {
+    return progressionStageValues["Round of 32"] ?? 5;
+  }
+  return 0;
+}
+
+function computeMaximumAdditionalWinValue(
+  statuses: Record<string, ProbabilityStatus>
+) {
+  if (statuses["Champion"] === "G") {
+    return 0;
+  }
+  if (statuses["Reach R16"] === "I") {
+    return 0;
+  }
+  const groupStageWinsRemaining = statuses["Reach R32"] === "G" ? 0 : 15;
+  if (statuses["Reach Final"] === "G" && statuses["Champion"] === "I") {
+    return 0;
+  }
+  if (statuses["Reach SF"] === "G" && statuses["Reach Final"] === "I") {
+    return 5;
+  }
+  if (statuses["Reach Final"] === "G") {
+    return 5;
+  }
+  if (statuses["Reach SF"] === "G") {
+    return 10;
+  }
+  if (statuses["Reach QF"] === "G") {
+    return 15;
+  }
+  if (statuses["Reach R16"] === "G") {
+    return 20;
+  }
+  if (statuses["Reach R32"] === "G") {
+    return 25;
+  }
+  return groupStageWinsRemaining + 25;
 }
 
 export async function loadWorldCupProbabilities(
@@ -462,6 +522,10 @@ export async function loadWorldCupOptionPricing(
           minimumPossibleValue:
             (lockedWinValueByTeam.get(row.team) ?? 0) +
             computeMinimumProgressionValue(row.statuses, progressionStageValues),
+          maximumPossibleValue:
+            (lockedWinValueByTeam.get(row.team) ?? 0) +
+            computeMaximumProgressionValue(row.statuses, progressionStageValues) +
+            computeMaximumAdditionalWinValue(row.statuses),
           progressionFairValue: Number(entry.progression_fair_value ?? 0),
           winFairValue: Number(entry.win_fair_value ?? 0),
           totalFairValue: Number(entry.total_fair_value ?? 0),
