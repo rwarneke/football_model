@@ -47739,4 +47739,5 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-07-02,Spain,Austria,3,0,FIFA World Cup,Inglewood,United States,True,3,0,,,False,False,,,UEFA,UEFA,,,,False,False,False
 2026-07-02,Switzerland,Algeria,2,0,FIFA World Cup,Vancouver,Canada,True,2,0,,,False,False,,,UEFA,CAF,,,,False,False,False
 2026-07-03,Argentina,Cape Verde,3,2,FIFA World Cup,Miami Gardens,United States,True,1,1,3,2,True,False,,,CONMEBOL,CAF,,,,False,True,False
-2026-07-03,Australia,Egypt,1,1,FIFA World Cup,Arlington,United States,True,1,1,1,1,True,True,Egypt,,AFC,CAF,,,,True,True,False
+2026-07-03,Australia,Egypt,1,1,FIFA World Cup,Arlington,United States,True,1,1,1,1,True,True,Egypt,Australia,AFC,CAF,,,,True,True,False
+2026-07-03,Colombia,Ghana,1,0,FIFA World Cup,Kansas City,United States,True,1,0,,,False,False,,,CONMEBOL,CAF,,,,False,False,False
