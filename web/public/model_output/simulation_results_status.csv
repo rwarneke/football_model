@@ -4,7 +4,7 @@ Argentina,G,G,G,G,U,U,U,U
 England,G,G,G,G,U,U,U,U
 Brazil,G,G,G,G,U,U,U,U
 Portugal,G,I,G,G,U,U,U,U
-France,G,G,G,G,U,U,U,U
+France,G,G,G,G,G,U,U,U
 Colombia,G,G,G,G,U,U,U,U
 Netherlands,G,G,G,I,I,I,I,I
 Germany,G,G,G,I,I,I,I,I
@@ -18,12 +18,12 @@ Denmark,U,U,U,U,U,U,U,U
 Japan,G,I,G,I,I,I,I,I
 Italy,U,U,U,U,U,U,U,U
 Senegal,G,I,G,I,I,I,I,I
-Morocco,G,I,G,G,U,U,U,U
+Morocco,G,I,G,G,G,U,U,U
 Austria,G,I,G,I,I,I,I,I
 Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,G,U,U,U,U
-Paraguay,G,I,G,G,U,U,U,U
-Canada,G,I,G,G,U,U,U,U
+Paraguay,G,I,G,G,I,I,I,I
+Canada,G,I,G,G,I,I,I,I
 Australia,G,I,G,I,I,I,I,I
 Ukraine,U,U,U,U,U,U,U,U
 South Korea,G,I,I,I,I,I,I,I
