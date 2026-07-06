@@ -1,8 +1,8 @@
 team,Qualify,Win Group,Reach R32,Reach R16,Reach QF,Reach SF,Reach Final,Champion
 Spain,G,G,G,G,U,U,U,U
 Argentina,G,G,G,G,U,U,U,U
-England,G,G,G,G,U,U,U,U
-Brazil,G,G,G,G,U,U,U,U
+England,G,G,G,G,G,U,U,U
+Brazil,G,G,G,G,I,I,I,I
 Portugal,G,I,G,G,U,U,U,U
 France,G,G,G,G,G,U,U,U
 Colombia,G,G,G,G,U,U,U,U
@@ -10,7 +10,7 @@ Netherlands,G,G,G,I,I,I,I,I
 Germany,G,G,G,I,I,I,I,I
 Belgium,G,G,G,G,U,U,U,U
 Uruguay,G,I,I,I,I,I,I,I
-Norway,G,I,G,G,U,U,U,U
+Norway,G,I,G,G,G,U,U,U
 Ecuador,G,I,G,I,I,I,I,I
 Switzerland,G,G,G,G,U,U,U,U
 Croatia,G,I,G,I,I,I,I,I
@@ -21,7 +21,7 @@ Senegal,G,I,G,I,I,I,I,I
 Morocco,G,I,G,G,G,U,U,U
 Austria,G,I,G,I,I,I,I,I
 Turkey,G,I,I,I,I,I,I,I
-Mexico,G,G,G,G,U,U,U,U
+Mexico,G,G,G,G,I,I,I,I
 Paraguay,G,I,G,G,I,I,I,I
 Canada,G,I,G,G,I,I,I,I
 Australia,G,I,G,I,I,I,I,I

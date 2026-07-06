@@ -89,15 +89,15 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 87,2026-07-03,Round of 32,NA,Colombia,Ghana,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,True,1,0,1,0,NA,NA,False,False,NA,NA
 90,2026-07-04,Round of 16,NA,Canada,Morocco,NRG Stadium,Houston,United States,FIFA World Cup,True,0,3,0,3,NA,NA,False,False,NA,NA
 89,2026-07-04,Round of 16,NA,Paraguay,France,Lincoln Financial Field,Philadelphia,United States,FIFA World Cup,True,0,1,0,1,NA,NA,False,False,NA,NA
-91,2026-07-05,Round of 16,NA,Brazil,Norway,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-92,2026-07-05,Round of 16,NA,Mexico,England,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+91,2026-07-05,Round of 16,NA,Brazil,Norway,MetLife Stadium,East Rutherford,United States,FIFA World Cup,True,1,2,1,2,NA,NA,False,False,NA,NA
+92,2026-07-05,Round of 16,NA,Mexico,England,Estadio Azteca,Mexico City,Mexico,FIFA World Cup,False,2,3,2,3,NA,NA,False,False,NA,NA
 93,2026-07-06,Round of 16,NA,Portugal,Spain,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 94,2026-07-06,Round of 16,NA,USA,Belgium,Lumen Field,Seattle,United States,FIFA World Cup,False,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 95,2026-07-07,Round of 16,NA,Argentina,Egypt,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 96,2026-07-07,Round of 16,NA,Switzerland,Colombia,BC Place,Vancouver,Canada,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 97,2026-07-09,Quarterfinal,NA,France,Morocco,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 98,2026-07-10,Quarterfinal,NA,Winner Match 93,Winner Match 94,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-99,2026-07-11,Quarterfinal,NA,Winner Match 91,Winner Match 92,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+99,2026-07-11,Quarterfinal,NA,Norway,England,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 100,2026-07-11,Quarterfinal,NA,Winner Match 95,Winner Match 96,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 101,2026-07-14,Semifinal,NA,Winner Match 97,Winner Match 98,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
 102,2026-07-15,Semifinal,NA,Winner Match 99,Winner Match 100,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA

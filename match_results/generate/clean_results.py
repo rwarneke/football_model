@@ -78,7 +78,7 @@ def load_csv_with_manual_overlay(filename: str, key_columns: list[str]) -> pd.Da
     combined = pd.concat([manual, primary], ignore_index=True, sort=False)
     combined = combined.sort_values(
         by=["date", "_home_team_key", "_away_team_key", "_source_priority"],
-        ascending=[True, True, True, False],
+        ascending=[True, True, True, True],
         kind="mergesort",
     )
     combined = combined.drop_duplicates(
