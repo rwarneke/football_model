@@ -1,24 +1,24 @@
 team,Qualify,Win Group,Reach R32,Reach R16,Reach QF,Reach SF,Reach Final,Champion
-Spain,G,G,G,G,G,U,U,U
-Argentina,G,G,G,G,U,U,U,U
+Spain,G,G,G,G,G,G,U,U
+Argentina,G,G,G,G,G,U,U,U
 England,G,G,G,G,G,U,U,U
 Brazil,G,G,G,G,I,I,I,I
 Portugal,G,I,G,G,I,I,I,I
-France,G,G,G,G,G,U,U,U
-Colombia,G,G,G,G,U,U,U,U
+France,G,G,G,G,G,G,U,U
+Colombia,G,G,G,G,I,I,I,I
 Netherlands,G,G,G,I,I,I,I,I
 Germany,G,G,G,I,I,I,I,I
-Belgium,G,G,G,G,U,U,U,U
+Belgium,G,G,G,G,G,I,I,I
 Uruguay,G,I,I,I,I,I,I,I
 Norway,G,I,G,G,G,U,U,U
 Ecuador,G,I,G,I,I,I,I,I
-Switzerland,G,G,G,G,U,U,U,U
+Switzerland,G,G,G,G,G,U,U,U
 Croatia,G,I,G,I,I,I,I,I
 Denmark,U,U,U,U,U,U,U,U
 Japan,G,I,G,I,I,I,I,I
 Italy,U,U,U,U,U,U,U,U
 Senegal,G,I,G,I,I,I,I,I
-Morocco,G,I,G,G,G,U,U,U
+Morocco,G,I,G,G,G,I,I,I
 Austria,G,I,G,I,I,I,I,I
 Turkey,G,I,I,I,I,I,I,I
 Mexico,G,G,G,G,I,I,I,I
@@ -27,7 +27,7 @@ Canada,G,I,G,G,I,I,I,I
 Australia,G,I,G,I,I,I,I,I
 Ukraine,U,U,U,U,U,U,U,U
 South Korea,G,I,I,I,I,I,I,I
-USA,G,G,G,G,U,U,U,U
+USA,G,G,G,G,I,I,I,I
 Scotland,G,I,I,I,I,I,I,I
 Sweden,G,I,G,I,I,I,I,I
 Iran,G,I,I,I,I,I,I,I
@@ -37,7 +37,7 @@ Algeria,G,I,G,I,I,I,I,I
 Czechia,G,I,I,I,I,I,I,I
 Tunisia,G,I,I,I,I,I,I,I
 Ivory Coast,G,I,G,I,I,I,I,I
-Egypt,G,I,G,G,U,U,U,U
+Egypt,G,I,G,G,I,I,I,I
 Romania,U,U,U,U,U,U,U,U
 Slovakia,U,U,U,U,U,U,U,U
 Ireland,U,U,U,U,U,U,U,U

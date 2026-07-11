@@ -47746,3 +47746,8 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-07-05,Brazil,Norway,1,2,FIFA World Cup,East Rutherford,United States,True,1,2,,,False,False,,,CONMEBOL,UEFA,,,,False,False,False
 2026-07-05,Mexico,England,2,3,FIFA World Cup,Mexico City,Mexico,False,2,3,,,False,False,,,CONCACAF,UEFA,,,,False,False,False
 2026-07-06,Portugal,Spain,0,1,FIFA World Cup,Arlington,United States,True,0,1,,,False,False,,,UEFA,UEFA,,,,False,False,False
+2026-07-06,USA,Belgium,1,4,FIFA World Cup,Seattle,United States,False,1,4,,,False,False,,,CONCACAF,UEFA,,,,False,False,False
+2026-07-07,Argentina,Egypt,3,2,FIFA World Cup,Atlanta,United States,True,3,2,,,False,False,,,CONMEBOL,CAF,,,,False,False,False
+2026-07-07,Switzerland,Colombia,0,0,FIFA World Cup,Vancouver,Canada,True,0,0,0,0,True,True,Switzerland,Colombia,UEFA,CONMEBOL,,,,True,True,False
+2026-07-09,France,Morocco,2,0,FIFA World Cup,Foxborough,United States,True,2,0,,,False,False,,,UEFA,CAF,,,,False,False,False
+2026-07-10,Spain,Belgium,2,1,FIFA World Cup,Inglewood,United States,True,2,1,,,False,False,,,UEFA,UEFA,,,,False,False,False
