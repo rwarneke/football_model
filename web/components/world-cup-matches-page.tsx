@@ -135,6 +135,20 @@ function formatRepresentativeCity(timeZone: string) {
   return mostSpecific.replace(/_/g, " ");
 }
 
+function formatCompletedMatchScore(match: CompletedWorldCupMatch) {
+  if (
+    match.wentPenalties &&
+    match.homePenaltyScore !== null &&
+    match.awayPenaltyScore !== null
+  ) {
+    return `(${match.homePenaltyScore})${match.homeScore}-${match.awayScore}(${match.awayPenaltyScore})`;
+  }
+  if (match.wentExtraTime) {
+    return `${match.homeScore}-${match.awayScore} (a.e.t.)`;
+  }
+  return `${match.homeScore}-${match.awayScore}`;
+}
+
 function offsetValueFromMinutes(offsetMinutes: number) {
   const sign = offsetMinutes < 0 ? "-" : "+";
   const absoluteMinutes = Math.abs(offsetMinutes);
@@ -1675,16 +1689,13 @@ export function WorldCupMatchesPageClient({
               const scoreAway = match.awayScore90 ?? match.awayScore;
               const finalMargin = match.homeScore - match.awayScore;
               const margin = scoreHome - scoreAway;
-              const homeWon = margin > 0 || (margin === 0 && match.winner === match.homeTeam);
-              const awayWon = margin < 0 || (margin === 0 && match.winner === match.awayTeam);
+              const homeWon = margin > 0;
+              const awayWon = margin < 0;
               const isDraw = !homeWon && !awayWon;
               const finalHomeWon = finalMargin > 0 || match.winner === match.homeTeam;
               const finalAwayWon = finalMargin < 0 || match.winner === match.awayTeam;
               const requiresResult = match.stage !== "Group";
-              const showFullTimeBar =
-                requiresResult &&
-                (match.wentExtraTime || match.wentPenalties) &&
-                (match.homeScore !== scoreHome || match.awayScore !== scoreAway);
+              const showFullTimeBar = requiresResult;
               const matrix = resolveMatchScoreMatrix({
                 probabilities: winProbabilities,
                 homeTeam: match.homeTeam,
@@ -1707,6 +1718,7 @@ export function WorldCupMatchesPageClient({
               const awayRatings = ratingsByTeam.get(match.awayTeam) ?? null;
               const conditional = conditionalAdvancement.get(String(match.matchId));
               const allowDraw = match.stage === "Group";
+              const showNinetyDraw = true;
               const hasExpandableDetails = Boolean(
                 expectedGoals || totalGoalsRow || marginRow || scoreGrid || conditional
               );
@@ -1762,7 +1774,7 @@ export function WorldCupMatchesPageClient({
                   ? formatNormalizedPercent(normalizedShown.home)
                   : homeLabelRaw;
               const drawLabel =
-                allowDraw && probabilityMode === "percent" && normalizedShown
+                showNinetyDraw && probabilityMode === "percent" && normalizedShown
                   ? formatNormalizedPercent(normalizedShown.draw)
                   : drawLabelRaw;
               const awayLabel =
@@ -1774,7 +1786,7 @@ export function WorldCupMatchesPageClient({
                   ? Math.max(0, Math.min(100, normalizedShown.home))
                   : Math.max(0, Math.min(100, (shownValues?.home ?? 0) * 100));
               const drawPercent =
-                allowDraw
+                showNinetyDraw
                   ? probabilityMode === "percent" && normalizedShown
                     ? Math.max(0, Math.min(100, normalizedShown.draw))
                     : Math.max(0, Math.min(100, (shownValues?.draw ?? 0) * 100))
@@ -1842,6 +1854,7 @@ export function WorldCupMatchesPageClient({
               const actualOutcome = homeWon ? "home" : awayWon ? "away" : "draw";
               const finalOutcome =
                 finalHomeWon ? "home" : finalAwayWon ? "away" : "draw";
+              const displayScore = formatCompletedMatchScore(match);
               return (
                 <div key={`past-${match.matchId}`} className="mb-3 min-w-0">
                   <div className="relative rounded-xl bg-white ring-1 ring-slate-200 shadow-sm px-4 py-3 flex flex-col">
@@ -1863,8 +1876,8 @@ export function WorldCupMatchesPageClient({
                             {match.homeTeam}
                           </span>
                         </span>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {match.homeScore}-{match.awayScore}
+                        <span className="text-xs font-semibold tracking-wide text-slate-500">
+                          {displayScore}
                         </span>
                         <span className={`flex items-center gap-2 min-w-0 justify-end text-right ${homeWon ? "opacity-40" : "opacity-100"}`}>
                           <span
@@ -1883,13 +1896,6 @@ export function WorldCupMatchesPageClient({
                           </span>
                         </span>
                       </div>
-                      {showFullTimeBar ? (
-                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                          <span className="text-left">90'</span>
-                          <span>{scoreHome}-{scoreAway}</span>
-                          <span className="text-right">FT {match.homeScore}-{match.awayScore}</span>
-                        </div>
-                      ) : null}
                       <div className="text-[11px] text-slate-500">{kickoffLabel}</div>
                     </div>
                     <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 min-[370px]:grid-cols-2">
@@ -1906,7 +1912,7 @@ export function WorldCupMatchesPageClient({
                         <span className={actualOutcome === "home" ? "font-semibold text-slate-900" : "text-slate-400"}>
                           {homeLabel}
                         </span>
-                        {allowDraw ? (
+                        {showNinetyDraw ? (
                           <span className={actualOutcome === "draw" ? "font-semibold text-slate-900" : "text-slate-400"}>
                             {drawLabel ?? "--"}
                           </span>
@@ -1923,7 +1929,7 @@ export function WorldCupMatchesPageClient({
                             className={actualOutcome === "home" ? "h-full bg-emerald-400/95" : "h-full bg-emerald-200/35"}
                             style={{ width: `${homePercent}%` }}
                           />
-                          {allowDraw ? (
+                          {showNinetyDraw ? (
                             <div
                               className={actualOutcome === "draw" ? "h-full bg-slate-500/80" : "h-full bg-slate-300/35"}
                               style={{ width: `${drawPercent}%` }}

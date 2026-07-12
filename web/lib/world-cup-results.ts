@@ -18,6 +18,8 @@ export type CompletedWorldCupMatch = {
   awayScore90: number | null;
   wentExtraTime: boolean;
   wentPenalties: boolean;
+  homePenaltyScore: number | null;
+  awayPenaltyScore: number | null;
   penaltyWinner: string | null;
   winner: string | null;
 };
@@ -81,10 +83,50 @@ async function readPublicText(filePath: string) {
   return readFile(fullPath, "utf8");
 }
 
+async function loadPenaltyScoresByMatchId() {
+  try {
+    const contents = await readPublicText("/reference_data/world_cup_2026_penalty_scores.csv");
+    const rows = parseCsv(contents).rows;
+    return new Map(
+      rows
+        .map((row) => {
+          const matchId = parseNullableInt(row.match_id);
+          if (matchId === null) {
+            return null;
+          }
+          return [
+            matchId,
+            {
+              homePenaltyScore: parseNullableInt(row.home_penalties),
+              awayPenaltyScore: parseNullableInt(row.away_penalties),
+            },
+          ] as const;
+        })
+        .filter(
+          (
+            entry
+          ): entry is readonly [
+            number,
+            { homePenaltyScore: number | null; awayPenaltyScore: number | null },
+          ] => Boolean(entry)
+        )
+    );
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return new Map<
+        number,
+        { homePenaltyScore: number | null; awayPenaltyScore: number | null }
+      >();
+    }
+    throw error;
+  }
+}
+
 export async function loadCompletedWorldCupMatches(
   modelOutputDir = "/model_output"
 ): Promise<CompletedWorldCupMatch[]> {
   let contents: string;
+  const penaltyScoresByMatchId = await loadPenaltyScoresByMatchId();
   try {
     contents = await readPublicText(`${modelOutputDir}/results_wc2026.csv`);
   } catch (error) {
@@ -104,6 +146,7 @@ export async function loadCompletedWorldCupMatches(
       if (matchId === null || homeScore === null || awayScore === null) {
         return null;
       }
+      const penaltyScores = penaltyScoresByMatchId.get(matchId);
       return {
         matchId,
         date: row.date?.trim() ?? "",
@@ -121,6 +164,8 @@ export async function loadCompletedWorldCupMatches(
         awayScore90,
         wentExtraTime: parseNullableBool(row.went_extra_time) ?? false,
         wentPenalties: parseNullableBool(row.went_penalties) ?? false,
+        homePenaltyScore: penaltyScores?.homePenaltyScore ?? null,
+        awayPenaltyScore: penaltyScores?.awayPenaltyScore ?? null,
         penaltyWinner: normalizeNullableString(row.penalty_winner),
         winner: normalizeNullableString(row.penalty_winner)
           ?? (homeScore > awayScore
