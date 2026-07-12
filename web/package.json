@@ -26,6 +26,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "1.12.1",
+    "@cloudflare/workers-types": "4.20260702.1",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -37,6 +39,7 @@
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.9",
     "typescript": "^5.5.4",
-    "vercel": "50.37.1"
+    "vercel": "50.37.1",
+    "wrangler": "3.114.17"
   }
 }

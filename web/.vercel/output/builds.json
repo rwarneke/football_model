@@ -17,25 +17,7 @@
       "config": {
         "zeroConfig": true,
         "framework": "nextjs"
-      },
-      "error": {
-        "name": "Error",
-        "stack": "Error: ENOENT: no such file or directory, open '/Users/rowanwarneke/Desktop/chris gay/web/node_modules/@vercel/next/dist/server-launcher.js'",
-        "message": "ENOENT: no such file or directory, open '/Users/rowanwarneke/Desktop/chris gay/web/node_modules/@vercel/next/dist/server-launcher.js'",
-        "errno": -2,
-        "code": "ENOENT",
-        "syscall": "open",
-        "path": "/Users/rowanwarneke/Desktop/chris gay/web/node_modules/@vercel/next/dist/server-launcher.js"
       }
     }
-  ],
-  "error": {
-    "name": "Error",
-    "stack": "Error: ENOENT: no such file or directory, open '/Users/rowanwarneke/Desktop/chris gay/web/node_modules/@vercel/next/dist/server-launcher.js'",
-    "message": "ENOENT: no such file or directory, open '/Users/rowanwarneke/Desktop/chris gay/web/node_modules/@vercel/next/dist/server-launcher.js'",
-    "errno": -2,
-    "code": "ENOENT",
-    "syscall": "open",
-    "path": "/Users/rowanwarneke/Desktop/chris gay/web/node_modules/@vercel/next/dist/server-launcher.js"
-  }
+  ]
 }

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /options-pricing
+
+Sitemap: https://thebackpost.net/sitemap.xml
