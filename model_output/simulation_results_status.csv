@@ -1,10 +1,10 @@
 team,Qualify,Win Group,Reach R32,Reach R16,Reach QF,Reach SF,Reach Final,Champion
-Spain,G,G,G,G,G,G,U,U
-Argentina,G,G,G,G,G,U,U,U
+Spain,G,G,G,G,G,G,G,U
+Argentina,G,G,G,G,G,G,U,U
 England,G,G,G,G,G,G,U,U
 Brazil,G,G,G,G,I,I,I,I
 Portugal,G,I,G,G,I,I,I,I
-France,G,G,G,G,G,G,U,U
+France,G,G,G,G,G,G,I,I
 Colombia,G,G,G,G,I,I,I,I
 Netherlands,G,G,G,I,I,I,I,I
 Germany,G,G,G,I,I,I,I,I
@@ -12,7 +12,7 @@ Belgium,G,G,G,G,G,I,I,I
 Uruguay,G,I,I,I,I,I,I,I
 Norway,G,I,G,G,G,I,I,I
 Ecuador,G,I,G,I,I,I,I,I
-Switzerland,G,G,G,G,G,U,U,U
+Switzerland,G,G,G,G,G,I,I,I
 Croatia,G,I,G,I,I,I,I,I
 Denmark,U,U,U,U,U,U,U,U
 Japan,G,I,G,I,I,I,I,I

@@ -98,8 +98,8 @@ match_id,date,stage,group,home_team,away_team,stadium,city,country,tournament,ne
 97,2026-07-09,Quarterfinal,NA,France,Morocco,Gillette Stadium,Foxborough,United States,FIFA World Cup,NA,2,0,2,0,NA,NA,False,False,NA,NA
 98,2026-07-10,Quarterfinal,NA,Spain,Belgium,SoFi Stadium,Inglewood,United States,FIFA World Cup,NA,2,1,2,1,NA,NA,False,False,NA,NA
 99,2026-07-11,Quarterfinal,NA,Norway,England,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,1,2,1,1,1,2,True,False,NA,NA
-100,2026-07-11,Quarterfinal,NA,Argentina,Switzerland,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-101,2026-07-14,Semifinal,NA,France,Spain,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-102,2026-07-15,Semifinal,NA,England,Winner Match 100,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-103,2026-07-18,Third place,NA,Loser Match 101,Loser Match 102,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
-104,2026-07-19,Final,NA,Winner Match 101,Winner Match 102,MetLife Stadium,East Rutherford,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+100,2026-07-11,Quarterfinal,NA,Argentina,Switzerland,Arrowhead Stadium,Kansas City,United States,FIFA World Cup,NA,3,1,1,1,3,1,True,False,NA,NA
+101,2026-07-14,Semifinal,NA,France,Spain,AT&T Stadium,Arlington,United States,FIFA World Cup,NA,0,2,0,2,NA,NA,False,False,NA,NA
+102,2026-07-15,Semifinal,NA,England,Argentina,Mercedes-Benz Stadium,Atlanta,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+103,2026-07-18,Third place,NA,France,Loser Match 102,Hard Rock Stadium,Miami Gardens,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+104,2026-07-19,Final,NA,Spain,Winner Match 102,MetLife Stadium,East Rutherford,United States,FIFA World Cup,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
