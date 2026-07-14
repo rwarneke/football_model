@@ -254,6 +254,9 @@ export default async function HomePage() {
   const winProbabilities = await loadWinProbabilities();
   const stageColumns = ["Reach SF", "Reach Final", "Champion"];
   const topStageRows = [...worldCup.rows]
+    .filter((row) =>
+      stageColumns.some((col) => row.statuses[col] !== "I")
+    )
     .sort(
       (a, b) =>
         Number(b.values.Champion ?? 0) - Number(a.values.Champion ?? 0)
