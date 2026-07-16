@@ -47536,7 +47536,6 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-06-01,Canada,Uzbekistan,2,0,Friendly,Edmonton,Canada,False,,,,,,,,,CONCACAF,AFC,,,,False,False,False
 2026-06-01,Colombia,Costa Rica,3,1,Friendly,Bogotá,Colombia,False,,,,,,,,,CONMEBOL,CONCACAF,,,,False,False,False
 2026-06-01,Maldives,Afghanistan,0,1,Diamond Jubilee International Football Tournament,Malé,Maldives,False,,,,,,,,,AFC,AFC,,,,False,False,False
-2026-06-01,Maldives,Pakistan,0,3,Diamond Jubilee International Football Tournament,Malé,Maldives,False,,,,,,,,,AFC,AFC,,,,False,False,False
 2026-06-01,Norway,Sweden,3,1,Friendly,Oslo,Norway,False,,,,,,,,,UEFA,UEFA,,,,False,False,False
 2026-06-01,Slovakia,Malta,2,1,Friendly,Dunajská Streda,Slovakia,False,,,,,,,,,UEFA,UEFA,,,,False,False,False
 2026-06-01,Turkey,North Macedonia,4,0,Friendly,Istanbul,Turkey,False,,,,,,,,,UEFA,UEFA,,,,False,False,False
@@ -47560,6 +47559,7 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-06-04,Guatemala,Czechia,1,5,Friendly,Harrison,United States,True,,,,,,,,,CONCACAF,UEFA,,,,False,False,False
 2026-06-04,Iran,Mali,2,0,Friendly,Antalya,Turkey,True,,,,,,,,,AFC,CAF,,,,False,False,False
 2026-06-04,Lesotho,Kenya,1,1,Friendly,Pretoria,South Africa,True,,,,,,,,,CAF,CAF,,,,False,False,False
+2026-06-04,Maldives,Pakistan,0,3,Diamond Jubilee International Football Tournament,Malé,Maldives,False,,,,,,,,,AFC,AFC,,,,False,False,False
 2026-06-04,Mexico,Serbia,5,1,Friendly,Toluca,Mexico,False,,,,,,,,,CONCACAF,UEFA,,,,False,False,False
 2026-06-04,Northern Ireland,Guinea,1,0,Friendly,La Línea de la Concepción,Spain,True,,,,,,,,,UEFA,CAF,,,,False,False,False
 2026-06-04,Slovenia,Cyprus,1,1,Friendly,Ljubljana,Slovenia,False,,,,,,,,,UEFA,UEFA,,,,False,False,False
@@ -47598,7 +47598,7 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-06-06,England,New Zealand,1,0,Friendly,Tampa,United States,True,,,,,,,,,UEFA,OFC,,,,False,False,False
 2026-06-06,Estonia,Faroe Islands,1,0,Baltic Cup,Pärnu,Estonia,False,,,,,,,,,UEFA,UEFA,,,,False,False,False
 2026-06-06,Ethiopia,Malawi,1,0,Friendly,Dire Dawa,Ethiopia,False,,,,,,,,,CAF,CAF,,,,False,False,False
-2026-06-06,Gibraltar,Cayman Islands,4,1,Friendly,Gibraltar,Gibraltar,False,,,,,,,,,UEFA,CONCACAF,,,,False,False,False
+2026-06-06,Gibraltar,Cayman Islands,4,1,Friendly,Europa Point,Gibraltar,False,,,,,,,,,UEFA,CONCACAF,,,,False,False,False
 2026-06-06,Jamaica,South Africa,0,1,Friendly,Pachuca,Mexico,True,,,,,,,,,CONCACAF,CAF,,,,False,False,False
 2026-06-06,Kyrgyzstan,Palestine,0,0,Friendly,Bishkek,Kyrgyzstan,False,,,,,,,,,AFC,AFC,,,,False,False,False
 2026-06-06,Lithuania,Latvia,1,1,Baltic Cup,Kaunas,Lithuania,False,,,,,,,Lithuania,Lithuania,UEFA,UEFA,,,,True,True,False
@@ -47754,3 +47754,4 @@ date,home_team,away_team,home_score,away_score,tournament,city,country,neutral,h
 2026-07-11,Argentina,Switzerland,3,1,FIFA World Cup,Kansas City,United States,True,1,1,3,1,True,False,,,CONMEBOL,UEFA,,,,False,True,False
 2026-07-11,Norway,England,1,2,FIFA World Cup,Miami Gardens,United States,True,1,1,1,2,True,False,,,UEFA,UEFA,,,,False,True,False
 2026-07-14,France,Spain,0,2,FIFA World Cup,Arlington,United States,True,0,2,,,False,False,,,UEFA,UEFA,,,,False,False,False
+2026-07-15,England,Argentina,1,2,FIFA World Cup,Atlanta,United States,True,1,2,,,False,False,,,UEFA,CONMEBOL,,,,False,False,False
